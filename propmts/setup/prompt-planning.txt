@@ -1,0 +1,292 @@
+ROLE: IT Architect & Agile Delivery Manager  
+INTENT: Using the existing architecture specifications from  
+`specs/architecture/impact_compendium_technical_spec.md`,  
+generate **seven detailed SPRINT plans** to build and deploy the **Impact Compendium Application**.  
+Each sprint must be stored as an individual Markdown file in  
+`impact-compendium-app/planning/` following this naming convention:
+
+- sprint1_infrastructure_setup.md  
+- sprint2_frontend_design.md  
+- sprint3_backend_api.md  
+- sprint4_database_integration.md  
+- sprint5_auth_roles.md  
+- sprint6_functional_ui.md  
+- sprint7_testing_doc.md  
+
+---
+
+### 🔧 Context
+**Architecture stack**
+- Frontend: React SPA (design from *Mockup – Impact Compendium* in Figma)
+- Backend: Python REST API (FastAPI or Flask)
+- Database: MySQL RDS
+- Deployment: AWS SAM + CloudFormation
+- Authentication: AWS Cognito
+- IaC & Docs via `awslabs.cdk-mcp-server` and `aws-serverless-mcp-server`
+- Design assets via `figma-mcp`
+
+**Goal:** Produce a realistic, low-cost, agile roadmap under seven sprints (≈ 14 weeks total).
+
+---
+
+### 📋 For Each Sprint File Include
+
+**1. Sprint Goal** – one concise statement.  
+**2. Duration** – 2 weeks default.  
+**3. Deliverables** – key technical outputs (docs, components, pipelines, tests).  
+**4. Tasks / Activities** – 6 to 10 detailed items.  
+**5. Dependencies** – prior sprints or external inputs.  
+**6. Responsible Roles** – e.g., Frontend Dev, Backend Dev, DevOps Eng, QA.  
+**7. Tools & MCPs Used** – `awslabs.cdk-mcp-server`, `figma-mcp`, `aws-serverless-mcp-server`, etc.  
+**8. Output Paths** – where generated artifacts are stored (e.g., `/Frontend/architecture/…`).  
+**9. Definition of Done (DoD)** – measurable completion criteria.  
+**10. Risk & Mitigation** – top 2–3 foreseeable risks per sprint.
+
+---
+
+### 📦 Sprint Breakdown to Follow
+
+**Sprint 1 – Infrastructure Setup & Environments**  
+Initialize AWS SAM structure, CloudFormation stack, CI/CD pipeline.
+
+**Sprint 2 – Frontend Base & Design Integration**  
+Retrieve Figma mockups, build React layout, theme constants.
+
+**Sprint 3 – Backend API Foundation**  
+Develop Python REST API endpoints for Studies and Indicators.
+
+**Sprint 4 – Database Integration & AWS Connectivity**  
+Configure RDS MySQL, Secrets Manager, and ORM models.
+
+**Sprint 5 – Authentication & Role Management**  
+Integrate AWS Cognito and implement role-based access control.
+
+**Sprint 6 – Functional UI Integration & End-to-End Features**  
+Connect frontend to API, enable CRUD flows, search and filters.
+
+**Sprint 7 – Testing, Optimization & Release Documentation**  
+Run unit/e2e tests, generate final architecture & cost reports.
+
+---
+
+### 🧾 Output Expectations
+- Each sprint file written in **Markdown** with clear headers (Goal, Deliverables, Tasks, etc.).  
+- Include **links to expected architecture docs** (e.g., `/Frontend/architecture/frontend_design_integration.md`).  
+- Conclude each file with a **“Next Sprint Preview”** section summarizing what follows.  
+- All content must be actionable and directly usable for JIRA Epics & User Stories creation.
+
+---
+
+### ✅ Deliverable Summary
+After execution, Amazon Q should have created seven markdown sprint plans in  
+`impact-compendium-app/planning/`, providing a full implementation roadmap for the Impact Compendium Application consistent with its technical specification and cost-optimized AWS deployment.
+
+--------------------------------------------------------------------------------------------------------
+--------------------------------------------------------------------------------------------------------
+
+======================================================================
+🏗️ IMPACT COMPENDIUM APP – DEVELOPMENT PLAN EXECUTION GUIDE
+======================================================================
+
+📁 Location:
+All sprint prompt files are stored and executed from:
+impact-compendium-app/planning/
+
+🧠 Context:
+Architecture based on:
+- Frontend: React (using Figma design “Mockup – Impact Compendium”)
+- Backend: Python REST API (FastAPI)
+- Database: MySQL RDS
+- Deployment: AWS SAM + CloudFormation
+- Authentication: AWS Cognito
+- Tooling: awslabs.cdk-mcp-server, figma-mcp, aws-serverless-mcp-server, awslabs.cost-explorer-mcp-server
+
+======================================================================
+SPRINT 1 – INFRASTRUCTURE SETUP & ENVIRONMENT BASE
+======================================================================
+ROLE: DevOps Architect
+
+OBJECTIVE:
+Initialize the AWS SAM environment and define the foundational infrastructure for the Impact Compendium Application.
+
+TASKS:
+1. Create SAM base project under /Infrastructure.
+2. Generate template.yaml, samconfig.toml, and parameter files.
+3. Configure RDS MySQL (db.t3.micro), API Gateway, and Lambda skeleton.
+4. Add IAM roles, Secrets Manager, and CloudWatch logging.
+5. Create CI/CD pipeline with CloudFormation deploy stages (dev/prod).
+
+MCP TO EXECUTE:
+- awslabs.cdk-mcp-server → to generate infrastructure architecture docs.
+- aws-serverless-mcp-server → to produce SAM templates and deployment scripts.
+
+OUTPUT:
+- /Infrastructure/architecture/infrastructure_base.md
+- /Infrastructure/samconfig.toml
+- /Infrastructure/template.yaml
+
+======================================================================
+SPRINT 2 – FRONTEND INITIALIZATION & DESIGN INTEGRATION
+======================================================================
+ROLE: Frontend Architect
+
+OBJECTIVE:
+Initialize React project structure and integrate design assets from Figma.
+
+TASKS:
+1. Use figma-mcp to pull components from “Mockup – Impact Compendium”.
+2. Generate reusable components: Navbar, Sidebar, Login, Forms, Dashboard.
+3. Initialize React app with Vite or Create React App.
+4. Configure routing and global theme constants.
+5. Store output under /Frontend/architecture.
+
+MCP TO EXECUTE:
+- figma-mcp → extract components, CSS, and assets.
+- awslabs.cdk-mcp-server → generate architecture documentation.
+
+OUTPUT:
+- /Frontend/architecture/frontend_design_integration.md
+- /Frontend/src/components/
+- /Frontend/src/pages/
+
+======================================================================
+SPRINT 3 – BACKEND API FOUNDATION
+======================================================================
+ROLE: Backend Architect
+
+OBJECTIVE:
+Develop the REST API base using Python (FastAPI) with modular structure.
+
+TASKS:
+1. Initialize FastAPI project under /Backend.
+2. Create routers: studies, indicators, contributors.
+3. Configure models, schemas, and services directories.
+4. Enable OpenAPI docs and test sample endpoints.
+5. Link deployment with SAM template.
+
+MCP TO EXECUTE:
+- awslabs.cdk-mcp-server → generate backend architecture docs.
+
+OUTPUT:
+- /Backend/architecture/backend_api_structure.md
+- /Backend/app/main.py
+- /Backend/app/routers/, /models/, /schemas/
+
+======================================================================
+SPRINT 4 – DATABASE INTEGRATION & AWS CONNECTIVITY
+======================================================================
+ROLE: Cloud Engineer
+
+OBJECTIVE:
+Integrate RDS MySQL and connect it with the FastAPI backend through ORM.
+
+TASKS:
+1. Set up SQLAlchemy connection to RDS (Secrets Manager for credentials).
+2. Define Alembic migrations for studies, indicators, contributors.
+3. Update template.yaml with DB parameters and networking.
+4. Test CRUD operations end-to-end.
+5. Document schema under /Infrastructure/architecture.
+
+MCP TO EXECUTE:
+- aws-serverless-mcp-server → extend SAM configuration for DB resources.
+- awslabs.cdk-mcp-server → update database architecture document.
+
+OUTPUT:
+- /Infrastructure/architecture/rds_integration.md
+- /Backend/app/db/connection.py
+- /Infrastructure/template.yaml (updated)
+
+======================================================================
+SPRINT 5 – AUTHENTICATION & ROLE MANAGEMENT
+======================================================================
+ROLE: Security Architect
+
+OBJECTIVE:
+Implement AWS Cognito authentication and connect login flow to React app.
+
+TASKS:
+1. Configure Cognito User Pool, App Client, and groups (Admin / Researcher).
+2. Integrate Cognito SDK into backend for token validation.
+3. Connect login React form with Cognito via Amplify or AWS SDK.
+4. Add route guards and role-based permissions.
+5. Document the authentication flow.
+
+MCP TO EXECUTE:
+- aws-serverless-mcp-server → generate Cognito resources in SAM template.
+- awslabs.cdk-mcp-server → generate architecture documentation.
+- figma-mcp → ensure login UI consistency.
+
+OUTPUT:
+- /Infrastructure/architecture/auth_architecture.md
+- /Frontend/src/pages/Login/
+- /Backend/app/middleware/auth.py
+
+======================================================================
+SPRINT 6 – FUNCTIONAL UI INTEGRATION
+======================================================================
+ROLE: Frontend Developer
+
+OBJECTIVE:
+Integrate UI with backend APIs and implement dynamic features.
+
+TASKS:
+1. Connect frontend components to REST endpoints.
+2. Implement CRUD for studies and indicators.
+3. Add filters, search, and expandable tables.
+4. Validate data synchronization between API and frontend.
+5. Store documentation and component snapshots.
+
+MCP TO EXECUTE:
+- figma-mcp → sync updated component styles.
+- awslabs.cdk-mcp-server → generate frontend integration docs.
+
+OUTPUT:
+- /Frontend/architecture/ui_integration_doc.md
+- /Frontend/src/services/api.js
+- /Frontend/src/pages/Dashboard/
+
+======================================================================
+SPRINT 7 – TESTING, OPTIMIZATION & RELEASE
+======================================================================
+ROLE: QA Engineer & Release Manager
+
+OBJECTIVE:
+Finalize testing, cost optimization, and deployment documentation.
+
+TASKS:
+1. Run pytest (backend) and Cypress tests (frontend).
+2. Validate AWS cost optimization via awslabs.cost-explorer-mcp-server.
+3. Review infrastructure for unused resources.
+4. Generate release notes and post-deployment checklist.
+5. Prepare final architecture summary and cost report.
+
+MCP TO EXECUTE:
+- awslabs.cost-explorer-mcp-server → analyze and optimize AWS cost.
+- awslabs.cdk-mcp-server → update final architecture doc.
+- aws-serverless-mcp-server → verify production deployment stack.
+
+OUTPUT:
+- /planning/final_release_notes.md
+- /specs/architecture/impact_compendium_cost_estimation.md (updated)
+- /Infrastructure/architecture/final_stack_review.md
+
+======================================================================
+EXECUTION ORDER
+======================================================================
+Execute the sprints in sequential order:
+
+Sprint 1 → Sprint 2 → Sprint 3 → Sprint 4 → Sprint 5 → Sprint 6 → Sprint 7
+
+After completing Sprint 7, all architecture, deployment, and documentation artifacts will be ready for the production release of the **Impact Compendium Application**.
+
+======================================================================
+🧩 MCP SERVER SUMMARY
+======================================================================
+- **awslabs.cdk-mcp-server** → generates architecture documents for Frontend, Backend, and Infrastructure.
+- **figma-mcp** → extracts UI components, CSS, HTML, and reusable styles.
+- **aws-serverless-mcp-server** → generates and validates SAM templates, deployments, and AWS configurations.
+- **awslabs.cost-explorer-mcp-server** → calculates and optimizes cloud costs post-deployment.
+
+======================================================================
+END OF GUIDE
+======================================================================

@@ -168,9 +168,9 @@ MCP TO EXECUTE:
 - awslabs.cdk-mcp-server → generate backend architecture docs.
 
 OUTPUT:
-- impact-compendium-app//Backend/architecture/backend_api_structure.md
-- impact-compendium-app//Backend/app/main.py
-- impact-compendium-app//Backend/app/routers/, /models/, /schemas/
+- impact-compendium-app/Backend/architecture/backend_api_structure.md
+- impact-compendium-app/Backend/app/main.py
+- impact-compendium-app/Backend/app/routers/, /models/, /schemas/
 
 ======================================================================
 SPRINT 4 – DATABASE INTEGRATION & AWS CONNECTIVITY
@@ -192,9 +192,19 @@ MCP TO EXECUTE:
 - awslabs.cdk-mcp-server → update database architecture document.
 
 OUTPUT:
-- impact-compendium-app//Infrastructure/architecture/rds_integration.md
-- impact-compendium-app//Backend/app/db/connection.py
-- impact-compendium-app//Infrastructure/template.yaml (updated)
+- impact-compendium-app/Infrastructure/architecture/rds_integration.md
+- impact-compendium-app/Backend/app/db/connection.py
+- impact-compendium-app/Infrastructure/template.yaml (updated)
+
+NOTE: For this case use this DB, create a .env file and add the rule in .gitignore and modify the infrastructure in case
+of be necessary
+db-impact-compendium.c9s2e8cg81v6.us-east-2.rds.amazonaws.com
+3306
+DB: database
+user: user
+pass: pass
+
+- the data model is located in onecgiar_impact_compendium/specs/data/impact.erd for if is necessary do changes at the backend level
 
 ======================================================================
 SPRINT 5 – AUTHENTICATION & ROLE MANAGEMENT
@@ -217,9 +227,12 @@ MCP TO EXECUTE:
 - figma-mcp → ensure login UI consistency.
 
 OUTPUT:
-- impact-compendium-app//Infrastructure/architecture/auth_architecture.md
-- impact-compendium-app//Frontend/src/pages/Login/
-- impact-compendium-app//Backend/app/middleware/auth.py
+- impact-compendium-app/Infrastructure/architecture/auth_architecture.md
+- impact-compendium-app/Frontend/src/pages/Login/
+- impact-compendium-app/Backend/app/middleware/auth.py
+
+NOTE: You are the AWS Serverless MCP Server. Convert the IGAD project to a **SAM-only** infrastructure & deployment model that uses the **SAM CLI** exclusively (no CDK, no Jenkins, no GitHub Actions). 
+Generate the artifacts below and ensure all resources are properly tagged.
 
 ======================================================================
 SPRINT 6 – FUNCTIONAL UI INTEGRATION

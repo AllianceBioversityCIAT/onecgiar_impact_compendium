@@ -90,7 +90,7 @@ After execution, Amazon Q should have created seven markdown sprint plans in
 
 📁 Location:
 All sprint prompt files are stored and executed from:
-impact-compendium-app/planning/
+planning/
 
 🧠 Context:
 Architecture based on:
@@ -121,9 +121,9 @@ MCP TO EXECUTE:
 - aws-serverless-mcp-server → to produce SAM templates and deployment scripts.
 
 OUTPUT:
-- /Infrastructure/architecture/infrastructure_base.md
-- /Infrastructure/samconfig.toml
-- /Infrastructure/template.yaml
+- impact-compendium-app/Infrastructure/architecture/infrastructure_base.md
+- impact-compendium-app/Infrastructure/samconfig.toml
+- impact-compendium-app/Infrastructure/template.yaml
 
 ======================================================================
 SPRINT 2 – FRONTEND INITIALIZATION & DESIGN INTEGRATION
@@ -145,9 +145,9 @@ MCP TO EXECUTE:
 - awslabs.cdk-mcp-server → generate architecture documentation.
 
 OUTPUT:
-- /Frontend/architecture/frontend_design_integration.md
-- /Frontend/src/components/
-- /Frontend/src/pages/
+- impact-compendium-app//Frontend/architecture/frontend_design_integration.md
+- impact-compendium-app//Frontend/src/components/
+- impact-compendium-app//Frontend/src/pages/
 
 ======================================================================
 SPRINT 3 – BACKEND API FOUNDATION
@@ -168,9 +168,9 @@ MCP TO EXECUTE:
 - awslabs.cdk-mcp-server → generate backend architecture docs.
 
 OUTPUT:
-- /Backend/architecture/backend_api_structure.md
-- /Backend/app/main.py
-- /Backend/app/routers/, /models/, /schemas/
+- impact-compendium-app//Backend/architecture/backend_api_structure.md
+- impact-compendium-app//Backend/app/main.py
+- impact-compendium-app//Backend/app/routers/, /models/, /schemas/
 
 ======================================================================
 SPRINT 4 – DATABASE INTEGRATION & AWS CONNECTIVITY
@@ -192,9 +192,9 @@ MCP TO EXECUTE:
 - awslabs.cdk-mcp-server → update database architecture document.
 
 OUTPUT:
-- /Infrastructure/architecture/rds_integration.md
-- /Backend/app/db/connection.py
-- /Infrastructure/template.yaml (updated)
+- impact-compendium-app//Infrastructure/architecture/rds_integration.md
+- impact-compendium-app//Backend/app/db/connection.py
+- impact-compendium-app//Infrastructure/template.yaml (updated)
 
 ======================================================================
 SPRINT 5 – AUTHENTICATION & ROLE MANAGEMENT
@@ -217,9 +217,9 @@ MCP TO EXECUTE:
 - figma-mcp → ensure login UI consistency.
 
 OUTPUT:
-- /Infrastructure/architecture/auth_architecture.md
-- /Frontend/src/pages/Login/
-- /Backend/app/middleware/auth.py
+- impact-compendium-app//Infrastructure/architecture/auth_architecture.md
+- impact-compendium-app//Frontend/src/pages/Login/
+- impact-compendium-app//Backend/app/middleware/auth.py
 
 ======================================================================
 SPRINT 6 – FUNCTIONAL UI INTEGRATION
@@ -241,9 +241,9 @@ MCP TO EXECUTE:
 - awslabs.cdk-mcp-server → generate frontend integration docs.
 
 OUTPUT:
-- /Frontend/architecture/ui_integration_doc.md
-- /Frontend/src/services/api.js
-- /Frontend/src/pages/Dashboard/
+- impact-compendium-app/Frontend/architecture/ui_integration_doc.md
+- impact-compendium-app/Frontend/src/services/api.js
+- impact-compendium-app/Frontend/src/pages/Dashboard/
 
 ======================================================================
 SPRINT 7 – TESTING, OPTIMIZATION & RELEASE
@@ -266,9 +266,9 @@ MCP TO EXECUTE:
 - aws-serverless-mcp-server → verify production deployment stack.
 
 OUTPUT:
-- /planning/final_release_notes.md
-- /specs/architecture/impact_compendium_cost_estimation.md (updated)
-- /Infrastructure/architecture/final_stack_review.md
+- impact-compendium-app/planning/final_release_notes.md
+- impact-compendium-app/specs/architecture/impact_compendium_cost_estimation.md (updated)
+- impact-compendium-app/Infrastructure/architecture/final_stack_review.md
 
 ======================================================================
 EXECUTION ORDER

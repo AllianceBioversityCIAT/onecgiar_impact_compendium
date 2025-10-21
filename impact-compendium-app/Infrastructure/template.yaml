@@ -1,0 +1,839 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Transform: AWS::Serverless-2016-10-31
+Description: >
+  Impact Compendium Database - Serverless Research Platform
+  
+  SAM Template for CGIAR/Alliance Impact Compendium application with
+  FastAPI backend, MySQL RDS, Cognito authentication, and React frontend.
+
+# Template metadata
+Metadata:
+  AWS::ServerlessRepo::Application:
+    Name: impact-compendium
+    Description: Research impact study management platform
+    Author: CGIAR/Alliance Bioversity & CIAT
+    SpdxLicenseId: MIT
+    LicenseUrl: LICENSE.txt
+    ReadmeUrl: README.md
+    Labels: ['research', 'impact', 'studies', 'serverless']
+    HomePageUrl: https://github.com/cgiar-alliance/impact-compendium
+    SemanticVersion: 1.0.0
+    SourceCodeUrl: https://github.com/cgiar-alliance/impact-compendium
+
+# Global configuration
+Globals:
+  Function:
+    Runtime: python3.11
+    Architecture: arm64
+    Timeout: 30
+    MemorySize: 256
+    Environment:
+      Variables:
+        ENVIRONMENT: !Ref Environment
+        LOG_LEVEL: INFO
+        POWERTOOLS_SERVICE_NAME: impact-compendium
+        POWERTOOLS_METRICS_NAMESPACE: ImpactCompendium
+    Layers:
+      - !Ref PowertoolsLayer
+    Tracing: Active
+  Api:
+    TracingConfig:
+      PassthroughBehavior: Active
+    Cors:
+      AllowMethods: "'GET,POST,PUT,DELETE,OPTIONS'"
+      AllowHeaders: "'Content-Type,X-Amz-Date,Authorization,X-Api-Key,X-Amz-Security-Token'"
+      AllowOrigin: "'*'"
+      MaxAge: "'600'"
+
+# Parameters for environment-specific configuration
+Parameters:
+  Environment:
+    Type: String
+    Default: dev
+    AllowedValues: [dev, staging, prod]
+    Description: Environment name for resource naming and configuration
+  
+  ProjectName:
+    Type: String
+    Default: impact-compendium
+    Description: Project name for resource naming
+  
+  DBInstanceClass:
+    Type: String
+    Default: db.t3.micro
+    AllowedValues: [db.t3.micro, db.t3.small, db.t3.medium]
+    Description: RDS instance class
+  
+  DBAllocatedStorage:
+    Type: Number
+    Default: 20
+    MinValue: 20
+    MaxValue: 100
+    Description: RDS allocated storage in GB
+  
+  EnableMultiAZ:
+    Type: String
+    Default: 'false'
+    AllowedValues: ['true', 'false']
+    Description: Enable Multi-AZ deployment for RDS
+
+# Conditions for environment-specific resources
+Conditions:
+  IsProduction: !Equals [!Ref Environment, prod]
+  IsMultiAZ: !Equals [!Ref EnableMultiAZ, 'true']
+
+Resources:
+  # ============================================================================
+  # NETWORKING & VPC
+  # ============================================================================
+  
+  VPC:
+    Type: AWS::EC2::VPC
+    Properties:
+      CidrBlock: 10.0.0.0/16
+      EnableDnsHostnames: true
+      EnableDnsSupport: true
+      Tags:
+        - Key: Name
+          Value: !Sub "${ProjectName}-${Environment}-vpc"
+        - Key: Environment
+          Value: !Ref Environment
+        - Key: Project
+          Value: !Ref ProjectName
+
+  # Public Subnets for NAT Gateway and ALB
+  PublicSubnetA:
+    Type: AWS::EC2::Subnet
+    Properties:
+      VpcId: !Ref VPC
+      CidrBlock: 10.0.1.0/24
+      AvailabilityZone: !Select [0, !GetAZs '']
+      MapPublicIpOnLaunch: true
+      Tags:
+        - Key: Name
+          Value: !Sub "${ProjectName}-${Environment}-public-subnet-a"
+
+  PublicSubnetB:
+    Type: AWS::EC2::Subnet
+    Properties:
+      VpcId: !Ref VPC
+      CidrBlock: 10.0.2.0/24
+      AvailabilityZone: !Select [1, !GetAZs '']
+      MapPublicIpOnLaunch: true
+      Tags:
+        - Key: Name
+          Value: !Sub "${ProjectName}-${Environment}-public-subnet-b"
+
+  # Private Subnets for Lambda and RDS
+  PrivateSubnetA:
+    Type: AWS::EC2::Subnet
+    Properties:
+      VpcId: !Ref VPC
+      CidrBlock: 10.0.11.0/24
+      AvailabilityZone: !Select [0, !GetAZs '']
+      Tags:
+        - Key: Name
+          Value: !Sub "${ProjectName}-${Environment}-private-subnet-a"
+
+  PrivateSubnetB:
+    Type: AWS::EC2::Subnet
+    Properties:
+      VpcId: !Ref VPC
+      CidrBlock: 10.0.12.0/24
+      AvailabilityZone: !Select [1, !GetAZs '']
+      Tags:
+        - Key: Name
+          Value: !Sub "${ProjectName}-${Environment}-private-subnet-b"
+
+  # Internet Gateway
+  InternetGateway:
+    Type: AWS::EC2::InternetGateway
+    Properties:
+      Tags:
+        - Key: Name
+          Value: !Sub "${ProjectName}-${Environment}-igw"
+
+  InternetGatewayAttachment:
+    Type: AWS::EC2::VPCGatewayAttachment
+    Properties:
+      InternetGatewayId: !Ref InternetGateway
+      VpcId: !Ref VPC
+
+  # NAT Gateway for private subnet internet access
+  NatGatewayEIP:
+    Type: AWS::EC2::EIP
+    DependsOn: InternetGatewayAttachment
+    Properties:
+      Domain: vpc
+      Tags:
+        - Key: Name
+          Value: !Sub "${ProjectName}-${Environment}-nat-eip"
+
+  NatGateway:
+    Type: AWS::EC2::NatGateway
+    Properties:
+      AllocationId: !GetAtt NatGatewayEIP.AllocationId
+      SubnetId: !Ref PublicSubnetA
+      Tags:
+        - Key: Name
+          Value: !Sub "${ProjectName}-${Environment}-nat-gateway"
+
+  # Route Tables
+  PublicRouteTable:
+    Type: AWS::EC2::RouteTable
+    Properties:
+      VpcId: !Ref VPC
+      Tags:
+        - Key: Name
+          Value: !Sub "${ProjectName}-${Environment}-public-rt"
+
+  DefaultPublicRoute:
+    Type: AWS::EC2::Route
+    DependsOn: InternetGatewayAttachment
+    Properties:
+      RouteTableId: !Ref PublicRouteTable
+      DestinationCidrBlock: 0.0.0.0/0
+      GatewayId: !Ref InternetGateway
+
+  PublicSubnetARouteTableAssociation:
+    Type: AWS::EC2::SubnetRouteTableAssociation
+    Properties:
+      RouteTableId: !Ref PublicRouteTable
+      SubnetId: !Ref PublicSubnetA
+
+  PublicSubnetBRouteTableAssociation:
+    Type: AWS::EC2::SubnetRouteTableAssociation
+    Properties:
+      RouteTableId: !Ref PublicRouteTable
+      SubnetId: !Ref PublicSubnetB
+
+  PrivateRouteTable:
+    Type: AWS::EC2::RouteTable
+    Properties:
+      VpcId: !Ref VPC
+      Tags:
+        - Key: Name
+          Value: !Sub "${ProjectName}-${Environment}-private-rt"
+
+  DefaultPrivateRoute:
+    Type: AWS::EC2::Route
+    Properties:
+      RouteTableId: !Ref PrivateRouteTable
+      DestinationCidrBlock: 0.0.0.0/0
+      NatGatewayId: !Ref NatGateway
+
+  PrivateSubnetARouteTableAssociation:
+    Type: AWS::EC2::SubnetRouteTableAssociation
+    Properties:
+      RouteTableId: !Ref PrivateRouteTable
+      SubnetId: !Ref PrivateSubnetA
+
+  PrivateSubnetBRouteTableAssociation:
+    Type: AWS::EC2::SubnetRouteTableAssociation
+    Properties:
+      RouteTableId: !Ref PrivateRouteTable
+      SubnetId: !Ref PrivateSubnetB
+
+  # ============================================================================
+  # SECURITY GROUPS
+  # ============================================================================
+
+  LambdaSecurityGroup:
+    Type: AWS::EC2::SecurityGroup
+    Properties:
+      GroupDescription: Security group for Lambda functions
+      VpcId: !Ref VPC
+      SecurityGroupEgress:
+        - IpProtocol: tcp
+          FromPort: 443
+          ToPort: 443
+          CidrIp: 0.0.0.0/0
+          Description: HTTPS outbound
+        - IpProtocol: tcp
+          FromPort: 3306
+          ToPort: 3306
+          DestinationSecurityGroupId: !Ref RDSSecurityGroup
+          Description: MySQL to RDS
+      Tags:
+        - Key: Name
+          Value: !Sub "${ProjectName}-${Environment}-lambda-sg"
+
+  RDSSecurityGroup:
+    Type: AWS::EC2::SecurityGroup
+    Properties:
+      GroupDescription: Security group for RDS MySQL
+      VpcId: !Ref VPC
+      SecurityGroupIngress:
+        - IpProtocol: tcp
+          FromPort: 3306
+          ToPort: 3306
+          SourceSecurityGroupId: !Ref LambdaSecurityGroup
+          Description: MySQL from Lambda
+      Tags:
+        - Key: Name
+          Value: !Sub "${ProjectName}-${Environment}-rds-sg"
+
+  # ============================================================================
+  # DATABASE LAYER
+  # ============================================================================
+
+  DBSubnetGroup:
+    Type: AWS::RDS::DBSubnetGroup
+    Properties:
+      DBSubnetGroupDescription: Subnet group for Impact Compendium RDS
+      SubnetIds:
+        - !Ref PrivateSubnetA
+        - !Ref PrivateSubnetB
+      Tags:
+        - Key: Name
+          Value: !Sub "${ProjectName}-${Environment}-db-subnet-group"
+
+  DBParameterGroup:
+    Type: AWS::RDS::DBParameterGroup
+    Properties:
+      Description: Parameter group for Impact Compendium MySQL
+      Family: mysql8.0
+      Parameters:
+        innodb_buffer_pool_size: '{DBInstanceClassMemory*3/4}'
+        max_connections: 100
+        slow_query_log: 1
+        long_query_time: 2
+      Tags:
+        - Key: Name
+          Value: !Sub "${ProjectName}-${Environment}-db-params"
+
+  Database:
+    Type: AWS::RDS::DBInstance
+    DeletionPolicy: Snapshot
+    Properties:
+      DBInstanceIdentifier: !Sub "${ProjectName}-${Environment}-db"
+      DBInstanceClass: !Ref DBInstanceClass
+      Engine: mysql
+      EngineVersion: '8.0.35'
+      AllocatedStorage: !Ref DBAllocatedStorage
+      StorageType: gp2
+      StorageEncrypted: true
+      MultiAZ: !If [IsMultiAZ, true, false]
+      DBName: impact_compendium
+      MasterUsername: admin
+      ManageMasterUserPassword: true
+      MasterUserSecret:
+        Description: !Sub "Master password for ${ProjectName} ${Environment} database"
+        SecretStringTemplate: '{"username": "admin"}'
+        GenerateStringKey: password
+        PasswordLength: 32
+        ExcludeCharacters: '"@/\'
+      VPCSecurityGroups:
+        - !Ref RDSSecurityGroup
+      DBSubnetGroupName: !Ref DBSubnetGroup
+      DBParameterGroupName: !Ref DBParameterGroup
+      BackupRetentionPeriod: 7
+      PreferredBackupWindow: "03:00-04:00"
+      PreferredMaintenanceWindow: "sun:04:00-sun:05:00"
+      DeletionProtection: !If [IsProduction, true, false]
+      EnablePerformanceInsights: !If [IsProduction, true, false]
+      MonitoringInterval: !If [IsProduction, 60, 0]
+      MonitoringRoleArn: !If 
+        - IsProduction
+        - !GetAtt RDSEnhancedMonitoringRole.Arn
+        - !Ref AWS::NoValue
+      Tags:
+        - Key: Name
+          Value: !Sub "${ProjectName}-${Environment}-database"
+        - Key: Environment
+          Value: !Ref Environment
+        - Key: Project
+          Value: !Ref ProjectName
+
+  RDSEnhancedMonitoringRole:
+    Type: AWS::IAM::Role
+    Condition: IsProduction
+    Properties:
+      AssumeRolePolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+          - Sid: ''
+            Effect: Allow
+            Principal:
+              Service: monitoring.rds.amazonaws.com
+            Action: 'sts:AssumeRole'
+      ManagedPolicyArns:
+        - 'arn:aws:iam::aws:policy/service-role/AmazonRDSEnhancedMonitoringRole'
+      Path: /
+
+  # ============================================================================
+  # AUTHENTICATION & SECURITY
+  # ============================================================================
+
+  CognitoUserPool:
+    Type: AWS::Cognito::UserPool
+    Properties:
+      UserPoolName: !Sub "${ProjectName}-${Environment}-users"
+      AliasAttributes:
+        - email
+      AutoVerifiedAttributes:
+        - email
+      EmailConfiguration:
+        EmailSendingAccount: COGNITO_DEFAULT
+      Policies:
+        PasswordPolicy:
+          MinimumLength: 8
+          RequireUppercase: true
+          RequireLowercase: true
+          RequireNumbers: true
+          RequireSymbols: false
+      Schema:
+        - Name: email
+          AttributeDataType: String
+          Required: true
+          Mutable: true
+        - Name: role
+          AttributeDataType: String
+          Required: false
+          Mutable: true
+        - Name: organization
+          AttributeDataType: String
+          Required: false
+          Mutable: true
+        - Name: center
+          AttributeDataType: String
+          Required: false
+          Mutable: true
+      UserPoolTags:
+        Environment: !Ref Environment
+        Project: !Ref ProjectName
+
+  CognitoUserPoolClient:
+    Type: AWS::Cognito::UserPoolClient
+    Properties:
+      UserPoolId: !Ref CognitoUserPool
+      ClientName: !Sub "${ProjectName}-${Environment}-client"
+      GenerateSecret: false
+      ExplicitAuthFlows:
+        - ADMIN_NO_SRP_AUTH
+        - USER_PASSWORD_AUTH
+        - ALLOW_REFRESH_TOKEN_AUTH
+      TokenValidityUnits:
+        AccessToken: hours
+        IdToken: hours
+        RefreshToken: days
+      AccessTokenValidity: 1
+      IdTokenValidity: 1
+      RefreshTokenValidity: 30
+
+  # ============================================================================
+  # LAMBDA LAYERS
+  # ============================================================================
+
+  PowertoolsLayer:
+    Type: AWS::Serverless::LayerVersion
+    Properties:
+      LayerName: !Sub "${ProjectName}-${Environment}-powertools"
+      Description: AWS Lambda Powertools for Python
+      ContentUri: layers/powertools/
+      CompatibleRuntimes:
+        - python3.11
+      CompatibleArchitectures:
+        - arm64
+    Metadata:
+      BuildMethod: python3.11
+
+  # ============================================================================
+  # LAMBDA FUNCTIONS
+  # ============================================================================
+
+  StudiesFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      FunctionName: !Sub "${ProjectName}-${Environment}-studies"
+      CodeUri: src/studies/
+      Handler: app.lambda_handler
+      Description: Studies management API endpoints
+      VpcConfig:
+        SecurityGroupIds:
+          - !Ref LambdaSecurityGroup
+        SubnetIds:
+          - !Ref PrivateSubnetA
+          - !Ref PrivateSubnetB
+      Environment:
+        Variables:
+          DB_SECRET_ARN: !Ref Database.MasterUserSecret.SecretArn
+          DB_HOST: !GetAtt Database.Endpoint.Address
+          DB_PORT: !GetAtt Database.Endpoint.Port
+          DB_NAME: impact_compendium
+          COGNITO_USER_POOL_ID: !Ref CognitoUserPool
+      Events:
+        StudiesApi:
+          Type: Api
+          Properties:
+            RestApiId: !Ref ImpactCompendiumApi
+            Path: /studies
+            Method: ANY
+        StudiesProxyApi:
+          Type: Api
+          Properties:
+            RestApiId: !Ref ImpactCompendiumApi
+            Path: /studies/{proxy+}
+            Method: ANY
+
+  IndicatorsFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      FunctionName: !Sub "${ProjectName}-${Environment}-indicators"
+      CodeUri: src/indicators/
+      Handler: app.lambda_handler
+      Description: Indicators management API endpoints
+      VpcConfig:
+        SecurityGroupIds:
+          - !Ref LambdaSecurityGroup
+        SubnetIds:
+          - !Ref PrivateSubnetA
+          - !Ref PrivateSubnetB
+      Environment:
+        Variables:
+          DB_SECRET_ARN: !Ref Database.MasterUserSecret.SecretArn
+          DB_HOST: !GetAtt Database.Endpoint.Address
+          DB_PORT: !GetAtt Database.Endpoint.Port
+          DB_NAME: impact_compendium
+      Events:
+        IndicatorsApi:
+          Type: Api
+          Properties:
+            RestApiId: !Ref ImpactCompendiumApi
+            Path: /indicators
+            Method: ANY
+        IndicatorsProxyApi:
+          Type: Api
+          Properties:
+            RestApiId: !Ref ImpactCompendiumApi
+            Path: /indicators/{proxy+}
+            Method: ANY
+
+  AuthFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      FunctionName: !Sub "${ProjectName}-${Environment}-auth"
+      CodeUri: src/auth/
+      Handler: app.lambda_handler
+      Description: Authentication and user management endpoints
+      Environment:
+        Variables:
+          COGNITO_USER_POOL_ID: !Ref CognitoUserPool
+          COGNITO_CLIENT_ID: !Ref CognitoUserPoolClient
+      Events:
+        AuthApi:
+          Type: Api
+          Properties:
+            RestApiId: !Ref ImpactCompendiumApi
+            Path: /auth
+            Method: ANY
+        AuthProxyApi:
+          Type: Api
+          Properties:
+            RestApiId: !Ref ImpactCompendiumApi
+            Path: /auth/{proxy+}
+            Method: ANY
+
+  AdminFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      FunctionName: !Sub "${ProjectName}-${Environment}-admin"
+      CodeUri: src/admin/
+      Handler: app.lambda_handler
+      Description: Admin console API endpoints
+      VpcConfig:
+        SecurityGroupIds:
+          - !Ref LambdaSecurityGroup
+        SubnetIds:
+          - !Ref PrivateSubnetA
+          - !Ref PrivateSubnetB
+      Environment:
+        Variables:
+          DB_SECRET_ARN: !Ref Database.MasterUserSecret.SecretArn
+          DB_HOST: !GetAtt Database.Endpoint.Address
+          DB_PORT: !GetAtt Database.Endpoint.Port
+          DB_NAME: impact_compendium
+          COGNITO_USER_POOL_ID: !Ref CognitoUserPool
+      Events:
+        AdminApi:
+          Type: Api
+          Properties:
+            RestApiId: !Ref ImpactCompendiumApi
+            Path: /admin
+            Method: ANY
+        AdminProxyApi:
+          Type: Api
+          Properties:
+            RestApiId: !Ref ImpactCompendiumApi
+            Path: /admin/{proxy+}
+            Method: ANY
+
+  ReportsFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      FunctionName: !Sub "${ProjectName}-${Environment}-reports"
+      CodeUri: src/reports/
+      Handler: app.lambda_handler
+      Description: Reports and export API endpoints
+      VpcConfig:
+        SecurityGroupIds:
+          - !Ref LambdaSecurityGroup
+        SubnetIds:
+          - !Ref PrivateSubnetA
+          - !Ref PrivateSubnetB
+      Environment:
+        Variables:
+          DB_SECRET_ARN: !Ref Database.MasterUserSecret.SecretArn
+          DB_HOST: !GetAtt Database.Endpoint.Address
+          DB_PORT: !GetAtt Database.Endpoint.Port
+          DB_NAME: impact_compendium
+      Events:
+        ReportsApi:
+          Type: Api
+          Properties:
+            RestApiId: !Ref ImpactCompendiumApi
+            Path: /reports
+            Method: ANY
+        ReportsProxyApi:
+          Type: Api
+          Properties:
+            RestApiId: !Ref ImpactCompendiumApi
+            Path: /reports/{proxy+}
+            Method: ANY
+
+  # ============================================================================
+  # API GATEWAY
+  # ============================================================================
+
+  ImpactCompendiumApi:
+    Type: AWS::Serverless::Api
+    Properties:
+      Name: !Sub "${ProjectName}-${Environment}-api"
+      StageName: !Ref Environment
+      Description: Impact Compendium REST API
+      EndpointConfiguration:
+        Type: REGIONAL
+      MethodSettings:
+        - ResourcePath: "/*"
+          HttpMethod: "*"
+          LoggingLevel: INFO
+          DataTraceEnabled: true
+          MetricsEnabled: true
+          ThrottlingRateLimit: 100
+          ThrottlingBurstLimit: 200
+      AccessLogSetting:
+        DestinationArn: !GetAtt ApiGatewayLogGroup.Arn
+        Format: >
+          {
+            "requestId": "$context.requestId",
+            "ip": "$context.identity.sourceIp",
+            "caller": "$context.identity.caller",
+            "user": "$context.identity.user",
+            "requestTime": "$context.requestTime",
+            "httpMethod": "$context.httpMethod",
+            "resourcePath": "$context.resourcePath",
+            "status": "$context.status",
+            "protocol": "$context.protocol",
+            "responseLength": "$context.responseLength",
+            "responseTime": "$context.responseTime",
+            "error": "$context.error.message",
+            "integrationError": "$context.integration.error"
+          }
+
+  # ============================================================================
+  # STORAGE & CDN
+  # ============================================================================
+
+  FrontendBucket:
+    Type: AWS::S3::Bucket
+    Properties:
+      BucketName: !Sub "${ProjectName}-${Environment}-frontend-${AWS::AccountId}"
+      PublicAccessBlockConfiguration:
+        BlockPublicAcls: false
+        BlockPublicPolicy: false
+        IgnorePublicAcls: false
+        RestrictPublicBuckets: false
+      WebsiteConfiguration:
+        IndexDocument: index.html
+        ErrorDocument: error.html
+      CorsConfiguration:
+        CorsRules:
+          - AllowedHeaders: ['*']
+            AllowedMethods: [GET, HEAD]
+            AllowedOrigins: ['*']
+            MaxAge: 3600
+
+  FrontendBucketPolicy:
+    Type: AWS::S3::BucketPolicy
+    Properties:
+      Bucket: !Ref FrontendBucket
+      PolicyDocument:
+        Statement:
+          - Sid: PublicReadGetObject
+            Effect: Allow
+            Principal: '*'
+            Action: s3:GetObject
+            Resource: !Sub "${FrontendBucket}/*"
+
+  AttachmentsBucket:
+    Type: AWS::S3::Bucket
+    Properties:
+      BucketName: !Sub "${ProjectName}-${Environment}-attachments-${AWS::AccountId}"
+      PublicAccessBlockConfiguration:
+        BlockPublicAcls: true
+        BlockPublicPolicy: true
+        IgnorePublicAcls: true
+        RestrictPublicBuckets: true
+      VersioningConfiguration:
+        Status: Enabled
+      LifecycleConfiguration:
+        Rules:
+          - Id: DeleteIncompleteMultipartUploads
+            Status: Enabled
+            AbortIncompleteMultipartUpload:
+              DaysAfterInitiation: 7
+          - Id: TransitionToIA
+            Status: Enabled
+            Transition:
+              StorageClass: STANDARD_IA
+              TransitionInDays: 30
+
+  CloudFrontDistribution:
+    Type: AWS::CloudFront::Distribution
+    Properties:
+      DistributionConfig:
+        Comment: !Sub "${ProjectName} ${Environment} CDN"
+        DefaultCacheBehavior:
+          TargetOriginId: S3Origin
+          ViewerProtocolPolicy: redirect-to-https
+          AllowedMethods: [GET, HEAD, OPTIONS]
+          CachedMethods: [GET, HEAD, OPTIONS]
+          Compress: true
+          ForwardedValues:
+            QueryString: false
+            Cookies:
+              Forward: none
+        Origins:
+          - Id: S3Origin
+            DomainName: !GetAtt FrontendBucket.RegionalDomainName
+            S3OriginConfig:
+              OriginAccessIdentity: ''
+        Enabled: true
+        DefaultRootObject: index.html
+        CustomErrorResponses:
+          - ErrorCode: 404
+            ResponseCode: 200
+            ResponsePagePath: /index.html
+        PriceClass: PriceClass_100
+
+  # ============================================================================
+  # MONITORING & LOGGING
+  # ============================================================================
+
+  ApiGatewayLogGroup:
+    Type: AWS::Logs::LogGroup
+    Properties:
+      LogGroupName: !Sub "/aws/apigateway/${ProjectName}-${Environment}"
+      RetentionInDays: 14
+
+  # CloudWatch Alarms
+  DatabaseCPUAlarm:
+    Type: AWS::CloudWatch::Alarm
+    Properties:
+      AlarmName: !Sub "${ProjectName}-${Environment}-db-cpu-high"
+      AlarmDescription: Database CPU utilization is too high
+      MetricName: CPUUtilization
+      Namespace: AWS/RDS
+      Statistic: Average
+      Period: 300
+      EvaluationPeriods: 2
+      Threshold: 80
+      ComparisonOperator: GreaterThanThreshold
+      Dimensions:
+        - Name: DBInstanceIdentifier
+          Value: !Ref Database
+      TreatMissingData: notBreaching
+
+  ApiGateway5xxAlarm:
+    Type: AWS::CloudWatch::Alarm
+    Properties:
+      AlarmName: !Sub "${ProjectName}-${Environment}-api-5xx-errors"
+      AlarmDescription: API Gateway 5xx error rate is too high
+      MetricName: 5XXError
+      Namespace: AWS/ApiGateway
+      Statistic: Sum
+      Period: 300
+      EvaluationPeriods: 2
+      Threshold: 5
+      ComparisonOperator: GreaterThanThreshold
+      Dimensions:
+        - Name: ApiName
+          Value: !Sub "${ProjectName}-${Environment}-api"
+        - Name: Stage
+          Value: !Ref Environment
+      TreatMissingData: notBreaching
+
+# ============================================================================
+# OUTPUTS
+# ============================================================================
+
+Outputs:
+  ApiGatewayUrl:
+    Description: API Gateway endpoint URL
+    Value: !Sub "https://${ImpactCompendiumApi}.execute-api.${AWS::Region}.amazonaws.com/${Environment}"
+    Export:
+      Name: !Sub "${ProjectName}-${Environment}-api-url"
+
+  FrontendBucketName:
+    Description: S3 bucket for frontend hosting
+    Value: !Ref FrontendBucket
+    Export:
+      Name: !Sub "${ProjectName}-${Environment}-frontend-bucket"
+
+  CloudFrontDistributionId:
+    Description: CloudFront distribution ID
+    Value: !Ref CloudFrontDistribution
+    Export:
+      Name: !Sub "${ProjectName}-${Environment}-cloudfront-id"
+
+  CloudFrontDomainName:
+    Description: CloudFront distribution domain name
+    Value: !GetAtt CloudFrontDistribution.DomainName
+    Export:
+      Name: !Sub "${ProjectName}-${Environment}-cloudfront-domain"
+
+  DatabaseEndpoint:
+    Description: RDS MySQL endpoint
+    Value: !GetAtt Database.Endpoint.Address
+    Export:
+      Name: !Sub "${ProjectName}-${Environment}-db-endpoint"
+
+  DatabaseSecretArn:
+    Description: Database master user secret ARN
+    Value: !Ref Database.MasterUserSecret.SecretArn
+    Export:
+      Name: !Sub "${ProjectName}-${Environment}-db-secret-arn"
+
+  CognitoUserPoolId:
+    Description: Cognito User Pool ID
+    Value: !Ref CognitoUserPool
+    Export:
+      Name: !Sub "${ProjectName}-${Environment}-cognito-pool-id"
+
+  CognitoUserPoolClientId:
+    Description: Cognito User Pool Client ID
+    Value: !Ref CognitoUserPoolClient
+    Export:
+      Name: !Sub "${ProjectName}-${Environment}-cognito-client-id"
+
+  VPCId:
+    Description: VPC ID
+    Value: !Ref VPC
+    Export:
+      Name: !Sub "${ProjectName}-${Environment}-vpc-id"
+
+  PrivateSubnetIds:
+    Description: Private subnet IDs
+    Value: !Join [',', [!Ref PrivateSubnetA, !Ref PrivateSubnetB]]
+    Export:
+      Name: !Sub "${ProjectName}-${Environment}-private-subnets"

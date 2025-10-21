@@ -1,0 +1,12 @@
+# AWS Lambda Powertools for Python
+# Provides structured logging, tracing, and metrics for Lambda functions
+
+aws-lambda-powertools[all]==2.25.0
+pydantic==2.4.2
+fastapi==0.104.1
+mangum==0.17.0
+sqlalchemy==2.0.23
+pymysql==1.1.0
+cryptography==41.0.7
+boto3==1.29.7
+botocore==1.32.7

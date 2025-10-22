@@ -1,7 +1,12 @@
 import React, { useState, useEffect, useCallback } from 'react';
+import * as XLSX from 'xlsx';
 import { AppLayout } from '../layouts/AppLayout';
 import { Table } from '../components/ui/Table';
 import { Button } from '../components/ui/Button';
+import { Pagination } from '../components/ui/Pagination';
+import { TableSkeleton } from '../components/ui/TableSkeleton';
+import { EmptyState } from '../components/ui/EmptyState';
+import { StudyDetailsPanel } from './StudyDetailsPanel';
 import { studyAPI } from '../services/api';
 import { useDebouncedValue } from '../hooks/useDebouncedValue';
 import { getMockStudies } from '../mocks/studies';
@@ -11,9 +16,11 @@ interface Study {
   year: number;
   period: string;
   title: string;
-  summary: string;
+  impact_areas: string;
+  regions: string;
   category: string;
   contributors: string;
+  summary: string;
 }
 
 interface SearchParams {
@@ -28,9 +35,10 @@ const columns = [
   { key: 'id', label: 'ID', width: 'w-16' },
   { key: 'year', label: 'Year', sortable: true, width: 'w-20' },
   { key: 'period', label: 'Period Analyzed', width: 'w-32' },
-  { key: 'title', label: 'Title', width: 'w-96' },
-  { key: 'summary', label: 'Summary', width: 'w-48' },
-  { key: 'category', label: 'Category', width: 'w-40' },
+  { key: 'title', label: 'Title', sortable: true, width: 'w-96' },
+  { key: 'impact_areas', label: 'Impact Areas', width: 'w-48' },
+  { key: 'regions', label: 'Regions', width: 'w-40' },
+  { key: 'category', label: 'Category', sortable: true, width: 'w-40' },
   { key: 'contributors', label: 'Contributing Initiatives', width: 'w-48' },
 ];
 
@@ -40,6 +48,8 @@ export const Dashboard: React.FC = () => {
   const [error, setError] = useState('');
   const [expandedRows, setExpandedRows] = useState<Set<string | number>>(new Set());
   const [totalStudies, setTotalStudies] = useState(0);
+  const [selectedStudyId, setSelectedStudyId] = useState<number | null>(null);
+  const [isDetailsPanelOpen, setIsDetailsPanelOpen] = useState(false);
   
   // Search and filter state
   const [searchParams, setSearchParams] = useState<SearchParams>({
@@ -91,42 +101,64 @@ export const Dashboard: React.FC = () => {
       
       if (useMocks) {
         const mockResponse = getMockStudies(params);
-        setStudies(mockResponse.items as Study[]);
+        const transformedMockStudies = mockResponse.items.map((study: any) => ({
+          id: parseInt(study.id) || Math.random(),
+          year: 2024,
+          period: '2023-2024',
+          title: study.title || 'No title',
+          impact_areas: study.category || 'General',
+          regions: ['Global', 'Africa', 'Asia', 'Latin America'][Math.floor(Math.random() * 4)],
+          category: study.category || 'Other',
+          contributors: study.authors?.join(', ') || 'N/A',
+          summary: study.description || 'No summary available'
+        }));
+        setStudies(transformedMockStudies);
         setTotalStudies(mockResponse.total);
       } else {
-        const response = await studyAPI.getAll();
+        // Always use search endpoint when there's a query, otherwise use regular endpoint
+        const queryParams = new URLSearchParams();
+        queryParams.set('page', params.page.toString());
+        queryParams.set('pageSize', params.pageSize.toString());
+        if (params.sort) queryParams.set('sort', params.sort);
+        if (params.category) queryParams.set('category', params.category);
         
-        // Handle API response and transform data
-        let studiesData = Array.isArray(response) ? response : response.studies || response.data || [];
-        
-        // Filter by search query
+        let endpoint;
         if (params.q) {
-          studiesData = studiesData.filter((study: any) =>
-            study.title?.toLowerCase().includes(params.q.toLowerCase()) ||
-            study.category?.toLowerCase().includes(params.q.toLowerCase()) ||
-            study.summary?.toLowerCase().includes(params.q.toLowerCase())
-          );
+          queryParams.set('q', params.q);
+          endpoint = `/studies/search?${queryParams}`;
+        } else {
+          endpoint = `/studies?${queryParams}`;
         }
         
-        // Filter by category
-        if (params.category) {
-          studiesData = studiesData.filter((study: any) => study.category === params.category);
+        const response = await fetch(`${import.meta.env.VITE_API_BASE_URL || 'http://localhost:8000'}${endpoint}`);
+        const data = await response.json();
+        
+        // Handle new backend response format
+        let studiesData = [];
+        let total = 0;
+        
+        if (data.success && data.data) {
+          studiesData = data.data;
+          total = data.pagination?.total || data.data.length;
+        } else if (Array.isArray(data)) {
+          studiesData = data;
+          total = data.length;
+        } else {
+          studiesData = data.studies || data.data || [];
+          total = studiesData.length;
         }
         
-        // Paginate
-        const total = studiesData.length;
-        const start = (params.page - 1) * params.pageSize;
-        const paginatedData = studiesData.slice(start, start + params.pageSize);
-        
-        // Transform data
-        const transformedStudies = paginatedData.map((study: any) => ({
-          id: study.id || study.study_id || Math.random(),
-          year: study.year_of_report || study.year || 'N/A',
+        // Transform data to match table format
+        const transformedStudies = studiesData.map((study: any) => ({
+          id: study.study_id || study.id || Math.random(),
+          year: study.year || 'N/A',
           period: study.period_analyzed || `${study.period_start || ''}-${study.period_end || ''}` || 'N/A',
           title: study.title || 'No title',
-          summary: study.summary || 'No summary available',
+          impact_areas: study.impact_areas || study.impactAreas || 'N/A',
+          regions: study.regions || 'N/A',
           category: study.category || 'Other',
-          contributors: study.contributing_initiatives || study.contributors || 'N/A'
+          contributors: study.contributing_initiatives || study.contributors || 'N/A',
+          summary: study.summary || 'No summary available'
         }));
         
         setStudies(transformedStudies);
@@ -138,7 +170,18 @@ export const Dashboard: React.FC = () => {
       
       // Fallback to mock data
       const mockResponse = getMockStudies(params);
-      setStudies(mockResponse.items as Study[]);
+      const transformedMockStudies = mockResponse.items.map((study: any) => ({
+        id: parseInt(study.id) || Math.random(),
+        year: 2024,
+        period: '2023-2024',
+        title: study.title || 'No title',
+        impact_areas: study.category || 'General',
+        regions: ['Global', 'Africa', 'Asia', 'Latin America'][Math.floor(Math.random() * 4)],
+        category: study.category || 'Other',
+        contributors: study.authors?.join(', ') || 'N/A',
+        summary: study.description || 'No summary available'
+      }));
+      setStudies(transformedMockStudies);
       setTotalStudies(mockResponse.total);
     } finally {
       setLoading(false);
@@ -179,21 +222,73 @@ export const Dashboard: React.FC = () => {
     setSearchParams(prev => ({ ...prev, page }));
   };
 
+  const handlePageSizeChange = (pageSize: number) => {
+    setSearchParams(prev => ({ ...prev, pageSize, page: 1 }));
+  };
+
+  const handleSortChange = (sort: { field: string; dir: 'asc' | 'desc' }) => {
+    setSearchParams(prev => ({ 
+      ...prev, 
+      sort: `${sort.field}:${sort.dir}`, 
+      page: 1 
+    }));
+  };
+
+  const handleClearFilters = () => {
+    setSearchParams({
+      q: '',
+      page: 1,
+      pageSize: 10,
+      sort: '',
+      category: ''
+    });
+  };
+
+  const handleDownloadExcel = () => {
+    const exportData = studies.map(study => ({
+      'ID': study.id,
+      'Year': study.year,
+      'Period Analyzed': study.period,
+      'Title': study.title,
+      'Impact Areas': study.impact_areas,
+      'Regions': study.regions,
+      'Category': study.category,
+      'Contributing Initiatives': study.contributors,
+      'Summary': study.summary
+    }));
+
+    const worksheet = XLSX.utils.json_to_sheet(exportData);
+    const workbook = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(workbook, worksheet, 'Studies');
+    
+    const fileName = `impact-studies-${new Date().toISOString().split('T')[0]}.xlsx`;
+    XLSX.writeFile(workbook, fileName);
+  };
+
   const handleRowExpand = (row: Study) => {
     const newExpanded = new Set(expandedRows);
     if (newExpanded.has(row.id)) {
       newExpanded.delete(row.id);
     } else {
+      newExpanded.clear(); // Only one row expanded at a time
       newExpanded.add(row.id);
     }
     setExpandedRows(newExpanded);
   };
 
+  const handleTitleClick = (row: Study) => {
+    setSelectedStudyId(row.id);
+    setIsDetailsPanelOpen(true);
+  };
+
+  const handleClosePanelDetails = () => {
+    setIsDetailsPanelOpen(false);
+    setSelectedStudyId(null);
+  };
+
   const handleAddStudy = () => {
     window.location.href = '/studies/new/step-1';
   };
-
-  const totalPages = Math.ceil(totalStudies / searchParams.pageSize);
 
   return (
     <AppLayout title="All Studies" onAddStudy={handleAddStudy}>
@@ -215,11 +310,11 @@ export const Dashboard: React.FC = () => {
         </div>
 
         {/* Search Bar */}
-        <div className="relative">
-          <div className="relative">
+        <div className="flex gap-4 items-center">
+          <div className="relative flex-1">
             <input
               type="text"
-              placeholder="Search studies..."
+              placeholder="Search by ID, title, year, category, or any field..."
               value={searchParams.q}
               onChange={(e) => handleSearchChange(e.target.value)}
               onKeyDown={handleSearchKeyDown}
@@ -240,6 +335,17 @@ export const Dashboard: React.FC = () => {
               </button>
             )}
           </div>
+          
+          <Button
+            onClick={handleDownloadExcel}
+            disabled={studies.length === 0}
+            className="flex items-center gap-2 bg-green-600 hover:bg-green-700 text-white px-4 py-2 rounded-lg disabled:opacity-50"
+          >
+            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+            </svg>
+            Download Excel
+          </Button>
         </div>
 
         {/* Error Message */}
@@ -256,15 +362,17 @@ export const Dashboard: React.FC = () => {
 
         {/* Loading State */}
         {loading ? (
-          <div className="flex items-center justify-center py-12">
-            <div className="flex items-center space-x-2">
-              <svg className="animate-spin w-5 h-5 text-yellow-500" fill="none" viewBox="0 0 24 24">
-                <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
-                <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-              </svg>
-              <span className="text-gray-600">Loading studies...</span>
-            </div>
-          </div>
+          <TableSkeleton rows={searchParams.pageSize} />
+        ) : studies.length === 0 ? (
+          <EmptyState
+            title="No studies found"
+            description={searchParams.q || searchParams.category ? 
+              "No studies match your current search criteria." : 
+              "No studies are available at the moment."
+            }
+            actionLabel={searchParams.q || searchParams.category ? "Clear filters" : undefined}
+            onAction={searchParams.q || searchParams.category ? handleClearFilters : undefined}
+          />
         ) : (
           <>
             {/* Table */}
@@ -273,77 +381,32 @@ export const Dashboard: React.FC = () => {
               data={studies}
               onRowExpand={handleRowExpand}
               expandedRows={expandedRows}
+              onTitleClick={handleTitleClick}
+              sort={searchParams.sort ? {
+                field: searchParams.sort.split(':')[0],
+                dir: searchParams.sort.split(':')[1] as 'asc' | 'desc'
+              } : undefined}
+              onSortChange={handleSortChange}
             />
 
             {/* Pagination */}
-            {totalPages > 1 && (
-              <div className="flex items-center justify-between bg-white px-4 py-3 border border-gray-200 rounded-lg">
-                <div className="flex items-center text-sm text-gray-700">
-                  <span>
-                    Showing {((searchParams.page - 1) * searchParams.pageSize) + 1} to {Math.min(searchParams.page * searchParams.pageSize, totalStudies)} of {totalStudies} results
-                  </span>
-                </div>
-                
-                <div className="flex items-center space-x-2">
-                  <Button
-                    variant="secondary"
-                    size="sm"
-                    onClick={() => handlePageChange(searchParams.page - 1)}
-                    disabled={searchParams.page === 1 || loading}
-                  >
-                    Previous
-                  </Button>
-                  
-                  <div className="flex items-center space-x-1">
-                    {Array.from({ length: Math.min(5, totalPages) }, (_, i) => {
-                      const page = i + 1;
-                      return (
-                        <button
-                          key={page}
-                          onClick={() => handlePageChange(page)}
-                          disabled={loading}
-                          className={`px-3 py-1 text-sm rounded ${
-                            page === searchParams.page
-                              ? 'bg-yellow-500 text-white'
-                              : 'bg-white text-gray-700 hover:bg-gray-50 border border-gray-300'
-                          }`}
-                        >
-                          {page}
-                        </button>
-                      );
-                    })}
-                    {totalPages > 5 && (
-                      <>
-                        <span className="text-gray-500">...</span>
-                        <button
-                          onClick={() => handlePageChange(totalPages)}
-                          disabled={loading}
-                          className={`px-3 py-1 text-sm rounded ${
-                            totalPages === searchParams.page
-                              ? 'bg-yellow-500 text-white'
-                              : 'bg-white text-gray-700 hover:bg-gray-50 border border-gray-300'
-                          }`}
-                        >
-                          {totalPages}
-                        </button>
-                      </>
-                    )}
-                  </div>
-                  
-                  <Button
-                    variant="secondary"
-                    size="sm"
-                    onClick={() => handlePageChange(searchParams.page + 1)}
-                    disabled={searchParams.page === totalPages || loading}
-                  >
-                    Next
-                  </Button>
-                </div>
-              </div>
-            )}
+            <Pagination
+              page={searchParams.page}
+              pageSize={searchParams.pageSize}
+              total={totalStudies}
+              onPageChange={handlePageChange}
+              onPageSizeChange={handlePageSizeChange}
+            />
           </>
         )}
       </div>
+
+      {/* Study Details Panel */}
+      <StudyDetailsPanel
+        isOpen={isDetailsPanelOpen}
+        onClose={handleClosePanelDetails}
+        studyId={selectedStudyId}
+      />
     </AppLayout>
   );
 };

@@ -1,7 +1,7 @@
 # Sprint 6: Functional UI Integration & End-to-End Features
 
 ## Sprint Goal
-Connect frontend components to backend API, implement complete CRUD workflows for studies and indicators, enable search and filtering functionality, and deliver fully functional end-to-end user scenarios.
+Connect frontend components to backend API, implement complete CRUD workflows for studies and indicators, enable search and filtering functionality, and deliver fully functional end-to-end user scenarios. Please check the backend endpoint and ERD.
 
 ## Duration
 **2 weeks** (10 working days)

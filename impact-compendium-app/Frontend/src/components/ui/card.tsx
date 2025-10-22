@@ -1,17 +1,25 @@
 import React from 'react';
 
-export function Card({ children, className = '' }: { children: React.ReactNode; className?: string }) {
-  return <div className={`border rounded-lg shadow-sm ${className}`}>{children}</div>;
+interface CardProps {
+  children: React.ReactNode;
+  className?: string;
+  padding?: 'sm' | 'md' | 'lg';
 }
 
-export function CardHeader({ children, className = '' }: { children: React.ReactNode; className?: string }) {
-  return <div className={`p-6 pb-0 ${className}`}>{children}</div>;
-}
+export const Card: React.FC<CardProps> = ({ 
+  children, 
+  className = '', 
+  padding = 'md' 
+}) => {
+  const paddingClasses = {
+    sm: 'p-4',
+    md: 'p-6',
+    lg: 'p-8'
+  };
 
-export function CardTitle({ children, className = '' }: { children: React.ReactNode; className?: string }) {
-  return <h3 className={`text-lg font-semibold ${className}`}>{children}</h3>;
-}
-
-export function CardContent({ children, className = '' }: { children: React.ReactNode; className?: string }) {
-  return <div className={`p-6 pt-0 ${className}`}>{children}</div>;
-}
+  return (
+    <div className={`bg-white rounded-lg shadow-sm border border-gray-200 ${paddingClasses[padding]} ${className}`}>
+      {children}
+    </div>
+  );
+};

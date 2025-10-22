@@ -1,218 +1,169 @@
 """
-Authentication API router with AWS Cognito integration.
+Authentication router with AWS Cognito integration
 """
 
-import os
-import boto3
 from typing import Dict, Any
-from fastapi import APIRouter, HTTPException, Depends, status
-from pydantic import BaseModel, EmailStr
-from botocore.exceptions import ClientError
-from app.middleware.auth import get_current_user, get_current_user_optional
+from fastapi import APIRouter, HTTPException, status, Depends, Header
+from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
+from pydantic import BaseModel
 import logging
+
+from app.services.cognito_auth import cognito_auth
 
 logger = logging.getLogger(__name__)
 router = APIRouter()
+security = HTTPBearer()
 
-# Pydantic models
 class LoginRequest(BaseModel):
-    email: EmailStr
-    password: str
-
-class SignupRequest(BaseModel):
-    email: EmailStr
-    password: str
-    name: str
-    organization: str = None
-
-class ChangePasswordRequest(BaseModel):
-    old_password: str
-    new_password: str
-
-class UserProfile(BaseModel):
-    sub: str
     email: str
-    name: str = None
-    organization: str = None
-    groups: list = []
+    password: str
 
-# Cognito client
-def get_cognito_client():
-    return boto3.client('cognito-idp', region_name=os.getenv('COGNITO_REGION', 'us-east-1'))
+class TokenResponse(BaseModel):
+    access_token: str
+    token_type: str
+    expires_in: int
+    user: Dict[str, Any]
 
-@router.post("/login")
-async def login(request: LoginRequest):
-    """Authenticate user with Cognito."""
+@router.post("/login", response_model=Dict[str, Any])
+async def login(login_data: LoginRequest):
+    """
+    Login endpoint - In production, this would redirect to Cognito Hosted UI
+    For now, returns mock token for development
+    """
     try:
-        client = get_cognito_client()
-        
-        response = client.admin_initiate_auth(
-            UserPoolId=os.getenv('COGNITO_USER_POOL_ID'),
-            ClientId=os.getenv('COGNITO_CLIENT_ID'),
-            AuthFlow='ADMIN_NO_SRP_AUTH',
-            AuthParameters={
-                'USERNAME': request.email,
-                'PASSWORD': request.password
+        # In production, this would initiate Cognito authentication flow
+        # For development, return mock token
+        if login_data.email and login_data.password:
+            return {
+                "success": True,
+                "message": "Login successful",
+                "data": {
+                    "access_token": "mock_jwt_token_12345",
+                    "token_type": "Bearer",
+                    "expires_in": 3600,
+                    "user": {
+                        "email": login_data.email,
+                        "name": "Mock User",
+                        "role": "researcher"
+                    }
+                },
+                "cognito_info": {
+                    "user_pool_id": cognito_auth.user_pool_id or "not-configured",
+                    "client_id": cognito_auth.client_id or "not-configured",
+                    "region": cognito_auth.region,
+                    "mock_mode": cognito_auth.mock_mode
+                }
             }
-        )
-        
-        auth_result = response['AuthenticationResult']
-        
-        return {
-            "access_token": auth_result['AccessToken'],
-            "id_token": auth_result['IdToken'],
-            "refresh_token": auth_result['RefreshToken'],
-            "expires_in": auth_result['ExpiresIn'],
-            "token_type": auth_result['TokenType']
-        }
-        
-    except ClientError as e:
-        error_code = e.response['Error']['Code']
-        if error_code == 'NotAuthorizedException':
-            raise HTTPException(
-                status_code=status.HTTP_401_UNAUTHORIZED,
-                detail="Invalid email or password"
-            )
-        elif error_code == 'UserNotConfirmedException':
+        else:
             raise HTTPException(
                 status_code=status.HTTP_400_BAD_REQUEST,
-                detail="User email not verified"
+                detail="Email and password are required"
             )
-        else:
-            logger.error(f"Cognito login error: {e}")
-            raise HTTPException(
-                status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-                detail="Authentication service error"
-            )
-
-@router.post("/signup")
-async def signup(request: SignupRequest):
-    """Register new user with Cognito."""
-    try:
-        client = get_cognito_client()
         
-        response = client.admin_create_user(
-            UserPoolId=os.getenv('COGNITO_USER_POOL_ID'),
-            Username=request.email,
-            UserAttributes=[
-                {'Name': 'email', 'Value': request.email},
-                {'Name': 'name', 'Value': request.name},
-                {'Name': 'email_verified', 'Value': 'true'}
-            ] + ([{'Name': 'custom:organization', 'Value': request.organization}] if request.organization else []),
-            TemporaryPassword=request.password,
-            MessageAction='SUPPRESS'
-        )
-        
-        # Set permanent password
-        client.admin_set_user_password(
-            UserPoolId=os.getenv('COGNITO_USER_POOL_ID'),
-            Username=request.email,
-            Password=request.password,
-            Permanent=True
-        )
-        
-        # Add to Researcher group by default
-        try:
-            client.admin_add_user_to_group(
-                UserPoolId=os.getenv('COGNITO_USER_POOL_ID'),
-                Username=request.email,
-                GroupName='Researcher'
-            )
-        except ClientError:
-            pass  # Group might not exist yet
-        
-        return {"message": "User created successfully", "username": request.email}
-        
-    except ClientError as e:
-        error_code = e.response['Error']['Code']
-        if error_code == 'UsernameExistsException':
-            raise HTTPException(
-                status_code=status.HTTP_400_BAD_REQUEST,
-                detail="User already exists"
-            )
-        else:
-            logger.error(f"Cognito signup error: {e}")
-            raise HTTPException(
-                status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-                detail="User creation failed"
-            )
-
-@router.get("/me", response_model=UserProfile)
-async def get_profile(current_user: Dict[str, Any] = Depends(get_current_user)):
-    """Get current user profile."""
-    try:
-        client = get_cognito_client()
-        
-        response = client.admin_get_user(
-            UserPoolId=os.getenv('COGNITO_USER_POOL_ID'),
-            Username=current_user['username']
-        )
-        
-        # Extract user attributes
-        attributes = {attr['Name']: attr['Value'] for attr in response['UserAttributes']}
-        
-        return UserProfile(
-            sub=current_user['sub'],
-            email=current_user['email'],
-            name=attributes.get('name'),
-            organization=attributes.get('custom:organization'),
-            groups=current_user.get('groups', [])
-        )
-        
-    except ClientError as e:
-        logger.error(f"Error fetching user profile: {e}")
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Error during login: {e}")
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail="Failed to fetch user profile"
+            detail=f"Login failed: {str(e)}"
         )
 
-@router.post("/refresh")
-async def refresh_token(refresh_token: str):
-    """Refresh access token."""
+@router.post("/logout", response_model=Dict[str, Any])
+async def logout():
+    """Logout endpoint"""
+    return {
+        "success": True,
+        "message": "Logged out successfully"
+    }
+
+@router.get("/me", response_model=Dict[str, Any])
+async def get_current_user(credentials: HTTPAuthorizationCredentials = Depends(security)):
+    """
+    Get current user information from JWT token
+    """
     try:
-        client = get_cognito_client()
+        # Verify the token
+        token_payload = cognito_auth.verify_token(credentials.credentials)
         
-        response = client.admin_initiate_auth(
-            UserPoolId=os.getenv('COGNITO_USER_POOL_ID'),
-            ClientId=os.getenv('COGNITO_CLIENT_ID'),
-            AuthFlow='REFRESH_TOKEN_AUTH',
-            AuthParameters={
-                'REFRESH_TOKEN': refresh_token
-            }
-        )
-        
-        auth_result = response['AuthenticationResult']
+        # Extract user info
+        user_info = cognito_auth.get_user_info(token_payload)
         
         return {
-            "access_token": auth_result['AccessToken'],
-            "id_token": auth_result['IdToken'],
-            "expires_in": auth_result['ExpiresIn'],
-            "token_type": auth_result['TokenType']
+            "success": True,
+            "data": user_info,
+            "token_info": {
+                "expires_at": token_payload.get("exp"),
+                "issued_at": token_payload.get("iat"),
+                "issuer": token_payload.get("iss")
+            }
         }
         
-    except ClientError as e:
-        logger.error(f"Token refresh error: {e}")
-        raise HTTPException(
-            status_code=status.HTTP_401_UNAUTHORIZED,
-            detail="Invalid refresh token"
-        )
-
-@router.post("/logout")
-async def logout(current_user: Dict[str, Any] = Depends(get_current_user)):
-    """Logout user (invalidate tokens)."""
-    try:
-        client = get_cognito_client()
-        
-        client.admin_user_global_sign_out(
-            UserPoolId=os.getenv('COGNITO_USER_POOL_ID'),
-            Username=current_user['username']
-        )
-        
-        return {"message": "Logged out successfully"}
-        
-    except ClientError as e:
-        logger.error(f"Logout error: {e}")
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Error getting current user: {e}")
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail="Logout failed"
+            detail=f"Failed to get user info: {str(e)}"
         )
+
+@router.get("/verify-token", response_model=Dict[str, Any])
+async def verify_token(credentials: HTTPAuthorizationCredentials = Depends(security)):
+    """
+    Verify JWT token endpoint
+    """
+    try:
+        token_payload = cognito_auth.verify_token(credentials.credentials)
+        
+        return {
+            "success": True,
+            "valid": True,
+            "data": {
+                "user_id": token_payload.get("sub"),
+                "email": token_payload.get("email"),
+                "expires_at": token_payload.get("exp"),
+                "token_use": token_payload.get("token_use")
+            }
+        }
+        
+    except HTTPException as e:
+        return {
+            "success": False,
+            "valid": False,
+            "error": e.detail
+        }
+    except Exception as e:
+        logger.error(f"Error verifying token: {e}")
+        return {
+            "success": False,
+            "valid": False,
+            "error": str(e)
+        }
+
+@router.get("/status", response_model=Dict[str, Any])
+async def auth_status():
+    """
+    Authentication service status
+    """
+    return {
+        "success": True,
+        "status": "available",
+        "service": "cognito-auth",
+        "configuration": {
+            "user_pool_id": cognito_auth.user_pool_id or "not-configured",
+            "client_id": cognito_auth.client_id or "not-configured", 
+            "region": cognito_auth.region,
+            "mock_mode": cognito_auth.mock_mode,
+            "jwks_url": getattr(cognito_auth, 'jwks_url', 'not-configured')
+        },
+        "message": "Cognito authentication service" + (" (mock mode)" if cognito_auth.mock_mode else " (production mode)")
+    }
+
+# Dependency for protected routes
+async def get_current_user_dependency(credentials: HTTPAuthorizationCredentials = Depends(security)) -> Dict[str, Any]:
+    """
+    Dependency to get current user for protected routes
+    """
+    token_payload = cognito_auth.verify_token(credentials.credentials)
+    return cognito_auth.get_user_info(token_payload)

@@ -1,83 +1,56 @@
 """
-CLARISA reference data models.
+CLARISA reference data models based on ERD schema.
 """
 
-from sqlalchemy import Column, Integer, String, Text, Boolean
+from sqlalchemy import Column, Integer, String, Boolean, DateTime
+from sqlalchemy.sql import func
 from app.db.connection import Base
 
 class ClarisaCenter(Base):
-    """CGIAR Centers from CLARISA."""
+    """CLARISA centers reference table"""
     __tablename__ = "clarisa_centers"
     
-    id = Column(Integer, primary_key=True)
+    center_id = Column(Integer, primary_key=True, index=True)
     name = Column(String(255), nullable=False)
-    acronym = Column(String(50))
     code = Column(String(50))
-    active = Column(Boolean, default=True)
+    acronym = Column(String(50))
+    is_active = Column(Boolean, default=True)
+    created_at = Column(DateTime, server_default=func.now())
 
 class ClarisaInitiative(Base):
-    """CGIAR Initiatives from CLARISA."""
+    """CLARISA initiatives reference table"""
     __tablename__ = "clarisa_initiatives"
     
-    id = Column(Integer, primary_key=True)
+    initiative_id = Column(Integer, primary_key=True, index=True)
     name = Column(String(255), nullable=False)
-    official_code = Column(String(50))
-    short_name = Column(String(100))
-    active = Column(Boolean, default=True)
+    code = Column(String(50))
+    acronym = Column(String(50))
+    is_active = Column(Boolean, default=True)
+    created_at = Column(DateTime, server_default=func.now())
 
-class ClarisaCountry(Base):
-    """Countries from CLARISA."""
-    __tablename__ = "clarissa_countries"
-    
-    id = Column(Integer, primary_key=True)
-    name = Column(String(255), nullable=False)
-    iso_alpha_2 = Column(String(2))
-    iso_alpha_3 = Column(String(3))
-    region_id = Column(Integer)
-
-class ClarisaRegion(Base):
-    """CGIAR Regions from CLARISA."""
+class ClarisaCGIARRegion(Base):
+    """CLARISA CGIAR regions reference table"""
     __tablename__ = "clarissa_CGIAR_regions"
     
-    id = Column(Integer, primary_key=True)
-    name = Column(String(255), nullable=False)
+    region_id = Column(Integer, primary_key=True, index=True)
+    region_name = Column(String(255), nullable=False)
     acronym = Column(String(50))
+    is_active = Column(Boolean, default=True)
+    created_at = Column(DateTime, server_default=func.now())
+
+class ClarisaCountry(Base):
+    """CLARISA countries reference table"""
+    __tablename__ = "clarissa_countries"
+    
+    country_id = Column(Integer, primary_key=True, index=True)
+    country_name = Column(String(255), nullable=False)
+    is_active = Column(Boolean, default=True)
 
 class ClarisaImpactArea(Base):
-    """Impact Areas from CLARISA."""
+    """CLARISA impact areas reference table"""
     __tablename__ = "clarisa_impacts_areas"
     
-    id = Column(Integer, primary_key=True)
+    impact_area_id = Column(Integer, primary_key=True, index=True)
     name = Column(String(255), nullable=False)
-    description = Column(Text)
-
-class CropType(Base):
-    """Crop types."""
-    __tablename__ = "crop_types"
-    
-    id = Column(Integer, primary_key=True)
-    name = Column(String(255), nullable=False)
-    category = Column(String(100))
-
-class InterventionType(Base):
-    """Intervention types."""
-    __tablename__ = "intervention_types"
-    
-    id = Column(Integer, primary_key=True)
-    name = Column(String(255), nullable=False)
-    description = Column(Text)
-
-class Keyword(Base):
-    """Keywords for studies."""
-    __tablename__ = "keywords"
-    
-    id = Column(Integer, primary_key=True)
-    name = Column(String(255), nullable=False, unique=True)
-
-class StudyCategory(Base):
-    """Study categories."""
-    __tablename__ = "studies_categories"
-    
-    id = Column(Integer, primary_key=True)
-    name = Column(String(255), nullable=False)
-    description = Column(Text)
+    is_active = Column(Boolean, default=True)
+    created_at = Column(DateTime, server_default=func.now())

@@ -1,34 +1,38 @@
 """
-Models package for Impact Compendium.
+Models package initialization - imports all ERD-based models
 """
 
-from app.db.connection import Base
-from .study import Study
-from .user import User
-from .indicator import Indicator
-from .clarisa import *
-from .associations import *
+# Import all models to ensure they are registered with SQLAlchemy
+from app.models.study import (
+    Study, StudyCategory, StudyContributor, StudyKeyword, 
+    StudyIndicator, StudyRegion, StudyCountry, StudyImpactArea, 
+    StudyCropType, StudyInterventionType, StudyType, StudyStatus
+)
+
+from app.models.clarisa import (
+    ClarisaCenter, ClarisaInitiative, ClarisaCGIARRegion, 
+    ClarisaCountry, ClarisaImpactArea
+)
+
+from app.models.reference import (
+    Keyword, InterventionType, CropType, Narrative
+)
+
+from app.models.indicator import Indicator
 
 __all__ = [
-    "Base",
-    "Study", 
-    "User",
-    "Indicator",
-    "ClarisaCenter",
-    "ClarisaInitiative", 
-    "ClarisaCountry",
-    "ClarisaRegion",
-    "ClarisaImpactArea",
-    "CropType",
-    "InterventionType",
-    "Keyword",
-    "StudyCategory",
-    "StudyContributor",
-    "StudyCountry",
-    "StudyCropType",
-    "StudyImpactArea",
-    "StudyIndicator",
-    "StudyKeyword",
-    "StudyRegion",
-    "StudyInterventionType"
+    # Study models
+    "Study", "StudyCategory", "StudyContributor", "StudyKeyword",
+    "StudyIndicator", "StudyRegion", "StudyCountry", "StudyImpactArea",
+    "StudyCropType", "StudyInterventionType", "StudyType", "StudyStatus",
+    
+    # CLARISA models
+    "ClarisaCenter", "ClarisaInitiative", "ClarisaCGIARRegion",
+    "ClarisaCountry", "ClarisaImpactArea",
+    
+    # Reference models
+    "Keyword", "InterventionType", "CropType", "Narrative",
+    
+    # Legacy models
+    "Indicator"
 ]

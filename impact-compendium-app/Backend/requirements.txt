@@ -25,6 +25,10 @@ pydantic[email]==2.4.2
 
 # HTTP client
 httpx==0.25.2
+requests==2.32.5
+
+# JWT and Authentication
+python-jose[cryptography]==3.3.0
 
 # Environment variables
 python-dotenv==1.0.0

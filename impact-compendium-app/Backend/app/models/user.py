@@ -41,5 +41,4 @@ class User(Base):
     updated_at = Column(DateTime(timezone=True), server_default=func.now(), onupdate=func.now())
     last_login = Column(DateTime(timezone=True))
     
-    # Relationships
-    studies = relationship("Study", back_populates="creator")
+    # Relationships - removed broken studies relationship

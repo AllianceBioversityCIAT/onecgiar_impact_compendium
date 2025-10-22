@@ -1,19 +1,23 @@
 """
-Indicator model for Impact Compendium.
+Indicator model for Impact Compendium based on ERD schema.
+Note: The main indicators are stored in studies_indicators table as part of study.py
+This file is kept for compatibility but the actual indicator data is in the junction table.
 """
 
 from sqlalchemy import Column, Integer, String, Text, Boolean, DateTime
 from sqlalchemy.sql import func
 from app.db.connection import Base
 
+# This model is kept for backward compatibility
+# The actual indicator data is stored in StudyIndicator in study.py
 class Indicator(Base):
-    """Indicator model for study metrics."""
-    __tablename__ = "indicators"
+    """Legacy indicator model - actual data is in studies_indicators"""
+    __tablename__ = "legacy_indicators"
     
     id = Column(Integer, primary_key=True, index=True)
     name = Column(String(255), nullable=False, index=True)
     description = Column(Text)
-    indicator_type = Column(String(100))  # impact, outcome, output
+    indicator_type = Column(String(100))
     unit = Column(String(100))
     category = Column(String(100))
     

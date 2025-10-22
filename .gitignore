@@ -118,3 +118,68 @@ cdk.context.json
 # Local development
 .local/
 local_settings.py
+
+# Additional Security Files
+*.cognito
+.env.cognito
+.env.example
+deploy-cognito-test.sh
+cognito-test-deployment.yaml
+
+# SAM Build Artifacts
+packaged-template.yaml
+packaged.yaml
+.aws-sam.bak/
+
+# Frontend Build
+node_modules/
+package-lock.json
+yarn.lock
+pnpm-lock.yaml
+.next/
+.nuxt/
+.vuepress/dist
+.serverless/
+
+# Python Virtual Environments
+.venv/
+venv/
+ENV/
+env/
+.env/
+
+# IDE and Editor Files
+.vscode/settings.json
+.vscode/launch.json
+.idea/workspace.xml
+.idea/tasks.xml
+*.sublime-workspace
+
+# OS Generated Files
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+ehthumbs.db
+Thumbs.db
+desktop.ini
+
+# Backup Files
+*.bak
+*.backup
+*.old
+*.orig
+
+# Test Coverage
+coverage/
+.nyc_output/
+.coverage
+htmlcov/
+
+# Logs and Monitoring
+*.log.*
+logs/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+.pnpm-debug.log*

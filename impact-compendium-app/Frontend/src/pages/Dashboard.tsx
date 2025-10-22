@@ -12,12 +12,13 @@ import { useDebouncedValue } from '../hooks/useDebouncedValue';
 import { getMockStudies } from '../mocks/studies';
 
 interface Study {
-  id: number;
+  id: string; // Changed to string to support ICD-001 format
   year: number;
   period: string;
   title: string;
   impact_areas: string;
   regions: string;
+  center: string;
   category: string;
   contributors: string;
   summary: string;
@@ -29,17 +30,19 @@ interface SearchParams {
   pageSize: number;
   sort: string;
   category: string;
+  year: string;
 }
 
 const columns = [
-  { key: 'id', label: 'ID', width: 'w-16' },
+  { key: 'id', label: 'Id', width: 'w-16' },
   { key: 'year', label: 'Year', sortable: true, width: 'w-20' },
-  { key: 'period', label: 'Period Analyzed', width: 'w-32' },
+  { key: 'period', label: 'Period analyzed', width: 'w-32' },
   { key: 'title', label: 'Title', sortable: true, width: 'w-96' },
-  { key: 'impact_areas', label: 'Impact Areas', width: 'w-48' },
+  { key: 'impact_areas', label: 'Impact areas', width: 'w-48' },
   { key: 'regions', label: 'Regions', width: 'w-40' },
+  { key: 'center', label: 'Center', width: 'w-32' },
   { key: 'category', label: 'Category', sortable: true, width: 'w-40' },
-  { key: 'contributors', label: 'Contributing Initiatives', width: 'w-48' },
+  { key: 'contributors', label: 'Contributing initiatives', width: 'w-48' },
 ];
 
 export const Dashboard: React.FC = () => {
@@ -48,7 +51,7 @@ export const Dashboard: React.FC = () => {
   const [error, setError] = useState('');
   const [expandedRows, setExpandedRows] = useState<Set<string | number>>(new Set());
   const [totalStudies, setTotalStudies] = useState(0);
-  const [selectedStudyId, setSelectedStudyId] = useState<number | null>(null);
+  const [selectedStudyId, setSelectedStudyId] = useState<string | null>(null);
   const [isDetailsPanelOpen, setIsDetailsPanelOpen] = useState(false);
   
   // Search and filter state
@@ -57,7 +60,8 @@ export const Dashboard: React.FC = () => {
     page: 1,
     pageSize: 10,
     sort: '',
-    category: ''
+    category: '',
+    year: ''
   });
 
   // Get debounced search value
@@ -73,6 +77,7 @@ export const Dashboard: React.FC = () => {
     if (params.pageSize !== 10) searchParams.set('pageSize', params.pageSize.toString());
     if (params.sort) searchParams.set('sort', params.sort);
     if (params.category) searchParams.set('category', params.category);
+    if (params.year) searchParams.set('year', params.year);
     
     url.search = searchParams.toString();
     window.history.replaceState({}, '', url.toString());
@@ -88,7 +93,8 @@ export const Dashboard: React.FC = () => {
       page: parseInt(urlParams.get('page') || '1'),
       pageSize: parseInt(urlParams.get('pageSize') || '10'),
       sort: urlParams.get('sort') || '',
-      category: urlParams.get('category') || ''
+      category: urlParams.get('category') || '',
+      year: urlParams.get('year') || ''
     });
   }, []);
 
@@ -100,14 +106,19 @@ export const Dashboard: React.FC = () => {
       const useMocks = import.meta.env.VITE_USE_MOCKS === 'true';
       
       if (useMocks) {
-        const mockResponse = getMockStudies(params);
+        const mockResponse = getMockStudies({
+          ...params,
+          year_from: params.year ? parseInt(params.year) : undefined,
+          year_to: params.year ? parseInt(params.year) : undefined
+        });
         const transformedMockStudies = mockResponse.items.map((study: any) => ({
-          id: parseInt(study.id) || Math.random(),
-          year: 2024,
+          id: `ICD-${study.id || Math.random()}`,
+          year: params.year ? parseInt(params.year) : 2024,
           period: '2023-2024',
           title: study.title || 'No title',
           impact_areas: study.category || 'General',
           regions: ['Global', 'Africa', 'Asia', 'Latin America'][Math.floor(Math.random() * 4)],
+          center: ['CIMMYT', 'IRRI', 'ICRISAT', 'CIAT'][Math.floor(Math.random() * 4)],
           category: study.category || 'Other',
           contributors: study.authors?.join(', ') || 'N/A',
           summary: study.description || 'No summary available'
@@ -121,6 +132,8 @@ export const Dashboard: React.FC = () => {
         queryParams.set('pageSize', params.pageSize.toString());
         if (params.sort) queryParams.set('sort', params.sort);
         if (params.category) queryParams.set('category', params.category);
+        if (params.year) queryParams.set('year_from', params.year);
+        if (params.year) queryParams.set('year_to', params.year);
         
         let endpoint;
         if (params.q) {
@@ -148,16 +161,17 @@ export const Dashboard: React.FC = () => {
           total = studiesData.length;
         }
         
-        // Transform data to match table format
+        // Transform data to match table format - new API already provides enhanced format
         const transformedStudies = studiesData.map((study: any) => ({
-          id: study.study_id || study.id || Math.random(),
+          id: study.id || `ICD-${study.study_id || Math.random()}`,
           year: study.year || 'N/A',
-          period: study.period_analyzed || `${study.period_start || ''}-${study.period_end || ''}` || 'N/A',
+          period: study.period ? `${study.period.start || ''}-${study.period.end || ''}` : 'N/A',
           title: study.title || 'No title',
-          impact_areas: study.impact_areas || study.impactAreas || 'N/A',
-          regions: study.regions || 'N/A',
-          category: study.category || 'Other',
-          contributors: study.contributing_initiatives || study.contributors || 'N/A',
+          impact_areas: study.impact_areas?.map((ia: any) => ia.name).join(', ') || 'N/A',
+          regions: study.regions?.map((r: any) => r.name).join(', ') || 'N/A',
+          center: study.contributors?.centers?.map((c: any) => c.acronym || c.name).join(', ') || 'N/A',
+          category: study.category?.name || 'Other',
+          contributors: study.contributors?.initiatives?.map((i: any) => i.name).join(', ') || 'N/A',
           summary: study.summary || 'No summary available'
         }));
         
@@ -171,12 +185,13 @@ export const Dashboard: React.FC = () => {
       // Fallback to mock data
       const mockResponse = getMockStudies(params);
       const transformedMockStudies = mockResponse.items.map((study: any) => ({
-        id: parseInt(study.id) || Math.random(),
+        id: `ICD-${study.id || Math.random()}`,
         year: 2024,
         period: '2023-2024',
         title: study.title || 'No title',
         impact_areas: study.category || 'General',
         regions: ['Global', 'Africa', 'Asia', 'Latin America'][Math.floor(Math.random() * 4)],
+        center: ['CIMMYT', 'IRRI', 'ICRISAT', 'CIAT'][Math.floor(Math.random() * 4)],
         category: study.category || 'Other',
         contributors: study.authors?.join(', ') || 'N/A',
         summary: study.description || 'No summary available'
@@ -234,13 +249,18 @@ export const Dashboard: React.FC = () => {
     }));
   };
 
+  const handleYearChange = (year: string) => {
+    setSearchParams(prev => ({ ...prev, year, page: 1 }));
+  };
+
   const handleClearFilters = () => {
     setSearchParams({
       q: '',
       page: 1,
       pageSize: 10,
       sort: '',
-      category: ''
+      category: '',
+      year: ''
     });
   };
 
@@ -336,6 +356,19 @@ export const Dashboard: React.FC = () => {
             )}
           </div>
           
+          <select
+            value={searchParams.year}
+            onChange={(e) => handleYearChange(e.target.value)}
+            className="px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-yellow-500 focus:border-transparent"
+          >
+            <option value="">All years</option>
+            <option value="2024">2024</option>
+            <option value="2023">2023</option>
+            <option value="2022">2022</option>
+            <option value="2021">2021</option>
+            <option value="2020">2020</option>
+          </select>
+          
           <Button
             onClick={handleDownloadExcel}
             disabled={studies.length === 0}
@@ -370,8 +403,8 @@ export const Dashboard: React.FC = () => {
               "No studies match your current search criteria." : 
               "No studies are available at the moment."
             }
-            actionLabel={searchParams.q || searchParams.category ? "Clear filters" : undefined}
-            onAction={searchParams.q || searchParams.category ? handleClearFilters : undefined}
+            actionLabel={searchParams.q || searchParams.category || searchParams.year ? "Clear filters" : undefined}
+            onAction={searchParams.q || searchParams.category || searchParams.year ? handleClearFilters : undefined}
           />
         ) : (
           <>

@@ -1,0 +1,241 @@
+======================================================================
+IMPACT COMPENDIUM — BACKEND IMPROVEMENTS (STUDIES SERVICE)
+File: planning/improve the Backend/sprint_backend_studies_improvements.txt
+Server: awslabsbackend-mcp-server
+Stack: FastAPI, SQLAlchemy, Alembic, MySQL (RDS)
+======================================================================
+
+GLOBAL CONTEXT
+- Repo root: impact-compendium-app/Backend
+- DB: MySQL (RDS). Use env vars in Backend/.env:
+  DB_HOST=***REMOVED***
+  DB_PORT=3306
+  DB_NAME=impact
+  DB_USER=root
+  DB_PASS=***REMOVED***
+- Code layout expectation:
+  app/
+    main.py
+    db.py
+    models/ *.py
+    schemas/ *.py
+    routers/ *.py
+    services/ *.py
+    utils/ pagination.py, filters.py
+  alembic/ (migrations)
+- All endpoints must support: pagination, search (q), sorting (sort=field:dir), filtering (category, year range).
+- Return shapes must match frontend requirements for dashboard table and slide-over details.
+
+======================================================================
+SPRINT B1 — DATA MODEL ALIGNMENT + MIGRATIONS
+Save as: planning/improve the Backend/sprintB1_models_migrations.txt
+ROLE: Sr. Backend Developer
+GOAL: Align ORM models with ERD and generate Alembic migrations.
+
+Deliverables
+1) Models (app/models/)
+   - studies.py  (Study)
+     fields: study_id(PK), title, summary, year, period_start, period_end,
+             category_id(FK), doi, study_intervention_types_intervention_type_id(FK),
+             intervention_details, pdf_filename, is_active, created_at, last_updated_date
+     relationships:
+       category -> StudyCategory (many-to-1)
+       indicators -> StudyIndicator (1-to-many)
+       crops -> through StudyCropType (m2m)
+       impact_areas -> through StudyImpactArea (m2m)
+       initiatives -> through StudiesContributor (m2m to ClarisaInitiative)
+       centers -> through StudiesContributor (m2m to ClarisaCenter)
+       regions -> through StudiesRegion (m2m to ClarisaCgiarRegion)
+       countries -> through StudyCountry (m2m to ClarisaCountry)
+   - lookup/association models:
+     study_categories.py (StudyCategory)
+     intervention_types.py (InterventionType)
+     studies_indicators.py (StudyIndicator)
+     studies_keywords.py (StudyKeyword)
+     studies_crop_types.py (StudyCropType) + crop_types.py (CropType)
+     studies_impact_areas.py (StudyImpactArea) + clarisa_impacts_areas.py (ImpactArea)
+     studies_contributors.py (StudiesContributor) + clarisa_initiatives.py (Initiative) + clarisa_centers.py (Center)
+     studies_regions.py (StudyRegion) + clarisa_CGIAR_regions.py (Region)
+     studies_countries.py (StudyCountry) + clarisa_countries.py (Country)
+     narratives.py (Narrative)
+
+2) Pydantic Schemas (app/schemas/)
+   - study.py:
+     StudyListItem, StudyDetail, IndicatorOut, TagChipOut (id,name)
+     PeriodOut {start:int|null, end:int|null}
+     CategoryOut {id:int, name:str}
+   - pagination.py: PageOut[T] {items:list[T], total:int, page:int, pageSize:int}
+
+3) Alembic
+   - Create migration stubs for missing tables/indices (year, category_id, title).
+   - Add DB-safe indexes:
+       idx_studies_year (year)
+       idx_studies_category (category_id)
+       idx_studies_title (title)  -- VARCHAR prefix index if needed
+
+4) Utilities
+   - app/utils/pagination.py: apply_limit_offset()/parse_query_params()
+   - app/utils/filters.py: apply_search_q(query, Study.title, Study.summary)
+
+Acceptance Criteria
+- `alembic upgrade head` runs clean against RDS.
+- ORM relationships mirror ERD and eager loading is possible.
+- Unit test: can create Study with joined impact areas and contributors.
+
+======================================================================
+SPRINT B2 — ENHANCED LIST ENDPOINT (/studies) WITH FULL METADATA
+Save as: planning/improve the Backend/sprintB2_studies_list.txt
+ROLE: Sr. Backend Developer
+GOAL: Return complete metadata for the dashboard table, with scalable joins.
+
+Deliverables
+1) Service/Repository (app/services/studies_service.py)
+   - function list_studies(params) -> PageOut[StudyListItem]
+   - params: q, page=1, pageSize=25, sort="year:desc", category, year_from, year_to
+   - use selectinload/joinedload where appropriate to avoid N+1
+   - subqueries/CTEs to preaggregate chips:
+     • contributors: initiatives[], centers[]
+     • impact_areas[]
+     • regions[], countries[]
+     • indicators: only count + 2 highlights (first two by created_at)
+
+2) Router (app/routers/studies.py)
+   - GET /studies
+     query params as above
+     response model PageOut[StudyListItem]
+   - Example sort whitelist: year, title, category
+
+3) Serialization (schemas.study)
+   StudyListItem must include:
+   {
+     "id": "ICD-001",
+     "title": "...",
+     "summary": "first 300 chars",
+     "year": 2023,
+     "period": {"start":2020,"end":2023},
+     "category": {"id":1,"name":"Impact Study"},
+     "intervention": {"type":"Takaful cash transfer","detailsShort":"first 120 chars"},
+     "contributors": {
+       "initiatives": [{"id":..,"name":"Accelerated Breeding"}, ...],
+       "centers": [{"id":..,"acronym":"CIMMYT"}, ...]
+     },
+     "impact_areas": [{"id":..,"name":"Climate Adaptation"}, ...],
+     "regions": [{"id":..,"name":"East Africa"}, ...],
+     "countries": [{"id":..,"name":"Kenya"}, ...],
+     "indicators_highlight": [
+        {"indicator_measure":"Crop Yield Improvement","unit":"%","result_reported":"135%"},
+        {"indicator_measure":"Farmer Adoption Rate","unit":"%","result_reported":"58%"}
+     ],
+     "doi":"https://doi.org/…"
+   }
+
+4) Performance
+   - Use `selectinload` on m2m lists; limit chips lengths (e.g., max 6 per field in list view).
+   - Add server-side pagination with total count.
+   - Support LIKE/ILIKE search on title + summary.
+
+5) Tests (app/tests/test_studies_list.py)
+   - pagination, sorting, q filter, category filter
+   - serialization shape equality with schema
+
+Acceptance Criteria
+- `/studies` returns enriched items within <250ms for 1 page (dev data scale).
+- Sorting & paging correct; total count accurate.
+- Response satisfies frontend Tasks 1,3,4 (search, pagination, sorting).
+
+======================================================================
+SPRINT B3 — DETAIL, SUMMARY & CACHING
+Save as: planning/improve the Backend/sprintB3_detail_summary_cache.txt
+ROLE: Sr. Backend Developer
+GOAL: Provide detailed study payload for slide-over; add sidebar summary and optional cache.
+
+Deliverables
+1) Router additions (app/routers/studies.py)
+   - GET /studies/{id}
+     returns StudyDetail:
+     fields: all from list item + full indicators[] (measure, unit, baseline, target, result_reported),
+             full contributors, geographies, impact areas, intervention details, narratives (section_key, content),
+             created_at, last_updated_date
+   - GET /studies/summary
+     returns:
+     {
+       "total": int,
+       "by_category": [{"name":"Impact Study","count":N}, ...],
+       "recent_years": [2023,2022,2021],
+       "top_initiatives": [{"name":"Accelerated Breeding","count":N}, ...]
+     }
+
+2) Service (app/services/studies_service.py)
+   - get_study_detail(study_id: str)
+   - get_studies_summary()
+
+3) Optional Caching
+   - If `REDIS_URL` present, cache study detail and summary for 5 min.
+   - Fallback to in-process LRU cache for local dev.
+
+4) Security/Validation
+   - Parameter validation with Pydantic.
+   - 404 for not found; 400 for invalid sort.
+
+5) Tests (app/tests/test_study_detail.py, test_studies_summary.py)
+   - full shape, indicator list ordering, cache hit path if enabled.
+
+Acceptance Criteria
+- `/studies/{id}` fuels slide-over without additional calls.
+- `/studies/summary` supports sidebar counters.
+- Responses under 250ms; cache reduces repeat calls by >50% in tests.
+
+======================================================================
+SPRINT B4 — OBSERVABILITY, DOCS & HARDENING
+Save as: planning/improve the Backend/sprintB4_docs_observability.txt
+ROLE: Sr. Backend Developer
+GOAL: Production readiness: OpenAPI examples, validation, metrics, seed data.
+
+Deliverables
+1) OpenAPI & Examples
+   - Annotate schemas with examples; ensure `/docs` shows realistic samples.
+   - Add tags: Studies, Metadata.
+
+2) Logging & Metrics
+   - Structured logging (JSON) with request ID.
+   - Simple timing middleware; log query durations.
+   - Health endpoint `/health`.
+
+3) Data Utilities
+   - Seed script: scripts/seed_from_csv.py (reads /mnt/data/export.csv if present) for local fill.
+   - Management command: scripts/reindex.sql to (re)create indexes.
+
+4) Error Handling
+   - Global exception handler → problem+json style with code & hint.
+
+5) Load Test Outline (k6 or Locust)
+   - scripts/load/README.md: scenarios for list, detail, summary.
+
+6) CI-like Local
+   - Makefile targets: lint, test, run.
+   - README.backend_updates.md summarizing new endpoints & params.
+
+Acceptance Criteria
+- `/docs` is clear and copy-paste ready.
+- Basic load plan included; logs show timings.
+- Tests pass; lint clean.
+
+======================================================================
+API CONTRACT SUMMARY (used by frontend)
+- GET /studies?q=&page=&pageSize=&sort=&category=&year_from=&year_to=
+  → PageOut[StudyListItem]
+- GET /studies/{id} → StudyDetail
+- GET /studies/summary → sidebar counters/overview
+Common: JSON; 200 OK; errors return {error, detail} with suitable status.
+
+======================================================================
+EXECUTION ORDER
+Sprint B1 → Sprint B2 → Sprint B3 → Sprint B4
+======================================================================
+LOCAL RUN NOTES
+- Create & export Backend/.env with DB vars.
+- python -m venv .venv && source .venv/bin/activate
+- pip install -r requirements.txt
+- alembic upgrade head
+- uvicorn app.main:app --reload
+======================================================================

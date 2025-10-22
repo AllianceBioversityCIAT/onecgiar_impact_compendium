@@ -27,7 +27,7 @@ describe('Dashboard Search Functionality', () => {
   test('debounces search input', async () => {
     render(<Dashboard />);
     
-    const searchInput = screen.getByPlaceholderText('Search studies...');
+    const searchInput = screen.getByPlaceholderText('Search by ID, title, year, category, or any field...');
     
     // Type quickly - should not trigger immediate search
     fireEvent.change(searchInput, { target: { value: 'c' } });
@@ -47,7 +47,7 @@ describe('Dashboard Search Functionality', () => {
   test('Enter key bypasses debounce', async () => {
     render(<Dashboard />);
     
-    const searchInput = screen.getByPlaceholderText('Search studies...');
+    const searchInput = screen.getByPlaceholderText('Search by ID, title, year, category, or any field...');
     
     // Type and press Enter immediately
     fireEvent.change(searchInput, { target: { value: 'climate' } });
@@ -62,7 +62,7 @@ describe('Dashboard Search Functionality', () => {
   test('Escape key clears search', async () => {
     render(<Dashboard />);
     
-    const searchInput = screen.getByPlaceholderText('Search studies...');
+    const searchInput = screen.getByPlaceholderText('Search by ID, title, year, category, or any field...');
     
     // Type something
     fireEvent.change(searchInput, { target: { value: 'climate' } });
@@ -75,10 +75,30 @@ describe('Dashboard Search Functionality', () => {
     expect(searchInput.value).toBe('');
   });
 
+  test('Search works across all fields including ID', async () => {
+    render(<Dashboard />);
+    
+    const searchInput = screen.getByPlaceholderText('Search by ID, title, year, category, or any field...');
+    
+    // Test searching by ID
+    fireEvent.change(searchInput, { target: { value: '1' } });
+    
+    await waitFor(() => {
+      expect(studyAPI.getAll).toHaveBeenCalledTimes(2);
+    }, { timeout: 400 });
+    
+    // Test searching by year
+    fireEvent.change(searchInput, { target: { value: '2024' } });
+    
+    await waitFor(() => {
+      expect(studyAPI.getAll).toHaveBeenCalledTimes(3);
+    }, { timeout: 400 });
+  });
+
   test('Clear button (×) clears search', async () => {
     render(<Dashboard />);
     
-    const searchInput = screen.getByPlaceholderText('Search studies...');
+    const searchInput = screen.getByPlaceholderText('Search by ID, title, year, category, or any field...');
     
     // Type something to show clear button
     fireEvent.change(searchInput, { target: { value: 'climate' } });
@@ -108,7 +128,7 @@ describe('Dashboard Search Functionality', () => {
     
     render(<Dashboard />);
     
-    const searchInput = screen.getByPlaceholderText('Search studies...');
+    const searchInput = screen.getByPlaceholderText('Search by ID, title, year, category, or any field...');
     
     // Type and wait for debounce
     fireEvent.change(searchInput, { target: { value: 'climate' } });
@@ -121,7 +141,7 @@ describe('Dashboard Search Functionality', () => {
   test('Search resets page to 1', async () => {
     render(<Dashboard />);
     
-    const searchInput = screen.getByPlaceholderText('Search studies...');
+    const searchInput = screen.getByPlaceholderText('Search by ID, title, year, category, or any field...');
     
     // Type search term
     fireEvent.change(searchInput, { target: { value: 'climate' } });
@@ -145,7 +165,7 @@ describe('Dashboard Search Functionality', () => {
     
     render(<Dashboard />);
     
-    const searchInput = screen.getByPlaceholderText('Search studies...');
+    const searchInput = screen.getByPlaceholderText('Search by ID, title, year, category, or any field...');
     
     // Should initialize with URL params
     expect(searchInput.value).toBe('climate');

@@ -4,11 +4,14 @@ Handles SQLAlchemy engine creation and session management.
 """
 
 import os
-from typing import Generator
+from typing import Generator, Optional
 from sqlalchemy import create_engine, Engine
 from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy.orm import sessionmaker, Session
 from sqlalchemy.pool import QueuePool
+import logging
+
+logger = logging.getLogger(__name__)
 
 # Base class for all models
 Base = declarative_base()
@@ -17,13 +20,17 @@ class DatabaseConnection:
     """Database connection manager."""
     
     def __init__(self):
-        self._engine: Engine = None
+        self._engine: Optional[Engine] = None
         self._session_factory = None
     
-    def get_engine(self) -> Engine:
+    def get_engine(self) -> Optional[Engine]:
         """Get or create database engine."""
         if self._engine is None:
-            self._engine = self._create_engine()
+            try:
+                self._engine = self._create_engine()
+            except Exception as e:
+                logger.warning(f"Failed to create database engine: {e}")
+                return None
         return self._engine
     
     def _create_engine(self) -> Engine:
@@ -58,19 +65,29 @@ class DatabaseConnection:
     def get_session_factory(self):
         """Get or create session factory."""
         if self._session_factory is None:
-            self._session_factory = sessionmaker(
-                autocommit=False,
-                autoflush=False,
-                bind=self.get_engine()
-            )
+            engine = self.get_engine()
+            if engine:
+                self._session_factory = sessionmaker(
+                    autocommit=False,
+                    autoflush=False,
+                    bind=engine
+                )
         return self._session_factory
     
-    def get_session(self) -> Generator[Session, None, None]:
+    def get_session(self) -> Generator[Optional[Session], None, None]:
         """Get database session with automatic cleanup."""
         session_factory = self.get_session_factory()
+        if not session_factory:
+            yield None
+            return
+            
         session = session_factory()
         try:
             yield session
+        except Exception as e:
+            logger.warning(f"Database session error: {e}")
+            session.rollback()
+            yield None
         finally:
             session.close()
 
@@ -78,7 +95,7 @@ class DatabaseConnection:
 db_connection = DatabaseConnection()
 
 # Dependency for FastAPI
-def get_db() -> Generator[Session, None, None]:
+def get_db() -> Generator[Optional[Session], None, None]:
     """FastAPI dependency for database sessions."""
     yield from db_connection.get_session()
 
@@ -86,9 +103,11 @@ def get_db() -> Generator[Session, None, None]:
 def create_tables():
     """Create all database tables."""
     engine = db_connection.get_engine()
-    Base.metadata.create_all(bind=engine)
+    if engine:
+        Base.metadata.create_all(bind=engine)
 
 def drop_tables():
     """Drop all database tables."""
     engine = db_connection.get_engine()
-    Base.metadata.drop_all(bind=engine)
+    if engine:
+        Base.metadata.drop_all(bind=engine)

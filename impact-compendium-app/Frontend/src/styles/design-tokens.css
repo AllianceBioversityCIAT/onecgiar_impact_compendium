@@ -20,6 +20,10 @@
   --ic-success: #059669;           /* success states */
   --ic-warning: #D97706;           /* warnings */
   
+  /* Expanded row backgrounds */
+  --ic-color-expanded-hover: #FFF3D6;
+  --ic-color-expanded-bg: #FFF9F0;
+  
   /* Category Badge Colors - from table */
   --ic-badge-impact: #DC2626;      /* Impact Study - red */
   --ic-badge-outcome: #059669;     /* Outcome Study - green */

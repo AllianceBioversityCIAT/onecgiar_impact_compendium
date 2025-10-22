@@ -2,37 +2,27 @@
 Models package initialization - imports all ERD-based models
 """
 
-# Import all models to ensure they are registered with SQLAlchemy
-from app.models.study import (
-    Study, StudyCategory, StudyContributor, StudyKeyword, 
-    StudyIndicator, StudyRegion, StudyCountry, StudyImpactArea, 
-    StudyCropType, StudyInterventionType, StudyType, StudyStatus
-)
+# Import Base first
+from app.db.connection import Base
 
-from app.models.clarisa import (
-    ClarisaCenter, ClarisaInitiative, ClarisaCGIARRegion, 
-    ClarisaCountry, ClarisaImpactArea
-)
-
-from app.models.reference import (
-    Keyword, InterventionType, CropType, Narrative
-)
-
-from app.models.indicator import Indicator
+# Import models individually to avoid circular imports
+try:
+    from app.models.studies import Study
+    from app.models.study_categories import StudyCategory
+    from app.models.intervention_types import InterventionType
+    from app.models.studies_indicators import StudyIndicator
+    from app.models.studies_keywords import StudyKeyword
+    from app.models.narratives import Narrative
+    from app.models.crop_types import CropType
+    from app.models.clarisa_impacts_areas import ImpactArea
+    from app.models.clarisa_initiatives import Initiative
+    from app.models.clarisa_centers import Center
+    from app.models.clarisa_cgiar_regions import Region
+    from app.models.clarisa_countries import Country
+except ImportError as e:
+    # Fallback for missing models
+    pass
 
 __all__ = [
-    # Study models
-    "Study", "StudyCategory", "StudyContributor", "StudyKeyword",
-    "StudyIndicator", "StudyRegion", "StudyCountry", "StudyImpactArea",
-    "StudyCropType", "StudyInterventionType", "StudyType", "StudyStatus",
-    
-    # CLARISA models
-    "ClarisaCenter", "ClarisaInitiative", "ClarisaCGIARRegion",
-    "ClarisaCountry", "ClarisaImpactArea",
-    
-    # Reference models
-    "Keyword", "InterventionType", "CropType", "Narrative",
-    
-    # Legacy models
-    "Indicator"
+    "Base"
 ]

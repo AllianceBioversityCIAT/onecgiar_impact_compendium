@@ -44,6 +44,8 @@ class AuthService {
   logout() {
     localStorage.removeItem(this.tokenKey);
     localStorage.removeItem(this.userKey);
+    // Redirect to login page
+    window.location.href = '/login';
   }
 
   getToken(): string | null {

@@ -7,8 +7,7 @@ version = 0.1
 [default.global]
 [default.global.parameters]
 stack_name = "impact-compendium-dev"
-s3_bucket = "impact-compendium-sam-artifacts"
-s3_prefix = "impact-compendium"
+resolve_s3 = true
 region = "us-east-1"
 confirm_changeset = true
 capabilities = "CAPABILITY_IAM"
@@ -36,8 +35,7 @@ capabilities = "CAPABILITY_IAM"
 confirm_changeset = true
 fail_on_empty_changeset = false
 stack_name = "impact-compendium-dev"
-s3_bucket = "impact-compendium-sam-artifacts"
-s3_prefix = "impact-compendium"
+resolve_s3 = true
 region = "us-east-1"
 image_repositories = []
 parameter_overrides = [

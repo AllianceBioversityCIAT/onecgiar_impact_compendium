@@ -1,0 +1,100 @@
+ROLE: DevOps Engineer  
+INTENT: Create an automated script to **build and start the Impact Compendium application locally**, including the React frontend and the Python backend, both connected to the existing RDS instance.
+
+TARGET OUTPUT:  
+File → impact-compendium-app/scripts/start_local.sh  
+Description → A bash script that installs dependencies, loads environment variables, builds the app, and runs both servers concurrently (frontend + backend).  
+
+======================================================================
+📦 PROJECT CONTEXT
+======================================================================
+Root: impact-compendium-app/  
+Sub-projects:
+- /Frontend → React (Vite)
+- /Backend → FastAPI (Python 3.12)
+- /Infrastructure → SAM templates (not used for local run)
+
+use .env
+Database:
+- HOST = db-impact-compendium.c9s2e8cg81v6.us-east-2.rds.amazonaws.com  
+- PORT = 3306  
+- DB = db  
+- USER = user  
+- PASS = pss
+
+Frontend port 5173 → Backend port 8000.
+
+Environment files already present:
+- /Frontend/.env.local  
+- /Backend/.env  
+
+======================================================================
+🎯 SCRIPT OBJECTIVES
+======================================================================
+1️⃣ Verify prerequisites (Node, npm, Python ≥3.11, pip).  
+2️⃣ Create local Python venv if missing.  
+3️⃣ Install dependencies:  
+ • Frontend → npm install  
+ • Backend → pip install -r requirements.txt  
+4️⃣ Check DB connectivity with a small “SELECT 1”.  
+5️⃣ Run backend (Uvicorn) and frontend (Vite) concurrently.  
+6️⃣ Display colored log headers for each service.  
+7️⃣ Expose `CTRL+C` trap for clean shutdown.  
+8️⃣ Skip deployment/build of SAM resources – local only.
+
+======================================================================
+📄 SCRIPT CONTENTS (TO GENERATE)
+======================================================================
+# !/usr/bin/env bash
+# File: scripts/start_local.sh
+# Purpose: local build + run of Impact Compendium (frontend + backend)
+# Author: Amazon Q Automation
+
+set -e
+set -o pipefail
+
+echo "🚀 Starting Impact Compendium Local Environment"
+
+# Check Node
+command -v node >/dev/null || { echo "❌ Node.js missing"; exit 1; }
+
+# Check Python
+command -v python3 >/dev/null || { echo "❌ Python3 missing"; exit 1; }
+
+echo "✅ Dependencies found"
+
+# Load environment variables
+export DB_HOST=db-impact-compendium.c9s2e8cg81v6.us-east-2.rds.amazonaws.com
+export DB_PORT=3306
+export DB_NAME=impact
+export DB_USER=root
+export DB_PASS=pas
+export API_PORT=8000
+export VITE_API_BASE_URL=http://localhost:${API_PORT}
+
+# Create venv if needed
+cd Backend
+if [ ! -d \".venv\" ]; then
+  python3 -m venv .venv
+fi
+source .venv/bin/activate
+pip install -r requirements.txt
+
+# Simple DB check
+python -c \"import pymysql; conn=pymysql.connect(host='${DB_HOST}',user='${DB_USER}',password='${DB_PASS}',database='${DB_NAME}'); cur=conn.cursor(); cur.execute('SELECT 1'); print('✅ DB connection OK'); conn.close()\"
+
+# Run backend
+echo \"▶️ Starting FastAPI on http://localhost:${API_PORT}\"
+(uvicorn app.main:app --reload --port ${API_PORT} &)
+BACK_PID=$!
+
+# Run frontend
+cd ../Frontend
+echo \"▶️ Starting React (Vite) on http://localhost:5173\"
+npm install
+npm run dev &
+FRONT_PID=$!
+
+trap \"echo '🛑 Stopping servers...'; kill $BACK_PID $FRONT_PID\" INT
+
+wait

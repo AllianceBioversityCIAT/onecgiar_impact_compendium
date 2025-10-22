@@ -1,0 +1,245 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Transform: AWS::Serverless-2016-10-31
+Description: >
+  Impact Compendium - Serverless Research Platform with Authentication
+  
+  SAM Template for CGIAR/Alliance Impact Compendium application with
+  FastAPI backend, Cognito authentication, and external MySQL RDS.
+
+# Global configuration
+Globals:
+  Function:
+    Runtime: python3.11
+    Architectures: [arm64]
+    Timeout: 30
+    MemorySize: 256
+    Environment:
+      Variables:
+        ENVIRONMENT: !Ref Environment
+        LOG_LEVEL: INFO
+        DB_HOST: db-impact-compendium.c9s2e8cg81v6.us-east-2.rds.amazonaws.com
+        DB_PORT: 3306
+        DB_NAME: database
+        DB_USER: user
+        DB_PASSWORD: pass
+        COGNITO_USER_POOL_ID: !Ref CognitoUserPool
+        COGNITO_CLIENT_ID: !Ref CognitoUserPoolClient
+        COGNITO_REGION: !Ref AWS::Region
+    Tracing: Active
+  Api:
+    TracingConfig:
+      PassthroughBehavior: Active
+    Cors:
+      AllowMethods: "'GET,POST,PUT,DELETE,OPTIONS'"
+      AllowHeaders: "'Content-Type,X-Amz-Date,Authorization,X-Api-Key,X-Amz-Security-Token'"
+      AllowOrigin: "'*'"
+      MaxAge: "'600'"
+
+# Parameters
+Parameters:
+  Environment:
+    Type: String
+    Default: dev
+    AllowedValues: [dev, staging, prod]
+    Description: Environment name for resource naming and configuration
+  
+  ProjectName:
+    Type: String
+    Default: impact-compendium
+    Description: Project name for resource naming
+
+Resources:
+  # ============================================================================
+  # AUTHENTICATION & AUTHORIZATION
+  # ============================================================================
+
+  CognitoUserPool:
+    Type: AWS::Cognito::UserPool
+    Properties:
+      UserPoolName: !Sub "${ProjectName}-${Environment}-users"
+      AliasAttributes:
+        - email
+      AutoVerifiedAttributes:
+        - email
+      EmailConfiguration:
+        EmailSendingAccount: COGNITO_DEFAULT
+      Policies:
+        PasswordPolicy:
+          MinimumLength: 8
+          RequireUppercase: true
+          RequireLowercase: true
+          RequireNumbers: true
+          RequireSymbols: false
+      Schema:
+        - Name: email
+          AttributeDataType: String
+          Required: true
+          Mutable: true
+        - Name: role
+          AttributeDataType: String
+          Required: false
+          Mutable: true
+        - Name: organization
+          AttributeDataType: String
+          Required: false
+          Mutable: true
+      UserPoolTags:
+        Project: !Ref ProjectName
+        Environment: !Ref Environment
+        Component: authentication
+        CostCenter: research-platform
+
+  CognitoUserPoolClient:
+    Type: AWS::Cognito::UserPoolClient
+    Properties:
+      UserPoolId: !Ref CognitoUserPool
+      ClientName: !Sub "${ProjectName}-${Environment}-client"
+      GenerateSecret: false
+      ExplicitAuthFlows:
+        - ADMIN_NO_SRP_AUTH
+        - USER_PASSWORD_AUTH
+        - ALLOW_REFRESH_TOKEN_AUTH
+        - ALLOW_USER_SRP_AUTH
+      TokenValidityUnits:
+        AccessToken: hours
+        IdToken: hours
+        RefreshToken: days
+      AccessTokenValidity: 8
+      IdTokenValidity: 8
+      RefreshTokenValidity: 30
+      PreventUserExistenceErrors: ENABLED
+
+  # User Groups for Role-Based Access Control
+  AdminGroup:
+    Type: AWS::Cognito::UserPoolGroup
+    Properties:
+      UserPoolId: !Ref CognitoUserPool
+      GroupName: Admin
+      Description: Administrators with full system access
+      Precedence: 1
+
+  ResearcherGroup:
+    Type: AWS::Cognito::UserPoolGroup
+    Properties:
+      UserPoolId: !Ref CognitoUserPool
+      GroupName: Researcher
+      Description: Researchers with study management access
+      Precedence: 2
+
+  ViewerGroup:
+    Type: AWS::Cognito::UserPoolGroup
+    Properties:
+      UserPoolId: !Ref CognitoUserPool
+      GroupName: Viewer
+      Description: Read-only access to studies and reports
+      Precedence: 3
+
+  # ============================================================================
+  # LAMBDA FUNCTIONS
+  # ============================================================================
+
+  AuthFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      FunctionName: !Sub "${ProjectName}-${Environment}-auth"
+      CodeUri: ../Backend/
+      Handler: app.main.handler
+      Description: Authentication and user management endpoints
+      Events:
+        AuthApi:
+          Type: Api
+          Properties:
+            RestApiId: !Ref ImpactCompendiumApi
+            Path: /auth
+            Method: ANY
+        AuthProxyApi:
+          Type: Api
+          Properties:
+            RestApiId: !Ref ImpactCompendiumApi
+            Path: /auth/{proxy+}
+            Method: ANY
+      Tags:
+        Project: !Ref ProjectName
+        Environment: !Ref Environment
+        Component: authentication
+
+  StudiesFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      FunctionName: !Sub "${ProjectName}-${Environment}-studies"
+      CodeUri: ../Backend/
+      Handler: app.main.handler
+      Description: Studies management API endpoints
+      Events:
+        StudiesApi:
+          Type: Api
+          Properties:
+            RestApiId: !Ref ImpactCompendiumApi
+            Path: /studies
+            Method: ANY
+            Auth:
+              Authorizer: CognitoAuthorizer
+        StudiesProxyApi:
+          Type: Api
+          Properties:
+            RestApiId: !Ref ImpactCompendiumApi
+            Path: /studies/{proxy+}
+            Method: ANY
+            Auth:
+              Authorizer: CognitoAuthorizer
+      Tags:
+        Project: !Ref ProjectName
+        Environment: !Ref Environment
+        Component: backend
+
+  # ============================================================================
+  # API GATEWAY
+  # ============================================================================
+
+  ImpactCompendiumApi:
+    Type: AWS::Serverless::Api
+    Properties:
+      Name: !Sub "${ProjectName}-${Environment}-api"
+      StageName: !Ref Environment
+      Description: Impact Compendium REST API with Cognito Authentication
+      EndpointConfiguration:
+        Type: REGIONAL
+      Auth:
+        Authorizers:
+          CognitoAuthorizer:
+            UserPoolArn: !GetAtt CognitoUserPool.Arn
+            Identity:
+              Header: Authorization
+      Tags:
+        Project: !Ref ProjectName
+        Environment: !Ref Environment
+        Component: api-gateway
+
+# ============================================================================
+# OUTPUTS
+# ============================================================================
+
+Outputs:
+  ApiGatewayUrl:
+    Description: API Gateway endpoint URL
+    Value: !Sub "https://${ImpactCompendiumApi}.execute-api.${AWS::Region}.amazonaws.com/${Environment}"
+    Export:
+      Name: !Sub "${ProjectName}-${Environment}-api-url"
+
+  CognitoUserPoolId:
+    Description: Cognito User Pool ID
+    Value: !Ref CognitoUserPool
+    Export:
+      Name: !Sub "${ProjectName}-${Environment}-cognito-pool-id"
+
+  CognitoUserPoolClientId:
+    Description: Cognito User Pool Client ID
+    Value: !Ref CognitoUserPoolClient
+    Export:
+      Name: !Sub "${ProjectName}-${Environment}-cognito-client-id"
+
+  CognitoRegion:
+    Description: AWS Region for Cognito
+    Value: !Ref AWS::Region
+    Export:
+      Name: !Sub "${ProjectName}-${Environment}-cognito-region"

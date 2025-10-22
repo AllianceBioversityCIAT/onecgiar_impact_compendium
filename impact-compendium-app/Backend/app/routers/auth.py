@@ -1,168 +1,218 @@
 """
-Authentication API router
-Handles user authentication and JWT token management
+Authentication API router with AWS Cognito integration.
 """
 
-from fastapi import APIRouter, Depends, HTTPException, status
-from sqlalchemy.orm import Session
-
-from app.config.database import get_database
-from app.schemas.user import (
-    LoginRequest,
-    LoginResponse,
-    TokenRefreshRequest,
-    TokenRefreshResponse,
-    UserProfile
-)
-from app.services.auth_service import (
-    authenticate_user,
-    create_access_token,
-    refresh_access_token,
-    get_current_user
-)
-from app.schemas.user import User as UserSchema
+import os
+import boto3
+from typing import Dict, Any
+from fastapi import APIRouter, HTTPException, Depends, status
+from pydantic import BaseModel, EmailStr
+from botocore.exceptions import ClientError
+from app.middleware.auth import get_current_user, get_current_user_optional
 import logging
 
 logger = logging.getLogger(__name__)
 router = APIRouter()
 
-@router.post("/login", response_model=LoginResponse)
-async def login(
-    login_data: LoginRequest,
-    db: Session = Depends(get_database)
-):
-    """
-    Authenticate user with email and password
-    """
+# Pydantic models
+class LoginRequest(BaseModel):
+    email: EmailStr
+    password: str
+
+class SignupRequest(BaseModel):
+    email: EmailStr
+    password: str
+    name: str
+    organization: str = None
+
+class ChangePasswordRequest(BaseModel):
+    old_password: str
+    new_password: str
+
+class UserProfile(BaseModel):
+    sub: str
+    email: str
+    name: str = None
+    organization: str = None
+    groups: list = []
+
+# Cognito client
+def get_cognito_client():
+    return boto3.client('cognito-idp', region_name=os.getenv('COGNITO_REGION', 'us-east-1'))
+
+@router.post("/login")
+async def login(request: LoginRequest):
+    """Authenticate user with Cognito."""
     try:
-        # Authenticate with Cognito
-        auth_result = await authenticate_user(login_data.email, login_data.password)
+        client = get_cognito_client()
         
-        if not auth_result:
+        response = client.admin_initiate_auth(
+            UserPoolId=os.getenv('COGNITO_USER_POOL_ID'),
+            ClientId=os.getenv('COGNITO_CLIENT_ID'),
+            AuthFlow='ADMIN_NO_SRP_AUTH',
+            AuthParameters={
+                'USERNAME': request.email,
+                'PASSWORD': request.password
+            }
+        )
+        
+        auth_result = response['AuthenticationResult']
+        
+        return {
+            "access_token": auth_result['AccessToken'],
+            "id_token": auth_result['IdToken'],
+            "refresh_token": auth_result['RefreshToken'],
+            "expires_in": auth_result['ExpiresIn'],
+            "token_type": auth_result['TokenType']
+        }
+        
+    except ClientError as e:
+        error_code = e.response['Error']['Code']
+        if error_code == 'NotAuthorizedException':
             raise HTTPException(
                 status_code=status.HTTP_401_UNAUTHORIZED,
                 detail="Invalid email or password"
             )
-        
-        # Get or create user in database
-        user = await get_or_create_user_from_cognito(
-            auth_result["cognito_sub"],
-            login_data.email,
-            db
-        )
-        
-        # Create response
-        response = LoginResponse(
-            access_token=auth_result["access_token"],
-            refresh_token=auth_result["refresh_token"],
-            expires_in=auth_result["expires_in"],
-            user=UserProfile(
-                id=user.id,
-                email=user.email,
-                name=user.name,
-                role=user.role,
-                organization=user.organization,
-                center=user.center
+        elif error_code == 'UserNotConfirmedException':
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="User email not verified"
             )
+        else:
+            logger.error(f"Cognito login error: {e}")
+            raise HTTPException(
+                status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+                detail="Authentication service error"
+            )
+
+@router.post("/signup")
+async def signup(request: SignupRequest):
+    """Register new user with Cognito."""
+    try:
+        client = get_cognito_client()
+        
+        response = client.admin_create_user(
+            UserPoolId=os.getenv('COGNITO_USER_POOL_ID'),
+            Username=request.email,
+            UserAttributes=[
+                {'Name': 'email', 'Value': request.email},
+                {'Name': 'name', 'Value': request.name},
+                {'Name': 'email_verified', 'Value': 'true'}
+            ] + ([{'Name': 'custom:organization', 'Value': request.organization}] if request.organization else []),
+            TemporaryPassword=request.password,
+            MessageAction='SUPPRESS'
         )
         
-        logger.info(f"User {user.email} logged in successfully")
-        return response
+        # Set permanent password
+        client.admin_set_user_password(
+            UserPoolId=os.getenv('COGNITO_USER_POOL_ID'),
+            Username=request.email,
+            Password=request.password,
+            Permanent=True
+        )
         
-    except HTTPException:
-        raise
-    except Exception as e:
-        logger.error(f"Login error: {e}")
+        # Add to Researcher group by default
+        try:
+            client.admin_add_user_to_group(
+                UserPoolId=os.getenv('COGNITO_USER_POOL_ID'),
+                Username=request.email,
+                GroupName='Researcher'
+            )
+        except ClientError:
+            pass  # Group might not exist yet
+        
+        return {"message": "User created successfully", "username": request.email}
+        
+    except ClientError as e:
+        error_code = e.response['Error']['Code']
+        if error_code == 'UsernameExistsException':
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="User already exists"
+            )
+        else:
+            logger.error(f"Cognito signup error: {e}")
+            raise HTTPException(
+                status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+                detail="User creation failed"
+            )
+
+@router.get("/me", response_model=UserProfile)
+async def get_profile(current_user: Dict[str, Any] = Depends(get_current_user)):
+    """Get current user profile."""
+    try:
+        client = get_cognito_client()
+        
+        response = client.admin_get_user(
+            UserPoolId=os.getenv('COGNITO_USER_POOL_ID'),
+            Username=current_user['username']
+        )
+        
+        # Extract user attributes
+        attributes = {attr['Name']: attr['Value'] for attr in response['UserAttributes']}
+        
+        return UserProfile(
+            sub=current_user['sub'],
+            email=current_user['email'],
+            name=attributes.get('name'),
+            organization=attributes.get('custom:organization'),
+            groups=current_user.get('groups', [])
+        )
+        
+    except ClientError as e:
+        logger.error(f"Error fetching user profile: {e}")
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail="Authentication failed"
+            detail="Failed to fetch user profile"
         )
 
-@router.post("/refresh", response_model=TokenRefreshResponse)
-async def refresh_token(
-    refresh_data: TokenRefreshRequest
-):
-    """
-    Refresh access token using refresh token
-    """
+@router.post("/refresh")
+async def refresh_token(refresh_token: str):
+    """Refresh access token."""
     try:
-        new_token = await refresh_access_token(refresh_data.refresh_token)
+        client = get_cognito_client()
         
-        if not new_token:
-            raise HTTPException(
-                status_code=status.HTTP_401_UNAUTHORIZED,
-                detail="Invalid refresh token"
-            )
-        
-        return TokenRefreshResponse(
-            access_token=new_token["access_token"],
-            expires_in=new_token["expires_in"]
+        response = client.admin_initiate_auth(
+            UserPoolId=os.getenv('COGNITO_USER_POOL_ID'),
+            ClientId=os.getenv('COGNITO_CLIENT_ID'),
+            AuthFlow='REFRESH_TOKEN_AUTH',
+            AuthParameters={
+                'REFRESH_TOKEN': refresh_token
+            }
         )
         
-    except HTTPException:
-        raise
-    except Exception as e:
+        auth_result = response['AuthenticationResult']
+        
+        return {
+            "access_token": auth_result['AccessToken'],
+            "id_token": auth_result['IdToken'],
+            "expires_in": auth_result['ExpiresIn'],
+            "token_type": auth_result['TokenType']
+        }
+        
+    except ClientError as e:
         logger.error(f"Token refresh error: {e}")
         raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail="Token refresh failed"
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Invalid refresh token"
         )
 
 @router.post("/logout")
-async def logout(
-    current_user: UserSchema = Depends(get_current_user)
-):
-    """
-    Logout user (invalidate tokens)
-    """
+async def logout(current_user: Dict[str, Any] = Depends(get_current_user)):
+    """Logout user (invalidate tokens)."""
     try:
-        # TODO: Implement token invalidation with Cognito
-        logger.info(f"User {current_user.email} logged out")
+        client = get_cognito_client()
+        
+        client.admin_user_global_sign_out(
+            UserPoolId=os.getenv('COGNITO_USER_POOL_ID'),
+            Username=current_user['username']
+        )
+        
         return {"message": "Logged out successfully"}
         
-    except Exception as e:
+    except ClientError as e:
         logger.error(f"Logout error: {e}")
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail="Logout failed"
         )
-
-@router.get("/profile", response_model=UserProfile)
-async def get_profile(
-    current_user: UserSchema = Depends(get_current_user)
-):
-    """
-    Get current user profile
-    """
-    return UserProfile(
-        id=current_user.id,
-        email=current_user.email,
-        name=current_user.name,
-        role=current_user.role,
-        organization=current_user.organization,
-        center=current_user.center
-    )
-
-async def get_or_create_user_from_cognito(cognito_sub: str, email: str, db: Session):
-    """
-    Get existing user or create new user from Cognito data
-    """
-    from app.models.user import User
-    
-    # Try to find existing user
-    user = db.query(User).filter(User.cognito_sub == cognito_sub).first()
-    
-    if not user:
-        # Create new user
-        user = User(
-            email=email,
-            name=email.split("@")[0],  # Default name from email
-            cognito_sub=cognito_sub,
-            email_verified=True
-        )
-        db.add(user)
-        db.commit()
-        db.refresh(user)
-        logger.info(f"Created new user {user.email} from Cognito")
-    
-    return user

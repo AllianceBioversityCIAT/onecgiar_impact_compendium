@@ -35,6 +35,14 @@ function App() {
                   </ProtectedRoute>
                 } />
                 
+                <Route path="/dashboard" element={
+                  <ProtectedRoute>
+                    <Layout>
+                      <Dashboard />
+                    </Layout>
+                  </ProtectedRoute>
+                } />
+                
                 <Route path="/studies" element={
                   <ProtectedRoute>
                     <Layout>
@@ -52,7 +60,7 @@ function App() {
                 } />
                 
                 <Route path="/studies/create" element={
-                  <ProtectedRoute>
+                  <ProtectedRoute requiredRole="Researcher">
                     <Layout>
                       <CreateStudy />
                     </Layout>
@@ -68,7 +76,7 @@ function App() {
                 } />
                 
                 <Route path="/admin" element={
-                  <ProtectedRoute requiredRole="admin">
+                  <ProtectedRoute requiredRole="Admin">
                     <Layout>
                       <Admin />
                     </Layout>

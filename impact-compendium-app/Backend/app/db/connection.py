@@ -29,11 +29,15 @@ class DatabaseConnection:
     def _create_engine(self) -> Engine:
         """Create SQLAlchemy engine with connection pooling."""
         # Get database configuration from environment
-        db_host = os.getenv("DB_HOST", "***REMOVED***")
+        db_host = os.getenv("DB_HOST")
         db_port = os.getenv("DB_PORT", "3306")
-        db_name = os.getenv("DB_NAME", "database")
-        db_user = os.getenv("DB_USER", "user")
-        db_password = os.getenv("DB_PASSWORD", "pass")
+        db_name = os.getenv("DB_NAME")
+        db_user = os.getenv("DB_USER")
+        db_password = os.getenv("DB_PASSWORD")
+        
+        # Validate required environment variables
+        if not all([db_host, db_name, db_user, db_password]):
+            raise ValueError("Missing required database environment variables: DB_HOST, DB_NAME, DB_USER, DB_PASSWORD")
         
         # Construct database URL
         database_url = f"mysql+pymysql://{db_user}:{db_password}@{db_host}:{db_port}/{db_name}"

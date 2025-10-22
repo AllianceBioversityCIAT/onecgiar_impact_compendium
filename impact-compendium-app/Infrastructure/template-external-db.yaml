@@ -17,11 +17,11 @@ Globals:
       Variables:
         ENVIRONMENT: !Ref Environment
         LOG_LEVEL: INFO
-        DB_HOST: ***REMOVED***
-        DB_PORT: 3306
-        DB_NAME: database
-        DB_USER: user
-        DB_PASSWORD: pass
+        DB_HOST: !Ref DatabaseHost
+        DB_PORT: !Ref DatabasePort
+        DB_NAME: !Ref DatabaseName
+        DB_USER: !Ref DatabaseUser
+        DB_PASSWORD: !Ref DatabasePassword
     Tracing: Active
   Api:
     TracingConfig:
@@ -44,6 +44,31 @@ Parameters:
     Type: String
     Default: impact-compendium
     Description: Project name for resource naming
+  
+  DatabaseHost:
+    Type: String
+    NoEcho: true
+    Description: Database host endpoint
+  
+  DatabasePort:
+    Type: Number
+    Default: 3306
+    Description: Database port
+  
+  DatabaseName:
+    Type: String
+    NoEcho: true
+    Description: Database name
+  
+  DatabaseUser:
+    Type: String
+    NoEcho: true
+    Description: Database username
+  
+  DatabasePassword:
+    Type: String
+    NoEcho: true
+    Description: Database password
 
 Resources:
   # ============================================================================

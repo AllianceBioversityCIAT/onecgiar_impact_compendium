@@ -6,25 +6,11 @@ Description: >
   SAM Template for CGIAR/Alliance Impact Compendium application with
   FastAPI backend, MySQL RDS, Cognito authentication, and React frontend.
 
-# Template metadata
-Metadata:
-  AWS::ServerlessRepo::Application:
-    Name: impact-compendium
-    Description: Research impact study management platform
-    Author: CGIAR/Alliance Bioversity & CIAT
-    SpdxLicenseId: MIT
-    LicenseUrl: LICENSE.txt
-    ReadmeUrl: README.md
-    Labels: ['research', 'impact', 'studies', 'serverless']
-    HomePageUrl: https://github.com/cgiar-alliance/impact-compendium
-    SemanticVersion: 1.0.0
-    SourceCodeUrl: https://github.com/cgiar-alliance/impact-compendium
-
 # Global configuration
 Globals:
   Function:
-    Runtime: python3.11
-    Architecture: arm64
+    Runtime: python3.9
+    Architectures: [arm64]
     Timeout: 30
     MemorySize: 256
     Environment:
@@ -34,11 +20,10 @@ Globals:
         POWERTOOLS_SERVICE_NAME: impact-compendium
         POWERTOOLS_METRICS_NAMESPACE: ImpactCompendium
     Layers:
-      - !Ref PowertoolsLayer
+      - arn:aws:lambda:us-east-1:017000801446:layer:AWSLambdaPowertoolsPythonV2-Arm64:68
     Tracing: Active
   Api:
-    TracingConfig:
-      PassthroughBehavior: Active
+    TracingEnabled: true
     Cors:
       AllowMethods: "'GET,POST,PUT,DELETE,OPTIONS'"
       AllowHeaders: "'Content-Type,X-Amz-Date,Authorization,X-Api-Key,X-Amz-Security-Token'"
@@ -235,45 +220,6 @@ Resources:
       SubnetId: !Ref PrivateSubnetB
 
   # ============================================================================
-  # SECURITY GROUPS
-  # ============================================================================
-
-  LambdaSecurityGroup:
-    Type: AWS::EC2::SecurityGroup
-    Properties:
-      GroupDescription: Security group for Lambda functions
-      VpcId: !Ref VPC
-      SecurityGroupEgress:
-        - IpProtocol: tcp
-          FromPort: 443
-          ToPort: 443
-          CidrIp: 0.0.0.0/0
-          Description: HTTPS outbound
-        - IpProtocol: tcp
-          FromPort: 3306
-          ToPort: 3306
-          DestinationSecurityGroupId: !Ref RDSSecurityGroup
-          Description: MySQL to RDS
-      Tags:
-        - Key: Name
-          Value: !Sub "${ProjectName}-${Environment}-lambda-sg"
-
-  RDSSecurityGroup:
-    Type: AWS::EC2::SecurityGroup
-    Properties:
-      GroupDescription: Security group for RDS MySQL
-      VpcId: !Ref VPC
-      SecurityGroupIngress:
-        - IpProtocol: tcp
-          FromPort: 3306
-          ToPort: 3306
-          SourceSecurityGroupId: !Ref LambdaSecurityGroup
-          Description: MySQL from Lambda
-      Tags:
-        - Key: Name
-          Value: !Sub "${ProjectName}-${Environment}-rds-sg"
-
-  # ============================================================================
   # DATABASE LAYER
   # ============================================================================
 
@@ -302,6 +248,17 @@ Resources:
         - Key: Name
           Value: !Sub "${ProjectName}-${Environment}-db-params"
 
+  DatabaseMasterUserSecret:
+    Type: AWS::SecretsManager::Secret
+    Properties:
+      Name: !Sub "${ProjectName}-${Environment}-db-master-secret"
+      Description: !Sub "Master password for ${ProjectName} ${Environment} database"
+      GenerateSecretString:
+        SecretStringTemplate: '{"username": "admin"}'
+        GenerateStringKey: "password"
+        PasswordLength: 32
+        ExcludeCharacters: '"@/\'
+
   Database:
     Type: AWS::RDS::DBInstance
     DeletionPolicy: Snapshot
@@ -309,22 +266,15 @@ Resources:
       DBInstanceIdentifier: !Sub "${ProjectName}-${Environment}-db"
       DBInstanceClass: !Ref DBInstanceClass
       Engine: mysql
-      EngineVersion: '8.0.35'
+      EngineVersion: '8.0.39'
       AllocatedStorage: !Ref DBAllocatedStorage
       StorageType: gp2
       StorageEncrypted: true
       MultiAZ: !If [IsMultiAZ, true, false]
       DBName: impact_compendium
       MasterUsername: admin
-      ManageMasterUserPassword: true
-      MasterUserSecret:
-        Description: !Sub "Master password for ${ProjectName} ${Environment} database"
-        SecretStringTemplate: '{"username": "admin"}'
-        GenerateStringKey: password
-        PasswordLength: 32
-        ExcludeCharacters: '"@/\'
-      VPCSecurityGroups:
-        - !Ref RDSSecurityGroup
+      MasterUserPassword: !Sub "{{resolve:secretsmanager:${DatabaseMasterUserSecret}:SecretString:password}}"
+      PubliclyAccessible: true
       DBSubnetGroupName: !Ref DBSubnetGroup
       DBParameterGroupName: !Ref DBParameterGroup
       BackupRetentionPeriod: 7
@@ -410,9 +360,9 @@ Resources:
       ClientName: !Sub "${ProjectName}-${Environment}-client"
       GenerateSecret: false
       ExplicitAuthFlows:
-        - ADMIN_NO_SRP_AUTH
-        - USER_PASSWORD_AUTH
+        - ALLOW_USER_PASSWORD_AUTH
         - ALLOW_REFRESH_TOKEN_AUTH
+        - ALLOW_USER_SRP_AUTH
       TokenValidityUnits:
         AccessToken: hours
         IdToken: hours
@@ -420,23 +370,6 @@ Resources:
       AccessTokenValidity: 1
       IdTokenValidity: 1
       RefreshTokenValidity: 30
-
-  # ============================================================================
-  # LAMBDA LAYERS
-  # ============================================================================
-
-  PowertoolsLayer:
-    Type: AWS::Serverless::LayerVersion
-    Properties:
-      LayerName: !Sub "${ProjectName}-${Environment}-powertools"
-      Description: AWS Lambda Powertools for Python
-      ContentUri: layers/powertools/
-      CompatibleRuntimes:
-        - python3.11
-      CompatibleArchitectures:
-        - arm64
-    Metadata:
-      BuildMethod: python3.11
 
   # ============================================================================
   # LAMBDA FUNCTIONS
@@ -449,15 +382,9 @@ Resources:
       CodeUri: src/studies/
       Handler: app.lambda_handler
       Description: Studies management API endpoints
-      VpcConfig:
-        SecurityGroupIds:
-          - !Ref LambdaSecurityGroup
-        SubnetIds:
-          - !Ref PrivateSubnetA
-          - !Ref PrivateSubnetB
       Environment:
         Variables:
-          DB_SECRET_ARN: !Ref Database.MasterUserSecret.SecretArn
+          DB_SECRET_ARN: !Ref DatabaseMasterUserSecret
           DB_HOST: !GetAtt Database.Endpoint.Address
           DB_PORT: !GetAtt Database.Endpoint.Port
           DB_NAME: impact_compendium
@@ -483,15 +410,9 @@ Resources:
       CodeUri: src/indicators/
       Handler: app.lambda_handler
       Description: Indicators management API endpoints
-      VpcConfig:
-        SecurityGroupIds:
-          - !Ref LambdaSecurityGroup
-        SubnetIds:
-          - !Ref PrivateSubnetA
-          - !Ref PrivateSubnetB
       Environment:
         Variables:
-          DB_SECRET_ARN: !Ref Database.MasterUserSecret.SecretArn
+          DB_SECRET_ARN: !Ref DatabaseMasterUserSecret
           DB_HOST: !GetAtt Database.Endpoint.Address
           DB_PORT: !GetAtt Database.Endpoint.Port
           DB_NAME: impact_compendium
@@ -541,15 +462,9 @@ Resources:
       CodeUri: src/admin/
       Handler: app.lambda_handler
       Description: Admin console API endpoints
-      VpcConfig:
-        SecurityGroupIds:
-          - !Ref LambdaSecurityGroup
-        SubnetIds:
-          - !Ref PrivateSubnetA
-          - !Ref PrivateSubnetB
       Environment:
         Variables:
-          DB_SECRET_ARN: !Ref Database.MasterUserSecret.SecretArn
+          DB_SECRET_ARN: !Ref DatabaseMasterUserSecret
           DB_HOST: !GetAtt Database.Endpoint.Address
           DB_PORT: !GetAtt Database.Endpoint.Port
           DB_NAME: impact_compendium
@@ -575,15 +490,9 @@ Resources:
       CodeUri: src/reports/
       Handler: app.lambda_handler
       Description: Reports and export API endpoints
-      VpcConfig:
-        SecurityGroupIds:
-          - !Ref LambdaSecurityGroup
-        SubnetIds:
-          - !Ref PrivateSubnetA
-          - !Ref PrivateSubnetB
       Environment:
         Variables:
-          DB_SECRET_ARN: !Ref Database.MasterUserSecret.SecretArn
+          DB_SECRET_ARN: !Ref DatabaseMasterUserSecret
           DB_HOST: !GetAtt Database.Endpoint.Address
           DB_PORT: !GetAtt Database.Endpoint.Port
           DB_NAME: impact_compendium
@@ -623,22 +532,7 @@ Resources:
           ThrottlingBurstLimit: 200
       AccessLogSetting:
         DestinationArn: !GetAtt ApiGatewayLogGroup.Arn
-        Format: >
-          {
-            "requestId": "$context.requestId",
-            "ip": "$context.identity.sourceIp",
-            "caller": "$context.identity.caller",
-            "user": "$context.identity.user",
-            "requestTime": "$context.requestTime",
-            "httpMethod": "$context.httpMethod",
-            "resourcePath": "$context.resourcePath",
-            "status": "$context.status",
-            "protocol": "$context.protocol",
-            "responseLength": "$context.responseLength",
-            "responseTime": "$context.responseTime",
-            "error": "$context.error.message",
-            "integrationError": "$context.integration.error"
-          }
+        Format: '{"requestId":"$context.requestId","ip":"$context.identity.sourceIp","caller":"$context.identity.caller","user":"$context.identity.user","requestTime":"$context.requestTime","httpMethod":"$context.httpMethod","resourcePath":"$context.resourcePath","status":"$context.status","protocol":"$context.protocol","responseLength":"$context.responseLength","responseTime":"$context.responseTime","error":"$context.error.message","integrationError":"$context.integration.error"}'
 
   # ============================================================================
   # STORAGE & CDN
@@ -736,43 +630,6 @@ Resources:
       LogGroupName: !Sub "/aws/apigateway/${ProjectName}-${Environment}"
       RetentionInDays: 14
 
-  # CloudWatch Alarms
-  DatabaseCPUAlarm:
-    Type: AWS::CloudWatch::Alarm
-    Properties:
-      AlarmName: !Sub "${ProjectName}-${Environment}-db-cpu-high"
-      AlarmDescription: Database CPU utilization is too high
-      MetricName: CPUUtilization
-      Namespace: AWS/RDS
-      Statistic: Average
-      Period: 300
-      EvaluationPeriods: 2
-      Threshold: 80
-      ComparisonOperator: GreaterThanThreshold
-      Dimensions:
-        - Name: DBInstanceIdentifier
-          Value: !Ref Database
-      TreatMissingData: notBreaching
-
-  ApiGateway5xxAlarm:
-    Type: AWS::CloudWatch::Alarm
-    Properties:
-      AlarmName: !Sub "${ProjectName}-${Environment}-api-5xx-errors"
-      AlarmDescription: API Gateway 5xx error rate is too high
-      MetricName: 5XXError
-      Namespace: AWS/ApiGateway
-      Statistic: Sum
-      Period: 300
-      EvaluationPeriods: 2
-      Threshold: 5
-      ComparisonOperator: GreaterThanThreshold
-      Dimensions:
-        - Name: ApiName
-          Value: !Sub "${ProjectName}-${Environment}-api"
-        - Name: Stage
-          Value: !Ref Environment
-      TreatMissingData: notBreaching
-
 # ============================================================================
 # OUTPUTS
 # ============================================================================
@@ -810,7 +667,7 @@ Outputs:
 
   DatabaseSecretArn:
     Description: Database master user secret ARN
-    Value: !Ref Database.MasterUserSecret.SecretArn
+    Value: !Ref DatabaseMasterUserSecret
     Export:
       Name: !Sub "${ProjectName}-${Environment}-db-secret-arn"
 

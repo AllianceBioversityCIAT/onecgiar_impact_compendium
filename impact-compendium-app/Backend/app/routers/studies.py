@@ -1,178 +1,230 @@
 """
-Studies API router with authentication
-Handles CRUD operations for research studies
+Studies router with proper error handling and simplified responses
 """
 
 from typing import List, Dict, Any
 from fastapi import APIRouter, Depends, HTTPException, Query, status
 from sqlalchemy.orm import Session
-from sqlalchemy import and_, or_, func
+from sqlalchemy import text
 
 from app.db.connection import get_db
 from app.models.study import Study
-from app.schemas.study import (
-    Study as StudySchema,
-    StudyCreate,
-    StudyUpdate
-)
-from app.middleware.auth import get_current_user, require_researcher, get_current_user_optional
+from app.schemas.study import StudyResponse, StudyCreate, StudyUpdate
 import logging
 
 logger = logging.getLogger(__name__)
 router = APIRouter()
 
-@router.get("/", response_model=List[StudySchema])
+@router.get("/", response_model=Dict[str, Any])
 async def list_studies(
     skip: int = Query(0, ge=0, description="Number of records to skip"),
     limit: int = Query(10, ge=1, le=100, description="Number of records to return"),
-    db: Session = Depends(get_db),
-    current_user: Dict[str, Any] = Depends(get_current_user_optional)
+    db: Session = Depends(get_db)
 ):
     """
-    List studies with pagination (public endpoint with optional authentication)
+    List studies with pagination - returns simplified data structure
     """
     try:
-        studies = db.query(Study).offset(skip).limit(limit).all()
-        return studies
+        # Use raw SQL to avoid model relationship issues
+        query = text("""
+            SELECT study_id, title, year, summary, is_active, created_at, category_id
+            FROM studies 
+            WHERE is_active = 1
+            ORDER BY created_at DESC
+            LIMIT :limit OFFSET :skip
+        """)
+        
+        result = db.execute(query, {"limit": limit, "skip": skip})
+        studies = result.fetchall()
+        
+        # Get total count
+        count_query = text("SELECT COUNT(*) FROM studies WHERE is_active = 1")
+        total_result = db.execute(count_query)
+        total = total_result.scalar()
+        
+        return {
+            "success": True,
+            "data": [
+                {
+                    "study_id": row[0],
+                    "title": row[1],
+                    "year": row[2],
+                    "summary": row[3][:200] + "..." if row[3] and len(row[3]) > 200 else row[3],
+                    "is_active": bool(row[4]),
+                    "created_at": row[5].isoformat() if row[5] else None,
+                    "category_id": row[6]
+                }
+                for row in studies
+            ],
+            "pagination": {
+                "total": total,
+                "count": len(studies),
+                "skip": skip,
+                "limit": limit
+            }
+        }
         
     except Exception as e:
         logger.error(f"Error listing studies: {e}")
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail="Failed to retrieve studies"
+            detail=f"Failed to retrieve studies: {str(e)}"
         )
 
-@router.post("/", response_model=StudySchema, status_code=status.HTTP_201_CREATED)
-async def create_study(
-    study_data: StudyCreate,
-    db: Session = Depends(get_db),
-    current_user: Dict[str, Any] = Depends(require_researcher)
-):
-    """
-    Create a new study (requires researcher role)
-    """
-    try:
-        # Create study instance with user context
-        study_dict = study_data.dict()
-        study_dict['created_by'] = current_user['sub']  # Use Cognito sub as creator ID
-        
-        study = Study(**study_dict)
-        
-        db.add(study)
-        db.commit()
-        db.refresh(study)
-        
-        logger.info(f"Created study {study.id} by user {current_user['email']}")
-        return study
-        
-    except Exception as e:
-        db.rollback()
-        logger.error(f"Error creating study: {e}")
-        raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail="Failed to create study"
-        )
-
-@router.get("/{study_id}", response_model=StudySchema)
+@router.get("/{study_id}", response_model=Dict[str, Any])
 async def get_study(
     study_id: int,
-    db: Session = Depends(get_db),
-    current_user: Dict[str, Any] = Depends(get_current_user_optional)
+    db: Session = Depends(get_db)
 ):
     """
-    Get a specific study by ID (public endpoint)
+    Get a specific study by ID
     """
-    study = db.query(Study).filter(Study.id == study_id).first()
-    
-    if not study:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail="Study not found"
-        )
-    
-    return study
-
-@router.put("/{study_id}", response_model=StudySchema)
-async def update_study(
-    study_id: int,
-    study_data: StudyUpdate,
-    db: Session = Depends(get_db),
-    current_user: Dict[str, Any] = Depends(require_researcher)
-):
-    """
-    Update a study (requires researcher role)
-    """
-    study = db.query(Study).filter(Study.id == study_id).first()
-    
-    if not study:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail="Study not found"
-        )
-    
-    # Check if user can edit this study (creator or admin)
-    user_groups = current_user.get('groups', [])
-    if study.created_by != current_user['sub'] and 'Admin' not in user_groups:
-        raise HTTPException(
-            status_code=status.HTTP_403_FORBIDDEN,
-            detail="Not authorized to update this study"
-        )
-    
     try:
-        # Update fields
-        update_data = study_data.dict(exclude_unset=True)
-        for field, value in update_data.items():
-            setattr(study, field, value)
+        query = text("""
+            SELECT study_id, title, year, summary, period_start, period_end, 
+                   intervention_details, doi, pdf_filename, is_active, 
+                   created_at, category_id
+            FROM studies 
+            WHERE study_id = :study_id AND is_active = 1
+        """)
         
-        db.commit()
-        db.refresh(study)
+        result = db.execute(query, {"study_id": study_id})
+        study = result.fetchone()
         
-        logger.info(f"Updated study {study.id} by user {current_user['email']}")
-        return study
+        if not study:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail="Study not found"
+            )
         
+        return {
+            "success": True,
+            "data": {
+                "study_id": study[0],
+                "title": study[1],
+                "year": study[2],
+                "summary": study[3],
+                "period_start": study[4].isoformat() if study[4] else None,
+                "period_end": study[5].isoformat() if study[5] else None,
+                "intervention_details": study[6],
+                "doi": study[7],
+                "pdf_filename": study[8],
+                "is_active": bool(study[9]),
+                "created_at": study[10].isoformat() if study[10] else None,
+                "category_id": study[11]
+            }
+        }
+        
+    except HTTPException:
+        raise
     except Exception as e:
-        db.rollback()
-        logger.error(f"Error updating study {study_id}: {e}")
+        logger.error(f"Error getting study {study_id}: {e}")
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail="Failed to update study"
+            detail=f"Failed to retrieve study: {str(e)}"
         )
 
-@router.delete("/{study_id}", status_code=status.HTTP_204_NO_CONTENT)
-async def delete_study(
-    study_id: int,
-    db: Session = Depends(get_db),
-    current_user: Dict[str, Any] = Depends(require_researcher)
-):
+@router.get("/categories/", response_model=Dict[str, Any])
+async def list_categories(db: Session = Depends(get_db)):
     """
-    Delete a study (requires researcher role)
+    List all study categories
     """
-    study = db.query(Study).filter(Study.id == study_id).first()
-    
-    if not study:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail="Study not found"
-        )
-    
-    # Check if user can delete this study (creator or admin)
-    user_groups = current_user.get('groups', [])
-    if study.created_by != current_user['sub'] and 'Admin' not in user_groups:
-        raise HTTPException(
-            status_code=status.HTTP_403_FORBIDDEN,
-            detail="Not authorized to delete this study"
-        )
-    
     try:
-        db.delete(study)
-        db.commit()
+        query = text("""
+            SELECT study_category_id, name, is_active, created_at
+            FROM studies_categories 
+            WHERE is_active = 1
+            ORDER BY name
+        """)
         
-        logger.info(f"Deleted study {study.id} by user {current_user['email']}")
+        result = db.execute(query)
+        categories = result.fetchall()
+        
+        return {
+            "success": True,
+            "data": [
+                {
+                    "study_category_id": row[0],
+                    "name": row[1],
+                    "is_active": bool(row[2]),
+                    "created_at": row[3].isoformat() if row[3] else None
+                }
+                for row in categories
+            ],
+            "count": len(categories)
+        }
         
     except Exception as e:
-        db.rollback()
-        logger.error(f"Error deleting study {study_id}: {e}")
+        logger.error(f"Error listing categories: {e}")
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail="Failed to delete study"
+            detail=f"Failed to retrieve categories: {str(e)}"
+        )
+
+@router.get("/search/", response_model=Dict[str, Any])
+async def search_studies(
+    q: str = Query(..., description="Search query"),
+    skip: int = Query(0, ge=0, description="Number of records to skip"),
+    limit: int = Query(10, ge=1, le=100, description="Number of records to return"),
+    db: Session = Depends(get_db)
+):
+    """
+    Search studies by title or summary
+    """
+    try:
+        search_term = f"%{q}%"
+        
+        query = text("""
+            SELECT study_id, title, year, summary, is_active, created_at, category_id
+            FROM studies 
+            WHERE is_active = 1 
+            AND (title LIKE :search_term OR summary LIKE :search_term)
+            ORDER BY created_at DESC
+            LIMIT :limit OFFSET :skip
+        """)
+        
+        result = db.execute(query, {
+            "search_term": search_term,
+            "limit": limit,
+            "skip": skip
+        })
+        studies = result.fetchall()
+        
+        # Get total count for search
+        count_query = text("""
+            SELECT COUNT(*) FROM studies 
+            WHERE is_active = 1 
+            AND (title LIKE :search_term OR summary LIKE :search_term)
+        """)
+        total_result = db.execute(count_query, {"search_term": search_term})
+        total = total_result.scalar()
+        
+        return {
+            "success": True,
+            "query": q,
+            "data": [
+                {
+                    "study_id": row[0],
+                    "title": row[1],
+                    "year": row[2],
+                    "summary": row[3][:200] + "..." if row[3] and len(row[3]) > 200 else row[3],
+                    "is_active": bool(row[4]),
+                    "created_at": row[5].isoformat() if row[5] else None,
+                    "category_id": row[6]
+                }
+                for row in studies
+            ],
+            "pagination": {
+                "total": total,
+                "count": len(studies),
+                "skip": skip,
+                "limit": limit
+            }
+        }
+        
+    except Exception as e:
+        logger.error(f"Error searching studies: {e}")
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Failed to search studies: {str(e)}"
         )

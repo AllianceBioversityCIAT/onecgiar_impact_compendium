@@ -5,7 +5,8 @@ Application settings and configuration management
 import os
 from functools import lru_cache
 from typing import List
-from pydantic import BaseSettings, validator
+from pydantic_settings import BaseSettings
+from pydantic import validator
 
 class Settings(BaseSettings):
     """Application settings"""
@@ -30,7 +31,14 @@ class Settings(BaseSettings):
     db_host: str = os.getenv("DB_HOST", "localhost")
     db_port: int = int(os.getenv("DB_PORT", "3306"))
     db_name: str = os.getenv("DB_NAME", "impact_compendium")
+    db_user: str = os.getenv("DB_USER", "")
+    db_password: str = os.getenv("DB_PASSWORD", "")
+    db_echo: bool = os.getenv("DB_ECHO", "false").lower() == "true"
     db_secret_arn: str = os.getenv("DB_SECRET_ARN", "")
+    
+    # AWS settings
+    aws_region: str = os.getenv("AWS_REGION", "us-east-1")
+    aws_profile: str = os.getenv("AWS_PROFILE", "")
     
     # AWS Cognito settings
     cognito_user_pool_id: str = os.getenv("COGNITO_USER_POOL_ID", "")

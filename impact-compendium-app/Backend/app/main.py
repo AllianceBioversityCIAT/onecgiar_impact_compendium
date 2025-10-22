@@ -10,6 +10,7 @@ from fastapi import FastAPI, HTTPException, Request
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.middleware.trustedhost import TrustedHostMiddleware
 from fastapi.responses import JSONResponse
+from sqlalchemy import text
 from mangum import Mangum
 import logging
 from dotenv import load_dotenv
@@ -19,6 +20,7 @@ load_dotenv()
 
 # Import routers
 from app.routers import auth, studies, indicators, admin, reports
+from app.routers import clarisa, reference, study_relations, studies_crud
 from app.db.connection import db_connection
 from app.utils.logging import setup_logging
 
@@ -35,7 +37,7 @@ async def lifespan(app: FastAPI):
     try:
         engine = db_connection.get_engine()
         with engine.connect() as conn:
-            conn.execute("SELECT 1")
+            conn.execute(text("SELECT 1"))
         logger.info("Database connection successful")
     except Exception as e:
         logger.error(f"Database connection failed: {e}")
@@ -122,7 +124,7 @@ async def health_check():
         # Test database connection
         engine = db_connection.get_engine()
         with engine.connect() as conn:
-            conn.execute("SELECT 1")
+            conn.execute(text("SELECT 1"))
         db_status = "connected"
     except Exception as e:
         logger.error(f"Database health check failed: {e}")
@@ -150,9 +152,13 @@ async def root():
 # Include routers
 app.include_router(auth.router, prefix="/auth", tags=["Authentication"])
 app.include_router(studies.router, prefix="/studies", tags=["Studies"])
+app.include_router(studies_crud.router, prefix="/studies-crud", tags=["Studies CRUD"])
 app.include_router(indicators.router, prefix="/indicators", tags=["Indicators"])
 app.include_router(admin.router, prefix="/admin", tags=["Administration"])
 app.include_router(reports.router, prefix="/reports", tags=["Reports"])
+app.include_router(clarisa.router, prefix="/clarisa", tags=["CLARISA Reference Data"])
+app.include_router(reference.router, prefix="/reference", tags=["Reference Data"])
+app.include_router(study_relations.router, prefix="/study-relations", tags=["Study Relations"])
 
 # Lambda handler for AWS deployment
 handler = Mangum(app, lifespan="off")

@@ -1,187 +1,101 @@
 """
-Indicators API router
-Handles indicator management and CLARISA data
+Indicators router with simplified responses
 """
 
-from typing import List
-from fastapi import APIRouter, Depends, HTTPException, Query, status
+from typing import Dict, Any
+from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.orm import Session
-from sqlalchemy import or_
+from sqlalchemy import text
 
-from app.config.database import get_database
-from app.models.indicator import ClarisaIndicator
-from app.schemas.indicator import (
-    Indicator,
-    IndicatorCreate,
-    IndicatorSearchParams,
-    IndicatorSearchResponse
-)
-from app.services.auth_service import get_current_user
-from app.schemas.user import User as UserSchema
+from app.db.connection import get_db
 import logging
 
 logger = logging.getLogger(__name__)
 router = APIRouter()
 
-@router.get("/", response_model=IndicatorSearchResponse)
-async def list_indicators(
-    q: str = Query(None, description="Search query"),
-    indicator_type: str = Query(None, description="Filter by type"),
-    category: str = Query(None, description="Filter by category"),
-    active: bool = Query(True, description="Filter by active status"),
-    page: int = Query(1, ge=1, description="Page number"),
-    size: int = Query(20, ge=1, le=100, description="Page size"),
-    db: Session = Depends(get_database),
-    current_user: UserSchema = Depends(get_current_user)
-):
+@router.get("/", response_model=Dict[str, Any])
+async def list_indicators(db: Session = Depends(get_db)):
     """
-    List indicators with search and filtering
+    List all study indicators
     """
     try:
-        # Build query
-        query = db.query(ClarisaIndicator)
+        query = text("""
+            SELECT indicator_id, study_id, indicator_measure, unit_of_measure, 
+                   result_reported, is_active, created_at
+            FROM studies_indicators 
+            WHERE is_active = 1
+            ORDER BY created_at DESC
+            LIMIT 100
+        """)
         
-        # Apply filters
-        if active is not None:
-            query = query.filter(ClarisaIndicator.active == active)
+        result = db.execute(query)
+        indicators = result.fetchall()
         
-        if q:
-            search_filter = or_(
-                ClarisaIndicator.name.ilike(f"%{q}%"),
-                ClarisaIndicator.description.ilike(f"%{q}%")
-            )
-            query = query.filter(search_filter)
-        
-        if indicator_type:
-            query = query.filter(ClarisaIndicator.indicator_type == indicator_type)
-        
-        if category:
-            query = query.filter(ClarisaIndicator.category == category)
-        
-        # Order by name
-        query = query.order_by(ClarisaIndicator.name)
-        
-        # Get total count
-        total = query.count()
-        
-        # Apply pagination
-        offset = (page - 1) * size
-        indicators = query.offset(offset).limit(size).all()
-        
-        # Calculate pages
-        pages = (total + size - 1) // size
-        
-        return IndicatorSearchResponse(
-            indicators=indicators,
-            total=total,
-            page=page,
-            size=size,
-            pages=pages
-        )
+        return {
+            "success": True,
+            "data": [
+                {
+                    "indicator_id": row[0],
+                    "study_id": row[1],
+                    "indicator_measure": row[2],
+                    "unit_of_measure": row[3],
+                    "result_reported": row[4],
+                    "is_active": bool(row[5]),
+                    "created_at": row[6].isoformat() if row[6] else None
+                }
+                for row in indicators
+            ],
+            "count": len(indicators)
+        }
         
     except Exception as e:
         logger.error(f"Error listing indicators: {e}")
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail="Failed to retrieve indicators"
+            detail=f"Failed to retrieve indicators: {str(e)}"
         )
 
-@router.get("/{indicator_id}", response_model=Indicator)
-async def get_indicator(
-    indicator_id: int,
-    db: Session = Depends(get_database),
-    current_user: UserSchema = Depends(get_current_user)
+@router.get("/study/{study_id}", response_model=Dict[str, Any])
+async def get_study_indicators(
+    study_id: int,
+    db: Session = Depends(get_db)
 ):
     """
-    Get a specific indicator by ID
-    """
-    indicator = db.query(ClarisaIndicator).filter(
-        ClarisaIndicator.id == indicator_id
-    ).first()
-    
-    if not indicator:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail="Indicator not found"
-        )
-    
-    return indicator
-
-@router.post("/", response_model=Indicator, status_code=status.HTTP_201_CREATED)
-async def create_indicator(
-    indicator_data: IndicatorCreate,
-    db: Session = Depends(get_database),
-    current_user: UserSchema = Depends(get_current_user)
-):
-    """
-    Create a new indicator (admin only)
-    """
-    # Check admin permissions
-    if current_user.role != "admin":
-        raise HTTPException(
-            status_code=status.HTTP_403_FORBIDDEN,
-            detail="Only administrators can create indicators"
-        )
-    
-    try:
-        indicator = ClarisaIndicator(**indicator_data.dict())
-        db.add(indicator)
-        db.commit()
-        db.refresh(indicator)
-        
-        logger.info(f"Created indicator {indicator.id} by user {current_user.id}")
-        return indicator
-        
-    except Exception as e:
-        db.rollback()
-        logger.error(f"Error creating indicator: {e}")
-        raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail="Failed to create indicator"
-        )
-
-@router.get("/types/", response_model=List[str])
-async def get_indicator_types(
-    db: Session = Depends(get_database),
-    current_user: UserSchema = Depends(get_current_user)
-):
-    """
-    Get all unique indicator types
+    Get indicators for a specific study
     """
     try:
-        types = db.query(ClarisaIndicator.indicator_type).filter(
-            ClarisaIndicator.indicator_type.isnot(None),
-            ClarisaIndicator.active == True
-        ).distinct().all()
+        query = text("""
+            SELECT indicator_id, study_id, indicator_measure, unit_of_measure, 
+                   result_reported, is_active, created_at
+            FROM studies_indicators 
+            WHERE study_id = :study_id AND is_active = 1
+            ORDER BY created_at DESC
+        """)
         
-        return [t[0] for t in types if t[0]]
+        result = db.execute(query, {"study_id": study_id})
+        indicators = result.fetchall()
+        
+        return {
+            "success": True,
+            "study_id": study_id,
+            "data": [
+                {
+                    "indicator_id": row[0],
+                    "study_id": row[1],
+                    "indicator_measure": row[2],
+                    "unit_of_measure": row[3],
+                    "result_reported": row[4],
+                    "is_active": bool(row[5]),
+                    "created_at": row[6].isoformat() if row[6] else None
+                }
+                for row in indicators
+            ],
+            "count": len(indicators)
+        }
         
     except Exception as e:
-        logger.error(f"Error getting indicator types: {e}")
+        logger.error(f"Error getting indicators for study {study_id}: {e}")
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail="Failed to retrieve indicator types"
-        )
-
-@router.get("/categories/", response_model=List[str])
-async def get_indicator_categories(
-    db: Session = Depends(get_database),
-    current_user: UserSchema = Depends(get_current_user)
-):
-    """
-    Get all unique indicator categories
-    """
-    try:
-        categories = db.query(ClarisaIndicator.category).filter(
-            ClarisaIndicator.category.isnot(None),
-            ClarisaIndicator.active == True
-        ).distinct().all()
-        
-        return [c[0] for c in categories if c[0]]
-        
-    except Exception as e:
-        logger.error(f"Error getting indicator categories: {e}")
-        raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail="Failed to retrieve indicator categories"
+            detail=f"Failed to retrieve study indicators: {str(e)}"
         )

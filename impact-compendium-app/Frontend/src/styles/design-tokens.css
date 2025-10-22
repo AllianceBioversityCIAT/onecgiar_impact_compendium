@@ -1,0 +1,72 @@
+:root {
+  /* Brand Colors - extracted from images */
+  --ic-color-primary: #FDC82F;     /* main yellow from buttons/logo */
+  --ic-color-accent: #F07E28;      /* hover state */
+  --ic-color-gold: #D19F2A;        /* darker yellow */
+  --ic-color-amber: #B96A28;       /* deep amber */
+  --ic-color-mustard: #DC9700;     /* focus outline */
+  
+  /* Neutrals */
+  --ic-color-neutral: #777777;     /* labels, placeholders */
+  --ic-color-text: #1F2937;        /* main text */
+  --ic-color-text-light: #6B7280;  /* secondary text */
+  --ic-surface: #FFFFFF;           /* cards, inputs */
+  --ic-surface-muted: #F9FAFB;     /* page background */
+  --ic-border: #E5E7EB;            /* input borders */
+  --ic-border-light: #F3F4F6;      /* table borders */
+  
+  /* Status Colors */
+  --ic-error: #DC2626;             /* validation errors */
+  --ic-success: #059669;           /* success states */
+  --ic-warning: #D97706;           /* warnings */
+  
+  /* Category Badge Colors - from table */
+  --ic-badge-impact: #DC2626;      /* Impact Study - red */
+  --ic-badge-outcome: #059669;     /* Outcome Study - green */
+  --ic-badge-story: #2563EB;       /* Impact Outcome Story - blue */
+  --ic-badge-other: #7C3AED;       /* Other - purple */
+  
+  /* Typography */
+  --ic-font-family: Inter, system-ui, -apple-system, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+  --ic-fs-12: 12px;
+  --ic-fs-14: 14px;
+  --ic-fs-16: 16px;
+  --ic-fs-18: 18px;
+  --ic-fs-20: 20px;
+  --ic-fs-24: 24px;
+  --ic-fw-regular: 400;
+  --ic-fw-medium: 500;
+  --ic-fw-semibold: 600;
+  --ic-fw-bold: 700;
+  
+  /* Spacing */
+  --ic-space-4: 4px;
+  --ic-space-8: 8px;
+  --ic-space-12: 12px;
+  --ic-space-16: 16px;
+  --ic-space-20: 20px;
+  --ic-space-24: 24px;
+  --ic-space-32: 32px;
+  --ic-space-48: 48px;
+  
+  /* Border Radius */
+  --ic-radius-4: 4px;
+  --ic-radius-6: 6px;
+  --ic-radius-8: 8px;
+  --ic-radius-12: 12px;
+  
+  /* Shadows */
+  --ic-shadow-sm: 0 1px 2px 0 rgba(0, 0, 0, 0.05);
+  --ic-shadow-md: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
+  --ic-shadow-lg: 0 10px 15px -3px rgba(0, 0, 0, 0.1);
+  
+  /* Layout */
+  --ic-header-height: 64px;
+  --ic-sidebar-width: 260px;
+  
+  /* Z-index */
+  --ic-z-header: 100;
+  --ic-z-sidebar: 90;
+  --ic-z-modal: 200;
+  --ic-z-slideover: 180;
+}

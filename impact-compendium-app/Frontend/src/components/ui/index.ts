@@ -9,3 +9,4 @@ export { Card } from './Card';
 export { Table } from './Table';
 export { ProgressStepper } from './ProgressStepper';
 export { HeaderBar } from './HeaderBar';
+export { FormFooter } from './FooterBar';

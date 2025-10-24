@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
-import { AppLayout } from '../../layouts/AppLayout';
+import { FormLayout } from '../../layouts/FormLayout';
 import { ProgressStepper } from '../../components/ui/ProgressStepper';
 import { Select } from '../../components/ui/Select';
 import { MultiSelect } from '../../components/ui/MultiSelect';
@@ -263,11 +263,16 @@ export const CreateStudyStep2: React.FC = () => {
   const pageTitle = isEditMode ? "Edit study form" : "Create new study form";
 
   return (
-    <AppLayout title={pageTitle} showAddButton={false}>
+    <FormLayout 
+      title={pageTitle}
+      onBack={handleGoBack}
+      onNext={handleNext}
+      onSaveDraft={() => console.log('Save draft')}
+      steps={steps}
+      currentStep={2}
+    >
       <div className="space-y-6">
         <h1 className="text-2xl font-bold text-[var(--ic-color-text)]">{pageTitle}</h1>
-
-        <ProgressStepper steps={steps} currentStep={2} />
 
         {loading || mappingData ? (
           <Card>
@@ -375,25 +380,9 @@ export const CreateStudyStep2: React.FC = () => {
               </div>
             </div>
           </div>
-
-          {/* Navigation Buttons */}
-          <div className="flex justify-between pt-8 border-t border-[var(--ic-border-light)] mt-8">
-            <Button variant="outline" onClick={handleGoBack} className="flex items-center space-x-2">
-              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
-              </svg>
-              <span>Go Back</span>
-            </Button>
-            <Button onClick={handleNext} className="flex items-center space-x-2">
-              <span>Next</span>
-              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
-              </svg>
-            </Button>
-          </div>
         </Card>
         )}
       </div>
-    </AppLayout>
+    </FormLayout>
   );
 };

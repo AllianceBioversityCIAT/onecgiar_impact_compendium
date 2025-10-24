@@ -1,4 +1,5 @@
-import React from 'react';
+import React, { useState, useEffect, useRef } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { Button } from './Button';
 import { authService } from '../../services/auth';
 
@@ -13,38 +14,116 @@ export const HeaderBar: React.FC<HeaderBarProps> = ({
   onAddStudy, 
   showAddButton = true 
 }) => {
+  const navigate = useNavigate();
+  const [showUserMenu, setShowUserMenu] = useState(false);
+  const menuRef = useRef<HTMLDivElement>(null);
+  
+  // Close menu when clicking outside
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      if (menuRef.current && !menuRef.current.contains(event.target as Node)) {
+        setShowUserMenu(false);
+      }
+    };
+
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, []);
+  
   const handleLogout = () => {
     authService.logout();
     window.location.href = '/login';
   };
 
+  const handleLogoClick = () => {
+    navigate('/studies');
+  };
+
+  // Get user initials from logged user's email
+  const getUserInitials = () => {
+    const user = authService.getCurrentUser();
+    
+    if (user && user.email) {
+      const email = user.email;
+      const namePart = email.split('@')[0]; // Get part before @
+      const parts = namePart.split('.'); // Split by dots (e.g., john.doe)
+      
+      if (parts.length >= 2) {
+        // If email is like john.doe@example.com, use J.D
+        return (parts[0][0] + parts[1][0]).toUpperCase();
+      } else {
+        // If email is like johndoe@example.com, use first two letters
+        return namePart.substring(0, 2).toUpperCase();
+      }
+    }
+    return "U"; // Default fallback
+  };
+
   return (
-    <header className="fixed top-0 left-0 right-0 z-50 bg-white border-b border-[var(--ic-border-light)] px-6 py-4 flex items-center justify-between">
+    <header className="fixed top-0 left-0 right-0 z-50 bg-white border-b border-[var(--ic-border-light)] shadow-md px-6 py-4 flex items-center justify-between">
       <div className="flex items-center space-x-4">
         <div className="flex items-center space-x-3">
-          <svg className="w-6 h-6" viewBox="0 0 531 43" fill="none">
-            <path d="M25.3019 0.809967L50.3018 15.8198V25.7963L25.3019 40.81L0.301758 25.7963V15.8199L25.3019 0.809967Z" fill="#FDC82F"/>
-            <path fillRule="evenodd" clipRule="evenodd" d="M0.301758 15.8198L25.3018 0.809967L50.3018 15.8198V25.7963L25.3018 40.81L0.301758 25.7963V15.8198ZM25.3018 34.441L44.9985 22.6122V19.0051L44.9975 19.0045L25.3018 30.8297L5.60602 19.0045L5.60506 19.0051V22.6122L25.3018 34.441ZM25.3018 25.3146L40.4036 16.2476L36.7247 14.0398L25.3018 20.8981L13.8789 14.0398L10.2 16.2476L25.3018 25.3146ZM25.3018 15.383L32.1308 11.2829L25.3018 7.18464L18.4728 11.2829L25.3018 15.383Z" fill="#000000"/>
-          </svg>
-          <h1 className="text-lg font-semibold text-[var(--ic-color-text)]">
-            Impact Compendium Database
-          </h1>
+          <img 
+            src="/logo.svg" 
+            alt="Impact Compendium Database" 
+            className="h-6 cursor-pointer hover:opacity-80 transition-opacity"
+            onClick={handleLogoClick}
+          />
         </div>
       </div>
 
       <div className="flex items-center space-x-4">
-        {showAddButton && (
-          <Button onClick={onAddStudy} className="flex items-center space-x-2">
-            <span>Add study</span>
-            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
+        {showAddButton ? (
+          <>
+            <Button onClick={onAddStudy} className="flex items-center space-x-2">
+              <span>Add study</span>
+              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
+              </svg>
+            </Button>
+            
+            {/* User Menu */}
+            <div className="relative" ref={menuRef}>
+              <button
+                onClick={() => setShowUserMenu(!showUserMenu)}
+                className="w-10 h-10 bg-[var(--ic-color-primary)] text-black rounded-full flex items-center justify-center font-semibold hover:opacity-90 transition-opacity"
+              >
+                {getUserInitials()}
+              </button>
+              
+              {showUserMenu && (
+                <div className="absolute right-0 mt-2 w-48 bg-white rounded-lg shadow-lg border border-gray-200 py-2 z-50">
+                  <div className="px-4 py-2 text-sm font-medium text-gray-900 border-b border-gray-100">
+                    My Account
+                  </div>
+                  <button className="w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-50">
+                    Profile
+                  </button>
+                  <button className="w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-50">
+                    Settings
+                  </button>
+                  <hr className="my-1" />
+                  <button 
+                    onClick={handleLogout}
+                    className="w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-50"
+                  >
+                    Log out
+                  </button>
+                </div>
+              )}
+            </div>
+          </>
+        ) : (
+          /* X button for form mode */
+          <button
+            onClick={() => navigate('/studies')}
+            className="w-10 h-10 bg-gray-100 hover:bg-gray-200 rounded-full flex items-center justify-center transition-colors"
+          >
+            <svg className="w-5 h-5 text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
             </svg>
-          </Button>
+          </button>
         )}
-        
-        <Button variant="secondary" onClick={handleLogout} className="text-sm">
-          Log out
-        </Button>
       </div>
     </header>
   );

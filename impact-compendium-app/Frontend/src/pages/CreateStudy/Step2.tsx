@@ -274,7 +274,8 @@ export const CreateStudyStep2: React.FC = () => {
             <div className="flex items-center justify-center py-12">
               <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
               <span className="ml-3 text-gray-600">
-                {mappingData ? 'Loading study data...' : 'Loading saved data...'}
+                {mappingData ? 'Loading study data...' : 
+                 isEditMode ? 'Loading form options...' : 'Loading form...'}
               </span>
             </div>
           </Card>

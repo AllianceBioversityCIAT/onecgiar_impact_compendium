@@ -45,6 +45,26 @@ function App() {
             <CreateStudyStep3 />
           </ProtectedRoute>
         } />
+        <Route path="/studies/edit/:id/step-1" element={
+          <ProtectedRoute>
+            <CreateStudyStep1 />
+          </ProtectedRoute>
+        } />
+        <Route path="/studies/edit/:id/step-2" element={
+          <ProtectedRoute>
+            <CreateStudyStep2 />
+          </ProtectedRoute>
+        } />
+        <Route path="/studies/edit/:id/step-3" element={
+          <ProtectedRoute>
+            <CreateStudyStep3 />
+          </ProtectedRoute>
+        } />
+        <Route path="/studies/edit/:id" element={
+          <ProtectedRoute>
+            <CreateStudyStep1 />
+          </ProtectedRoute>
+        } />
       </Routes>
     </Router>
   );

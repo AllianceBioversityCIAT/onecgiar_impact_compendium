@@ -346,7 +346,7 @@ async def get_study_detail(
     
     def db_query(session):
         query = text("""
-            SELECT study_id, title, year, summary, is_active, created_at, category_id
+            SELECT study_id, title, year, summary, is_active, created_at, category_id, doi, study_intervention_types_intervention_type_id
             FROM studies 
             WHERE study_id = :study_id AND is_active = 1
         """)
@@ -356,6 +356,85 @@ async def get_study_detail(
         
         if not study:
             return None
+        
+        # Get countries from studies_countries table
+        country_query = text("""
+            SELECT sc.country_id, cc.country_name 
+            FROM studies_countries sc
+            JOIN clarissa_countries cc ON sc.country_id = cc.country_id
+            WHERE sc.study_id = :study_id AND cc.is_active = 1
+        """)
+        country_result = session.execute(country_query, {"study_id": numeric_id})
+        countries = [{"id": row[0], "name": row[1]} for row in country_result.fetchall()]
+        
+        # Get regions from studies_regions table
+        regions_query = text("""
+            SELECT sr.region_id, cr.region_name 
+            FROM studies_regions sr
+            JOIN clarissa_CGIAR_regions cr ON sr.region_id = cr.region_id
+            WHERE sr.study_id = :study_id AND cr.is_active = 1
+        """)
+        regions_result = session.execute(regions_query, {"study_id": numeric_id})
+        regions = [{"id": row[0], "name": row[1]} for row in regions_result.fetchall()]
+        
+        # Get impact areas from studies_impact_areas table
+        impact_areas_query = text("""
+            SELECT sia.clarisa_impacts_areas_impact_area_id, cia.name 
+            FROM studies_impact_areas sia
+            JOIN clarisa_impacts_areas cia ON sia.clarisa_impacts_areas_impact_area_id = cia.impact_area_id
+            WHERE sia.studies_study_id = :study_id AND cia.is_active = 1
+        """)
+        impact_areas_result = session.execute(impact_areas_query, {"study_id": numeric_id})
+        impact_areas = [{"id": row[0], "name": row[1]} for row in impact_areas_result.fetchall()]
+        
+        # Get initiatives from studies_contributors table
+        initiatives_query = text("""
+            SELECT sc.studies_initiatives_id, ci.name, ci.code, ci.acronym
+            FROM studies_contributors sc
+            JOIN clarisa_initiatives ci ON sc.studies_initiatives_id = ci.initiative_id
+            WHERE sc.study_id = :study_id AND sc.studies_initiatives_id IS NOT NULL AND ci.is_active = 1
+        """)
+        initiatives_result = session.execute(initiatives_query, {"study_id": numeric_id})
+        initiatives = [{"id": row[0], "name": row[1], "code": row[2], "acronym": row[3]} for row in initiatives_result.fetchall()]
+        
+        # Get centers from studies_contributors table
+        centers_query = text("""
+            SELECT sc.clarisa_centers_center_id, cc.name, cc.code, cc.acronym
+            FROM studies_contributors sc
+            JOIN clarisa_centers cc ON sc.clarisa_centers_center_id = cc.center_id
+            WHERE sc.study_id = :study_id AND sc.clarisa_centers_center_id IS NOT NULL AND cc.is_active = 1
+        """)
+        centers_result = session.execute(centers_query, {"study_id": numeric_id})
+        centers = [{"id": row[0], "name": row[1], "code": row[2], "acronym": row[3]} for row in centers_result.fetchall()]
+        
+        # Get keywords from studies_keywords table
+        keywords_query = text("""
+            SELECT sk.keyword_id, k.keyword
+            FROM studies_keywords sk
+            JOIN keywords k ON sk.keyword_id = k.keyword_id
+            WHERE sk.study_id = :study_id AND k.is_active = 1
+        """)
+        keywords_result = session.execute(keywords_query, {"study_id": numeric_id})
+        keywords = [{"id": row[0], "name": row[1]} for row in keywords_result.fetchall()]
+        
+        # Get crop types from studies_crop_types table
+        crop_types_query = text("""
+            SELECT sct.crop_type_id, ct.name
+            FROM studies_crop_types sct
+            JOIN crop_types ct ON sct.crop_type_id = ct.crop_type_id
+            WHERE sct.study_id = :study_id AND sct.is_active = 1
+        """)
+        crop_types_result = session.execute(crop_types_query, {"study_id": numeric_id})
+        crop_types = [{"id": row[0], "name": row[1]} for row in crop_types_result.fetchall()]
+        
+        # Get indicators from studies_indicators table
+        indicators_query = text("""
+            SELECT indicator_measure, unit_measure, result_reported
+            FROM studies_indicators
+            WHERE study_id = :study_id AND is_active = 1
+        """)
+        indicators_result = session.execute(indicators_query, {"study_id": numeric_id})
+        indicators = [{"indicator_measure": row[0], "unit_measure": row[1], "result_reported": row[2]} for row in indicators_result.fetchall()]
             
         return {
             "study_id": study[0],
@@ -364,38 +443,18 @@ async def get_study_detail(
             "year": study[2],
             "period": {"start": study[2] - 1 if study[2] else None, "end": study[2]} if study[2] else None,
             "category": {"id": study[6] or 1, "name": "Research"},
-            "doi": None,
+            "doi": study[7],
+            "intervention": {"type": study[8], "detailsShort": "Study intervention details"},
             "intervention_details": "Detailed intervention information for this study",
             "pdf_filename": None,
-            "indicators": [
-                {
-                    "id": 1,
-                    "indicator_name": "Crop Yield Improvement",
-                    "indicator_value": "135%",
-                    "measure": "Crop Yield Improvement",
-                    "unit": "%",
-                    "baseline": "100%",
-                    "target": "120%",
-                    "result_reported": "135%"
-                },
-                {
-                    "id": 2,
-                    "indicator_name": "Farmer Adoption Rate",
-                    "indicator_value": "58%",
-                    "measure": "Farmer Adoption Rate", 
-                    "unit": "%",
-                    "baseline": "0%",
-                    "target": "50%",
-                    "result_reported": "58%"
-                }
-            ],
-            "crops": [{"id": 1, "name": "Maize"}, {"id": 2, "name": "Wheat"}],
-            "impact_areas": [{"id": 1, "name": "Food Security"}, {"id": 2, "name": "Climate Adaptation"}],
-            "initiatives": [{"id": 1, "name": "Accelerated Breeding"}, {"id": 2, "name": "Climate Resilience"}],
-            "centers": [{"id": 1, "name": "CIMMYT"}, {"id": 2, "name": "ICRISAT"}],
-            "regions": [{"id": 1, "name": "East Africa"}, {"id": 2, "name": "South Asia"}],
-            "countries": [{"id": 1, "name": "Kenya"}, {"id": 2, "name": "Ethiopia"}, {"id": 3, "name": "India"}],
-            "keywords": ["climate", "agriculture", "resilience"],
+            "countries": countries,
+            "crops": crop_types,
+            "impact_areas": impact_areas,
+            "initiatives": initiatives,
+            "centers": centers,
+            "regions": regions,
+            "keywords": keywords,
+            "indicators": indicators,
             "narratives": [
                 {"section_key": "background", "content": "This study examines the impact of climate-smart agricultural practices..."},
                 {"section_key": "methodology", "content": "We employed a randomized controlled trial design..."},
@@ -461,6 +520,80 @@ async def get_study_detail(
             "created_at": "2024-01-01T00:00:00",
             "last_updated_date": "2024-01-01T00:00:00"
         }
+    }
+
+@router.post("/", response_model=Dict[str, Any])
+async def create_study(
+    study_data: Dict[str, Any],
+    db: Optional[Session] = Depends(get_db)
+):
+    """Create a new study with all related data."""
+    
+    def db_create(session):
+        # Create the main study record
+        study_query = text("""
+            INSERT INTO studies (
+                title, summary, year, period_start, period_end, 
+                category_id, doi, study_intervention_types_intervention_type_id,
+                intervention_details, is_active, created_at
+            ) VALUES (
+                :title, :summary, :year, :period_start, :period_end,
+                :category_id, :doi, :intervention_type_id,
+                :intervention_details, 1, NOW()
+            )
+        """)
+        
+        result = session.execute(study_query, {
+            "title": study_data.get("title"),
+            "summary": study_data.get("summary"),
+            "year": study_data.get("year"),
+            "period_start": study_data.get("period_start"),
+            "period_end": study_data.get("period_end"),
+            "category_id": study_data.get("category_id"),
+            "doi": study_data.get("doi"),
+            "intervention_type_id": study_data.get("intervention_type_id"),
+            "intervention_details": study_data.get("intervention_details")
+        })
+        
+        # Get the created study ID
+        study_id = result.lastrowid
+        
+        # Create indicators
+        if study_data.get("indicators"):
+            for indicator in study_data["indicators"]:
+                indicator_query = text("""
+                    INSERT INTO studies_indicators (study_id, indicator_name, indicator_value)
+                    VALUES (:study_id, :indicator_name, :indicator_value)
+                """)
+                session.execute(indicator_query, {
+                    "study_id": study_id,
+                    "indicator_name": indicator["indicator_name"],
+                    "indicator_value": indicator["indicator_value"]
+                })
+        
+        session.commit()
+        return {"study_id": study_id, "message": "Study created successfully"}
+    
+    try:
+        if db:
+            result = db_create(db)
+            return {
+                "success": True,
+                **result
+            }
+    except Exception as e:
+        logger.error(f"Error creating study: {e}")
+        return {
+            "success": False,
+            "error": str(e)
+        }
+    
+    # Mock response for testing
+    return {
+        "success": True,
+        "study_id": 999,
+        "message": "Study created successfully (mock)",
+        "note": "Database unavailable - using mock response"
     }
 
 @router.get("/summary", response_model=Dict[str, Any])
@@ -566,6 +699,16 @@ async def get_study(
         if not study:
             return None
         
+        # Get regions for this study
+        regions_query = text("""
+            SELECT sr.region_id, cr.region_name 
+            FROM studies_regions sr
+            JOIN clarissa_CGIAR_regions cr ON sr.region_id = cr.region_id
+            WHERE sr.study_id = :study_id AND cr.is_active = 1
+        """)
+        regions_result = session.execute(regions_query, {"study_id": study_id})
+        regions = [{"id": row[0], "name": row[1]} for row in regions_result.fetchall()]
+        
         return {
             "study_id": study[0],
             "title": study[1],
@@ -578,7 +721,8 @@ async def get_study(
             "pdf_filename": study[8],
             "is_active": bool(study[9]),
             "created_at": study[10].isoformat() if study[10] else None,
-            "category_id": study[11]
+            "category_id": study[11],
+            "regions": regions
         }
     
     # Try database first

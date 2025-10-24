@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import { useNavigate, useParams } from 'react-router-dom';
 import { AppLayout } from '../../layouts/AppLayout';
 import { ProgressStepper } from '../../components/ui/ProgressStepper';
 import { Input } from '../../components/ui/Input';
@@ -20,10 +21,56 @@ interface Indicator {
 }
 
 export const CreateStudyStep3: React.FC = () => {
-  const [indicators, setIndicators] = useState<Indicator[]>([
-    { id: '1', indicatorMeasured: '', unitOfMeasure: '', resultReported: '' }
-  ]);
+  const navigate = useNavigate();
+  const { id } = useParams();
+  const isEditMode = !!id;
+  
+  // Load saved data immediately and synchronously
+  const getSavedData = () => {
+    const savedData = localStorage.getItem('studyFormStep3');
+    if (savedData) {
+      const parsed = JSON.parse(savedData);
+      return parsed.indicators || [{ id: '1', indicatorMeasured: '', unitOfMeasure: '', resultReported: '' }];
+    }
+    return [{ id: '1', indicatorMeasured: '', unitOfMeasure: '', resultReported: '' }];
+  };
+
+  const [indicators, setIndicators] = useState<Indicator[]>(getSavedData);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [loading, setLoading] = useState(true);
+
+  // Load study data for edit mode
+  React.useEffect(() => {
+    if (isEditMode && id) {
+      const loadStudyData = async () => {
+        try {
+          const numericId = id.startsWith('ICD-') ? id.replace('ICD-', '') : id;
+          const response = await fetch(`${import.meta.env.VITE_API_BASE_URL}/studies/${numericId}`);
+          
+          if (response.ok) {
+            const apiResponse = await response.json();
+            const studyData = apiResponse.data || apiResponse;
+            
+            if (studyData.indicators && studyData.indicators.length > 0) {
+              const mappedIndicators = studyData.indicators.map((indicator: any, index: number) => ({
+                id: (index + 1).toString(),
+                indicatorMeasured: indicator.indicator_measure || '',
+                unitOfMeasure: indicator.unit_measure || '',
+                resultReported: indicator.result_reported || ''
+              }));
+              setIndicators(mappedIndicators);
+            }
+          }
+        } catch (error) {
+          console.error('Step3: Failed to load study data:', error);
+        }
+      };
+      loadStudyData();
+    }
+    
+    const timer = setTimeout(() => setLoading(false), 100);
+    return () => clearTimeout(timer);
+  }, [isEditMode, id]);
 
   const handleIndicatorChange = (id: string, field: keyof Indicator, value: string) => {
     setIndicators(prev => prev.map(indicator => 
@@ -112,21 +159,35 @@ export const CreateStudyStep3: React.FC = () => {
   };
 
   const handleGoBack = () => {
-    console.log('Navigate back to Step 2');
+    // Save current form data before going back
+    localStorage.setItem('studyFormStep3', JSON.stringify({ indicators }));
+    const backPath = isEditMode ? `/studies/edit/${id}/step-2` : '/studies/new/step-2';
+    navigate(backPath);
   };
 
-  return (
-    <AppLayout title="Create new study form" showAddButton={false}>
-      <div className="space-y-6">
-        <div className="flex items-center space-x-4">
-          <Button variant="ghost" onClick={handleGoBack} className="flex items-center space-x-2">
-            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
-            </svg>
-            <span>Go Back</span>
-          </Button>
-          <h1 className="text-2xl font-bold text-[var(--ic-color-text)]">Create new study form</h1>
+  const pageTitle = isEditMode ? "Edit study form" : "Create new study form";
+
+  if (loading) {
+    return (
+      <AppLayout title={pageTitle} showAddButton={false}>
+        <div className="space-y-6">
+          <h1 className="text-2xl font-bold text-[var(--ic-color-text)]">{pageTitle}</h1>
+          <ProgressStepper steps={steps} currentStep={3} />
+          <Card>
+            <div className="flex items-center justify-center py-12">
+              <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
+              <span className="ml-3 text-gray-600">Loading saved data...</span>
+            </div>
+          </Card>
         </div>
+      </AppLayout>
+    );
+  }
+
+  return (
+    <AppLayout title={pageTitle} showAddButton={false}>
+      <div className="space-y-6">
+        <h1 className="text-2xl font-bold text-[var(--ic-color-text)]">{pageTitle}</h1>
 
         <ProgressStepper steps={steps} currentStep={3} />
 
@@ -202,8 +263,14 @@ export const CreateStudyStep3: React.FC = () => {
             </Card>
           ))}
 
-          {/* Finish Button */}
-          <div className="flex justify-end pt-6">
+          {/* Navigation Buttons */}
+          <div className="flex justify-between pt-6">
+            <Button variant="outline" onClick={handleGoBack} className="flex items-center space-x-2">
+              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
+              </svg>
+              <span>Go Back</span>
+            </Button>
             <Button 
               onClick={handleFinish} 
               disabled={isSubmitting}

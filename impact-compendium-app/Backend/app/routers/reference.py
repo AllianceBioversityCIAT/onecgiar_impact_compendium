@@ -1,300 +1,129 @@
-"""
-Reference data router for keywords, intervention types, crop types, and narratives
-"""
+"""Reference data router for form dropdowns."""
 
-from typing import Dict, Any
-from fastapi import APIRouter, Depends, HTTPException, status, Query
+from typing import Dict, Any, List
+from fastapi import APIRouter, Depends
 from sqlalchemy.orm import Session
 from sqlalchemy import text
-from pydantic import BaseModel
-
 from app.db.connection import get_db
 import logging
 
 logger = logging.getLogger(__name__)
 router = APIRouter()
 
-# Pydantic models
-class KeywordCreate(BaseModel):
-    keyword: str
-
-class InterventionTypeCreate(BaseModel):
-    name: str
-
-class CropTypeCreate(BaseModel):
-    name: str
-
-class NarrativeCreate(BaseModel):
-    section_key: str
-    content: str
-
-# Keywords endpoints
-@router.get("/keywords/", response_model=Dict[str, Any])
-async def list_keywords(
-    skip: int = Query(0, ge=0),
-    limit: int = Query(100, ge=1, le=1000),
-    db: Session = Depends(get_db)
-):
-    """List all keywords"""
+def get_reference_data(db: Session, table: str, id_field: str = "id", name_field: str = "name"):
+    """Generic function to get reference data."""
     try:
-        query = text("""
-            SELECT keyword_id, keyword, is_active, created_at
-            FROM keywords 
-            WHERE is_active = 1
-            ORDER BY keyword
-            LIMIT :limit OFFSET :skip
-        """)
-        
-        result = db.execute(query, {"limit": limit, "skip": skip})
-        keywords = result.fetchall()
-        
-        return {
-            "success": True,
-            "data": [
-                {
-                    "keyword_id": row[0],
-                    "keyword": row[1],
-                    "is_active": bool(row[2]),
-                    "created_at": row[3].isoformat() if row[3] else None
-                }
-                for row in keywords
-            ],
-            "count": len(keywords)
-        }
-    except Exception as e:
-        logger.error(f"Error listing keywords: {e}")
-        raise HTTPException(status_code=500, detail=str(e))
-
-@router.post("/keywords/", response_model=Dict[str, Any])
-async def create_keyword(keyword_data: KeywordCreate, db: Session = Depends(get_db)):
-    """Create a new keyword"""
-    try:
-        query = text("""
-            INSERT INTO keywords (keyword, is_active, created_at)
-            VALUES (:keyword, 1, NOW())
-        """)
-        
-        db.execute(query, {"keyword": keyword_data.keyword})
-        db.commit()
-        
-        return {
-            "success": True,
-            "message": "Keyword created successfully",
-            "data": {"keyword": keyword_data.keyword}
-        }
-    except Exception as e:
-        logger.error(f"Error creating keyword: {e}")
-        db.rollback()
-        raise HTTPException(status_code=500, detail=str(e))
-
-# Intervention Types endpoints
-@router.get("/intervention-types/", response_model=Dict[str, Any])
-async def list_intervention_types(db: Session = Depends(get_db)):
-    """List all intervention types"""
-    try:
-        query = text("""
-            SELECT intervention_type_id, name, is_active, created_at
-            FROM intervention_types 
-            WHERE is_active = 1
-            ORDER BY name
-        """)
-        
+        query = text(f"SELECT {id_field}, {name_field} FROM {table} ORDER BY {name_field}")
         result = db.execute(query)
-        types = result.fetchall()
-        
-        return {
-            "success": True,
-            "data": [
-                {
-                    "intervention_type_id": row[0],
-                    "name": row[1],
-                    "is_active": bool(row[2]),
-                    "created_at": row[3].isoformat() if row[3] else None
-                }
-                for row in types
-            ],
-            "count": len(types)
-        }
+        return [{"id": row[0], "name": row[1]} for row in result.fetchall()]
     except Exception as e:
-        logger.error(f"Error listing intervention types: {e}")
-        raise HTTPException(status_code=500, detail=str(e))
+        logger.error(f"Error getting {table} data: {e}")
+        return []
 
-@router.post("/intervention-types/", response_model=Dict[str, Any])
-async def create_intervention_type(type_data: InterventionTypeCreate, db: Session = Depends(get_db)):
-    """Create a new intervention type"""
-    try:
-        query = text("""
-            INSERT INTO intervention_types (name, is_active, created_at)
-            VALUES (:name, 1, NOW())
-        """)
-        
-        db.execute(query, {"name": type_data.name})
-        db.commit()
-        
-        return {
-            "success": True,
-            "message": "Intervention type created successfully",
-            "data": {"name": type_data.name}
-        }
-    except Exception as e:
-        logger.error(f"Error creating intervention type: {e}")
-        db.rollback()
-        raise HTTPException(status_code=500, detail=str(e))
+@router.get("/categories", response_model=List[Dict[str, Any]])
+async def get_categories(db: Session = Depends(get_db)):
+    """Get study categories."""
+    data = get_reference_data(db, "study_categories")
+    if not data:
+        return [
+            {"id": 1, "name": "Impact Study"},
+            {"id": 2, "name": "Research Analysis"},
+            {"id": 3, "name": "Outcome Assessment"}
+        ]
+    return data
 
-# Crop Types endpoints
-@router.get("/crop-types/", response_model=Dict[str, Any])
-async def list_crop_types(db: Session = Depends(get_db)):
-    """List all crop types"""
-    try:
-        query = text("""
-            SELECT crop_type_id, name, is_active, created_at
-            FROM crop_types 
-            WHERE is_active = 1
-            ORDER BY name
-        """)
-        
-        result = db.execute(query)
-        crops = result.fetchall()
-        
-        return {
-            "success": True,
-            "data": [
-                {
-                    "crop_type_id": row[0],
-                    "name": row[1],
-                    "is_active": bool(row[2]),
-                    "created_at": row[3].isoformat() if row[3] else None
-                }
-                for row in crops
-            ],
-            "count": len(crops)
-        }
-    except Exception as e:
-        logger.error(f"Error listing crop types: {e}")
-        raise HTTPException(status_code=500, detail=str(e))
+@router.get("/intervention-types", response_model=List[Dict[str, Any]])
+async def get_intervention_types(db: Session = Depends(get_db)):
+    """Get intervention types."""
+    data = get_reference_data(db, "intervention_types", "intervention_type_id", "name")
+    if not data:
+        return [
+            {"id": 1, "name": "Technology Transfer"},
+            {"id": 2, "name": "Capacity Building"},
+            {"id": 3, "name": "Policy Intervention"}
+        ]
+    return data
 
-@router.post("/crop-types/", response_model=Dict[str, Any])
-async def create_crop_type(crop_data: CropTypeCreate, db: Session = Depends(get_db)):
-    """Create a new crop type"""
-    try:
-        query = text("""
-            INSERT INTO crop_types (name, is_active, created_at)
-            VALUES (:name, 1, NOW())
-        """)
-        
-        db.execute(query, {"name": crop_data.name})
-        db.commit()
-        
-        return {
-            "success": True,
-            "message": "Crop type created successfully",
-            "data": {"name": crop_data.name}
-        }
-    except Exception as e:
-        logger.error(f"Error creating crop type: {e}")
-        db.rollback()
-        raise HTTPException(status_code=500, detail=str(e))
+@router.get("/crop-types", response_model=List[Dict[str, Any]])
+async def get_crop_types(db: Session = Depends(get_db)):
+    """Get crop types."""
+    data = get_reference_data(db, "crop_types", "crop_type_id", "name")
+    if not data:
+        return [
+            {"id": 1, "name": "Maize"},
+            {"id": 2, "name": "Rice"},
+            {"id": 3, "name": "Wheat"}
+        ]
+    return data
 
-# Narratives endpoints
-@router.get("/narratives/", response_model=Dict[str, Any])
-async def list_narratives(db: Session = Depends(get_db)):
-    """List all narratives"""
-    try:
-        query = text("""
-            SELECT id, section_key, content, last_updated
-            FROM narratives 
-            ORDER BY section_key
-        """)
-        
-        result = db.execute(query)
-        narratives = result.fetchall()
-        
-        return {
-            "success": True,
-            "data": [
-                {
-                    "id": row[0],
-                    "section_key": row[1],
-                    "content": row[2],
-                    "last_updated": row[3].isoformat() if row[3] else None
-                }
-                for row in narratives
-            ],
-            "count": len(narratives)
-        }
-    except Exception as e:
-        logger.error(f"Error listing narratives: {e}")
-        raise HTTPException(status_code=500, detail=str(e))
+@router.get("/keywords", response_model=List[Dict[str, Any]])
+async def get_keywords(db: Session = Depends(get_db)):
+    """Get keywords."""
+    data = get_reference_data(db, "keywords", "keyword_id", "keyword")
+    if not data:
+        return [
+            {"id": 1, "name": "Agricultural technology"},
+            {"id": 2, "name": "Adoption"},
+            {"id": 3, "name": "Climate resilience"}
+        ]
+    return data
 
-@router.get("/narratives/{section_key}", response_model=Dict[str, Any])
-async def get_narrative(section_key: str, db: Session = Depends(get_db)):
-    """Get narrative by section key"""
-    try:
-        query = text("""
-            SELECT id, section_key, content, last_updated
-            FROM narratives 
-            WHERE section_key = :section_key
-        """)
-        
-        result = db.execute(query, {"section_key": section_key})
-        narrative = result.fetchone()
-        
-        if not narrative:
-            raise HTTPException(status_code=404, detail="Narrative not found")
-        
-        return {
-            "success": True,
-            "data": {
-                "id": narrative[0],
-                "section_key": narrative[1],
-                "content": narrative[2],
-                "last_updated": narrative[3].isoformat() if narrative[3] else None
-            }
-        }
-    except HTTPException:
-        raise
-    except Exception as e:
-        logger.error(f"Error getting narrative: {e}")
-        raise HTTPException(status_code=500, detail=str(e))
+@router.get("/impact-areas", response_model=List[Dict[str, Any]])
+async def get_impact_areas(db: Session = Depends(get_db)):
+    """Get impact areas."""
+    data = get_reference_data(db, "clarisa_impacts_areas")
+    if not data:
+        return [
+            {"id": 1, "name": "Food Security"},
+            {"id": 2, "name": "Climate Adaptation"},
+            {"id": 3, "name": "Nutrition Security"}
+        ]
+    return data
 
-@router.put("/narratives/{section_key}", response_model=Dict[str, Any])
-async def update_narrative(section_key: str, narrative_data: NarrativeCreate, db: Session = Depends(get_db)):
-    """Update or create narrative"""
-    try:
-        # Check if exists
-        check_query = text("SELECT id FROM narratives WHERE section_key = :section_key")
-        result = db.execute(check_query, {"section_key": section_key})
-        exists = result.fetchone()
-        
-        if exists:
-            # Update
-            query = text("""
-                UPDATE narratives 
-                SET content = :content, last_updated = NOW()
-                WHERE section_key = :section_key
-            """)
-        else:
-            # Insert
-            query = text("""
-                INSERT INTO narratives (section_key, content, last_updated)
-                VALUES (:section_key, :content, NOW())
-            """)
-        
-        db.execute(query, {
-            "section_key": section_key,
-            "content": narrative_data.content
-        })
-        db.commit()
-        
-        return {
-            "success": True,
-            "message": "Narrative updated successfully",
-            "data": {
-                "section_key": section_key,
-                "content": narrative_data.content
-            }
-        }
-    except Exception as e:
-        logger.error(f"Error updating narrative: {e}")
-        db.rollback()
-        raise HTTPException(status_code=500, detail=str(e))
+@router.get("/initiatives", response_model=List[Dict[str, Any]])
+async def get_initiatives(db: Session = Depends(get_db)):
+    """Get initiatives."""
+    data = get_reference_data(db, "clarisa_initiatives", "initiative_id", "name")
+    if not data:
+        return [
+            {"id": 1, "name": "Accelerated Breeding"},
+            {"id": 2, "name": "Climate Resilience"},
+            {"id": 3, "name": "Sustainable Intensification"}
+        ]
+    return data
+
+@router.get("/centers", response_model=List[Dict[str, Any]])
+async def get_centers(db: Session = Depends(get_db)):
+    """Get centers."""
+    data = get_reference_data(db, "clarisa_centers")
+    if not data:
+        return [
+            {"id": 1, "name": "CIMMYT"},
+            {"id": 2, "name": "IRRI"},
+            {"id": 3, "name": "ICRISAT"}
+        ]
+    return data
+
+@router.get("/countries", response_model=List[Dict[str, Any]])
+async def get_countries(db: Session = Depends(get_db)):
+    """Get countries."""
+    data = get_reference_data(db, "clarisa_countries")
+    if not data:
+        return [
+            {"id": 1, "name": "Kenya"},
+            {"id": 2, "name": "India"},
+            {"id": 3, "name": "Philippines"}
+        ]
+    return data
+
+@router.get("/regions", response_model=List[Dict[str, Any]])
+async def get_regions(db: Session = Depends(get_db)):
+    """Get regions."""
+    data = get_reference_data(db, "clarisa_cgiar_regions")
+    if not data:
+        return [
+            {"id": 1, "name": "East Africa"},
+            {"id": 2, "name": "South Asia"},
+            {"id": 3, "name": "Southeast Asia"}
+        ]
+    return data

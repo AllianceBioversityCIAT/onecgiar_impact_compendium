@@ -57,17 +57,17 @@ export const apiPost = async (endpoint: string, data: any) => {
 // Reference Data API calls for controlled lists
 export const getReferenceData = {
   // Step 1 - Controlled Lists
-  categories: () => apiGet('/reference/study-categories'),
+  categories: () => apiGet('/reference/categories'),
   interventionTypes: () => apiGet('/reference/intervention-types'),
   
   // Step 2 - Controlled Lists  
   cropTypes: () => apiGet('/reference/crop-types'),
   keywords: () => apiGet('/reference/keywords'),
-  initiatives: () => apiGet('/clarisa/initiatives'),
-  centers: () => apiGet('/clarisa/centers'),
-  impactAreas: () => apiGet('/clarisa/impact-areas'),
-  countries: () => apiGet('/clarisa/countries'),
-  regions: () => apiGet('/clarisa/regions'),
+  initiatives: () => apiGet('/clarisa/initiatives/'),
+  centers: () => apiGet('/clarisa/centers/'),
+  impactAreas: () => apiGet('/clarisa/impact-areas/'),
+  countries: () => apiGet('/clarisa/countries/'),
+  regions: () => apiGet('/clarisa/regions/'),
   
   // Step 3 - Indicators (if any controlled lists)
   indicatorUnits: () => apiGet('/reference/indicator-units'),

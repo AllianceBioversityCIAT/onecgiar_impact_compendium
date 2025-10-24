@@ -19,7 +19,7 @@ export const HeaderBar: React.FC<HeaderBarProps> = ({
   };
 
   return (
-    <header className="bg-white border-b border-[var(--ic-border-light)] px-6 py-4 flex items-center justify-between">
+    <header className="fixed top-0 left-0 right-0 z-50 bg-white border-b border-[var(--ic-border-light)] px-6 py-4 flex items-center justify-between">
       <div className="flex items-center space-x-4">
         <div className="flex items-center space-x-3">
           <svg className="w-6 h-6" viewBox="0 0 531 43" fill="none">

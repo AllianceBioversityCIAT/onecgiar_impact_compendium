@@ -30,14 +30,13 @@ interface SearchParams {
   pageSize: number;
   sort: string;
   category: string;
-  year: string;
 }
 
 const columns = [
   { key: 'id', label: 'Id', width: 'w-16' },
   { key: 'year', label: 'Year', sortable: true, width: 'w-20' },
   { key: 'period', label: 'Period analyzed', width: 'w-32' },
-  { key: 'title', label: 'Title', sortable: true, width: 'w-96' },
+  { key: 'title', label: 'Title', sortable: true, width: 'w-16', className: 'truncate' },
   { key: 'impact_areas', label: 'Impact areas', width: 'w-48' },
   { key: 'regions', label: 'Regions', width: 'w-40' },
   { key: 'center', label: 'Center', width: 'w-32' },
@@ -60,8 +59,7 @@ export const Dashboard: React.FC = () => {
     page: 1,
     pageSize: 10,
     sort: '',
-    category: '',
-    year: ''
+    category: ''
   });
 
   // Get debounced search value
@@ -77,7 +75,6 @@ export const Dashboard: React.FC = () => {
     if (params.pageSize !== 10) searchParams.set('pageSize', params.pageSize.toString());
     if (params.sort) searchParams.set('sort', params.sort);
     if (params.category) searchParams.set('category', params.category);
-    if (params.year) searchParams.set('year', params.year);
     
     url.search = searchParams.toString();
     window.history.replaceState({}, '', url.toString());
@@ -93,8 +90,7 @@ export const Dashboard: React.FC = () => {
       page: parseInt(urlParams.get('page') || '1'),
       pageSize: parseInt(urlParams.get('pageSize') || '10'),
       sort: urlParams.get('sort') || '',
-      category: urlParams.get('category') || '',
-      year: urlParams.get('year') || ''
+      category: urlParams.get('category') || ''
     });
   }, []);
 
@@ -107,13 +103,11 @@ export const Dashboard: React.FC = () => {
       
       if (useMocks) {
         const mockResponse = getMockStudies({
-          ...params,
-          year_from: params.year ? parseInt(params.year) : undefined,
-          year_to: params.year ? parseInt(params.year) : undefined
+          ...params
         });
         const transformedMockStudies = mockResponse.items.map((study: any) => ({
           id: `ICD-${study.id || Math.random()}`,
-          year: params.year ? parseInt(params.year) : 2024,
+          year: study.year || 2024,
           period: '2023-2024',
           title: study.title || 'No title',
           impact_areas: study.category || 'General',
@@ -132,13 +126,11 @@ export const Dashboard: React.FC = () => {
         queryParams.set('pageSize', params.pageSize.toString());
         if (params.sort) queryParams.set('sort', params.sort);
         if (params.category) queryParams.set('category', params.category);
-        if (params.year) queryParams.set('year_from', params.year);
-        if (params.year) queryParams.set('year_to', params.year);
         
         let endpoint;
         if (params.q) {
           queryParams.set('q', params.q);
-          endpoint = `/studies/search?${queryParams}`;
+          endpoint = `/studies/search/?${queryParams}`;
         } else {
           endpoint = `/studies?${queryParams}`;
         }
@@ -180,13 +172,12 @@ export const Dashboard: React.FC = () => {
       }
     } catch (err: any) {
       console.error('Failed to load studies:', err);
-      setError(`Failed to load studies: ${err.message}`);
       
-      // Fallback to mock data
+      // Fallback to mock data with full search functionality
       const mockResponse = getMockStudies(params);
       const transformedMockStudies = mockResponse.items.map((study: any) => ({
         id: `ICD-${study.id || Math.random()}`,
-        year: 2024,
+        year: study.year || 2024,
         period: '2023-2024',
         title: study.title || 'No title',
         impact_areas: study.category || 'General',
@@ -203,12 +194,11 @@ export const Dashboard: React.FC = () => {
     }
   }, []);
 
-  // Fetch studies when debounced query or other params change
+  // Fetch studies when search params change
   useEffect(() => {
-    const params = { ...searchParams, q: debouncedQuery };
-    fetchStudies(params);
-    updateURL(params);
-  }, [debouncedQuery, searchParams.page, searchParams.pageSize, searchParams.sort, searchParams.category, fetchStudies, updateURL]);
+    fetchStudies(searchParams);
+    updateURL(searchParams);
+  }, [searchParams.q, searchParams.page, searchParams.pageSize, searchParams.sort, searchParams.category, fetchStudies, updateURL]);
 
   const handleSearchChange = (value: string) => {
     setSearchParams(prev => ({ ...prev, q: value, page: 1 }));
@@ -249,18 +239,13 @@ export const Dashboard: React.FC = () => {
     }));
   };
 
-  const handleYearChange = (year: string) => {
-    setSearchParams(prev => ({ ...prev, year, page: 1 }));
-  };
-
   const handleClearFilters = () => {
     setSearchParams({
       q: '',
       page: 1,
       pageSize: 10,
       sort: '',
-      category: '',
-      year: ''
+      category: ''
     });
   };
 
@@ -307,6 +292,10 @@ export const Dashboard: React.FC = () => {
   };
 
   const handleAddStudy = () => {
+    // Clear any existing form data
+    localStorage.removeItem('studyFormStep1');
+    localStorage.removeItem('studyFormStep2');
+    localStorage.removeItem('studyFormStep3');
     window.location.href = '/studies/new/step-1';
   };
 
@@ -356,23 +345,11 @@ export const Dashboard: React.FC = () => {
             )}
           </div>
           
-          <select
-            value={searchParams.year}
-            onChange={(e) => handleYearChange(e.target.value)}
-            className="px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-yellow-500 focus:border-transparent"
-          >
-            <option value="">All years</option>
-            <option value="2024">2024</option>
-            <option value="2023">2023</option>
-            <option value="2022">2022</option>
-            <option value="2021">2021</option>
-            <option value="2020">2020</option>
-          </select>
-          
           <Button
             onClick={handleDownloadExcel}
             disabled={studies.length === 0}
-            className="flex items-center gap-2 bg-green-600 hover:bg-green-700 text-white px-4 py-2 rounded-lg disabled:opacity-50"
+            variant="outline"
+            className="flex items-center gap-2 !bg-green-600 hover:!bg-green-700 !text-white !border-green-600 hover:!border-green-700"
           >
             <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
@@ -403,8 +380,8 @@ export const Dashboard: React.FC = () => {
               "No studies match your current search criteria." : 
               "No studies are available at the moment."
             }
-            actionLabel={searchParams.q || searchParams.category || searchParams.year ? "Clear filters" : undefined}
-            onAction={searchParams.q || searchParams.category || searchParams.year ? handleClearFilters : undefined}
+            actionLabel={searchParams.q || searchParams.category ? "Clear filters" : undefined}
+            onAction={searchParams.q || searchParams.category ? handleClearFilters : undefined}
           />
         ) : (
           <>

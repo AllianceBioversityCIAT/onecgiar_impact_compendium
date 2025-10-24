@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { useNavigate, useParams } from 'react-router-dom';
 import { AppLayout } from '../../layouts/AppLayout';
 import { ProgressStepper } from '../../components/ui/ProgressStepper';
 import { Input } from '../../components/ui/Input';
@@ -6,6 +7,7 @@ import { Select } from '../../components/ui/Select';
 import { Textarea } from '../../components/ui/Textarea';
 import { Button } from '../../components/ui/Button';
 import { Card } from '../../components/ui/Card';
+import { DatePicker } from '../../components/ui/DatePicker';
 import { getReferenceData } from '../../services/api';
 
 const steps = [
@@ -15,18 +17,27 @@ const steps = [
 ];
 
 export const CreateStudyStep1: React.FC = () => {
-  const [formData, setFormData] = useState({
-    studyId: '',
-    title: '',
-    summary: '',
-    yearOfReport: '2025',
-    linkOrDoi: '',
-    category: '',
-    periodStart: '',
-    periodEnd: '',
-    interventionType: '',
-    interventionDetails: ''
-  });
+  const navigate = useNavigate();
+  const { id } = useParams();
+  const isEditMode = !!id;
+  
+  // Load saved data immediately and synchronously
+  const getSavedData = () => {
+    const savedData = localStorage.getItem('studyFormStep1');
+    return savedData ? JSON.parse(savedData) : {
+      title: '',
+      summary: '',
+      year: '2025',
+      doi: '',
+      category: '',
+      periodStart: '',
+      periodEnd: '',
+      interventionType: '',
+      interventionDetails: ''
+    };
+  };
+
+  const [formData, setFormData] = useState(getSavedData);
 
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [loading, setLoading] = useState(true);
@@ -72,6 +83,48 @@ export const CreateStudyStep1: React.FC = () => {
     loadReferenceData();
   }, []);
 
+  // Load study data for edit mode
+  useEffect(() => {
+    if (isEditMode && id) {
+      const loadStudyData = async () => {
+        try {
+          console.log('Loading study with ID:', id); // Debug log
+          
+          // Extract numeric ID if it's in ICD-XXX format
+          const numericId = id.startsWith('ICD-') ? id.replace('ICD-', '') : id;
+          
+          const response = await fetch(`${import.meta.env.VITE_API_BASE_URL}/studies/${numericId}`);
+          console.log('API response status:', response.status); // Debug log
+          
+          if (response.ok) {
+            const apiResponse = await response.json();
+            console.log('Study data received:', apiResponse); // Debug log
+            
+            // Extract the actual study data from the nested response
+            const studyData = apiResponse.data || apiResponse;
+            
+            setFormData({
+              title: studyData.title || '',
+              summary: studyData.summary || '',
+              year: studyData.year?.toString() || '2025',
+              doi: studyData.doi || studyData.link_or_doi || '',
+              category: studyData.category?.id?.toString() || '',
+              periodStart: studyData.period?.start?.toString() || '',
+              periodEnd: studyData.period?.end?.toString() || '',
+              interventionType: studyData.intervention?.type || '',
+              interventionDetails: studyData.intervention?.detailsShort || ''
+            });
+          } else {
+            console.error('API response not OK:', response.status, response.statusText);
+          }
+        } catch (error) {
+          console.error('Failed to load study data:', error);
+        }
+      };
+      loadStudyData();
+    }
+  }, [isEditMode, id]);
+
   const handleInputChange = (field: string, value: string) => {
     setFormData(prev => ({ ...prev, [field]: value }));
     if (errors[field]) {
@@ -82,10 +135,19 @@ export const CreateStudyStep1: React.FC = () => {
   const validateForm = () => {
     const newErrors: Record<string, string> = {};
     
-    if (!formData.studyId) newErrors.studyId = 'This field is required.';
     if (!formData.title) newErrors.title = 'This field is required.';
     if (!formData.category) newErrors.category = 'This field is required.';
-    if (!formData.linkOrDoi) newErrors.linkOrDoi = 'This field is required.';
+    if (!formData.doi) {
+      newErrors.doi = 'This field is required.';
+    } else {
+      // Validate URL format
+      const urlPattern = /^(https?:\/\/)?([\da-z\.-]+)\.([a-z\.]{2,6})([\/\w \.-]*)*\/?$/;
+      const doiPattern = /^10\.\d{4,}\/[-._;()\/:a-zA-Z0-9]+$/;
+      
+      if (!urlPattern.test(formData.doi) && !doiPattern.test(formData.doi)) {
+        newErrors.doi = 'Please enter a valid URL or DOI format.';
+      }
+    }
     if (!formData.periodStart) newErrors.periodStart = 'This field is required.';
     if (!formData.periodEnd) newErrors.periodEnd = 'This field is required.';
     if (!formData.interventionType) newErrors.interventionType = 'This field is required.';
@@ -94,56 +156,47 @@ export const CreateStudyStep1: React.FC = () => {
     return Object.keys(newErrors).length === 0;
   };
 
+  const handleGoBack = () => {
+    navigate('/dashboard');
+  };
+
   const handleNext = () => {
     if (validateForm()) {
       // Store form data and navigate to Step 2
       localStorage.setItem('studyFormStep1', JSON.stringify(formData));
-      console.log('Navigate to Step 2');
+      const nextPath = isEditMode ? `/studies/edit/${id}/step-2` : '/studies/new/step-2';
+      navigate(nextPath);
     }
   };
 
+  const pageTitle = isEditMode ? "Edit study form" : "Create new study form";
+
   if (loading) {
     return (
-      <AppLayout title="Create new study form" showAddButton={false}>
-        <div className="flex items-center justify-center py-12">
-          <div className="text-center">Loading...</div>
+      <AppLayout title={pageTitle} showAddButton={false}>
+        <div className="space-y-6">
+          <h1 className="text-2xl font-bold text-[var(--ic-color-text)]">{pageTitle}</h1>
+          <ProgressStepper steps={steps} currentStep={1} />
+          <Card>
+            <div className="flex items-center justify-center py-12">
+              <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
+              <span className="ml-3 text-gray-600">Loading saved data...</span>
+            </div>
+          </Card>
         </div>
       </AppLayout>
     );
   }
 
   return (
-    <AppLayout title="Create new study form" showAddButton={false}>
+    <AppLayout title={pageTitle} showAddButton={false}>
       <div className="space-y-6">
-        <div className="flex items-center space-x-4">
-          <Button variant="ghost" className="flex items-center space-x-2">
-            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
-            </svg>
-            <span>Go Back</span>
-          </Button>
-          <h1 className="text-2xl font-bold text-[var(--ic-color-text)]">Create new study form</h1>
-        </div>
+        <h1 className="text-2xl font-bold text-[var(--ic-color-text)]">{pageTitle}</h1>
 
         <ProgressStepper steps={steps} currentStep={1} />
 
         <Card>
           <div className="space-y-6">
-            {/* Study ID - with dropdown arrow (controlled list) */}
-            <div className="relative">
-              <Input
-                label="Study ID"
-                required
-                placeholder="Enter value"
-                value={formData.studyId}
-                onChange={(e) => handleInputChange('studyId', e.target.value)}
-                error={errors.studyId}
-              />
-              <svg className="absolute right-3 top-8 w-4 h-4 text-gray-400 pointer-events-none" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
-              </svg>
-            </div>
-
             {/* Title */}
             <Input
               label="Title"
@@ -171,8 +224,8 @@ export const CreateStudyStep1: React.FC = () => {
                   const year = 2025 - i;
                   return { value: year.toString(), label: year.toString() };
                 })}
-                value={formData.yearOfReport}
-                onChange={(e) => handleInputChange('yearOfReport', e.target.value)}
+                value={formData.year}
+                onChange={(e) => handleInputChange('year', e.target.value)}
               />
 
               <Select
@@ -189,43 +242,31 @@ export const CreateStudyStep1: React.FC = () => {
             <Input
               label="Link or DOI"
               required
-              placeholder="Enter value"
-              value={formData.linkOrDoi}
-              onChange={(e) => handleInputChange('linkOrDoi', e.target.value)}
-              error={errors.linkOrDoi}
+              placeholder="https://example.com or 10.1000/xyz123"
+              value={formData.doi}
+              onChange={(e) => handleInputChange('doi', e.target.value)}
+              error={errors.doi}
             />
 
             {/* Period start and Period end Row */}
             <div className="grid grid-cols-2 gap-6">
-              <div className="relative">
-                <Input
-                  label="Period start"
-                  required
-                  type="text"
-                  placeholder="YYYY"
-                  value={formData.periodStart}
-                  onChange={(e) => handleInputChange('periodStart', e.target.value)}
-                  error={errors.periodStart}
-                />
-                <svg className="absolute right-3 top-8 w-4 h-4 text-gray-400 pointer-events-none" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
-                </svg>
-              </div>
+              <Input
+                label="Period start"
+                required
+                value={formData.periodStart}
+                onChange={(e) => handleInputChange('periodStart', e.target.value)}
+                error={errors.periodStart}
+                placeholder="YYYY"
+              />
 
-              <div className="relative">
-                <Input
-                  label="Period end"
-                  required
-                  type="text"
-                  placeholder="YYYY"
-                  value={formData.periodEnd}
-                  onChange={(e) => handleInputChange('periodEnd', e.target.value)}
-                  error={errors.periodEnd}
-                />
-                <svg className="absolute right-3 top-8 w-4 h-4 text-gray-400 pointer-events-none" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
-                </svg>
-              </div>
+              <Input
+                label="Period end"
+                required
+                value={formData.periodEnd}
+                onChange={(e) => handleInputChange('periodEnd', e.target.value)}
+                error={errors.periodEnd}
+                placeholder="YYYY"
+              />
             </div>
 
             {/* Intervention Information Section */}
@@ -253,8 +294,14 @@ export const CreateStudyStep1: React.FC = () => {
               </div>
             </div>
 
-            {/* Next Button */}
-            <div className="flex justify-end pt-6">
+            {/* Navigation Buttons */}
+            <div className="flex justify-between pt-6">
+              <Button variant="outline" className="flex items-center space-x-2" onClick={handleGoBack}>
+                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
+                </svg>
+                <span>Go Back</span>
+              </Button>
               <Button onClick={handleNext} className="flex items-center space-x-2">
                 <span>Next</span>
                 <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">

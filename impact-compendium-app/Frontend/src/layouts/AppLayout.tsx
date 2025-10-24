@@ -22,7 +22,7 @@ export const AppLayout: React.FC<AppLayoutProps> = ({
         showAddButton={showAddButton}
       />
       
-      <main className="max-w-7xl mx-auto px-6 py-6">
+      <main className="max-w-7xl mx-auto px-6 py-6 pt-24">
         <div className="bg-white rounded-lg shadow-sm border border-[var(--ic-border-light)] p-6">
           {children}
         </div>

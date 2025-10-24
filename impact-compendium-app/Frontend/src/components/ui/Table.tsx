@@ -119,7 +119,7 @@ export const Table: React.FC<TableProps> = ({
               {columnOrder.map((column, index) => (
                 <th
                   key={column.key}
-                  className={`px-4 py-3 text-left text-sm font-bold text-gray-700 tracking-wider cursor-move ${column.width || ''} ${draggedColumn === index ? 'opacity-50' : ''}`}
+                  className={`px-4 py-3 text-left text-sm font-bold text-gray-700 tracking-wider cursor-move ${column.width || ''} ${draggedColumn === index ? 'opacity-50' : ''} ${column.key === 'title' ? 'w-96 max-w-96' : ''}`}
                   draggable
                   onDragStart={(e) => handleDragStart(e, index)}
                   onDragOver={handleDragOver}
@@ -208,9 +208,9 @@ export const Table: React.FC<TableProps> = ({
                       </button>
                     </td>
                     {columnOrder.map((column) => (
-                      <td key={column.key} className="px-4 py-3 text-sm">
+                      <td key={column.key} className={`px-4 py-3 text-sm ${column.key === 'title' ? 'w-96 max-w-96' : ''}`}>
                         {column.key === 'title' ? (
-                          <span className="font-medium text-gray-900">
+                          <span className="font-medium text-gray-900 block truncate text-left" title={row[column.key]}>
                             {row[column.key]}
                           </span>
                         ) : column.key === 'category' ? (

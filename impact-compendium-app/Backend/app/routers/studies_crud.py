@@ -50,6 +50,9 @@ class StudyCategoryCreate(BaseModel):
 async def create_study(study_data: StudyCreate, db: Session = Depends(get_db)):
     """Create a new study"""
     try:
+        # Get current user (you'll need to implement auth to get actual user)
+        current_user = "system"  # Replace with actual logged user from auth
+        
         query = text("""
             INSERT INTO studies 
             (title, year, summary, period_start, period_end, category_id, 
@@ -58,7 +61,7 @@ async def create_study(study_data: StudyCreate, db: Session = Depends(get_db)):
             VALUES 
             (:title, :year, :summary, :period_start, :period_end, :category_id,
              :intervention_details, :doi, :pdf_filename, :outputs_v1, :outputs_v2,
-             1, NOW(), 'system')
+             1, NOW(), :created_by)
         """)
         
         result = db.execute(query, {
@@ -72,7 +75,8 @@ async def create_study(study_data: StudyCreate, db: Session = Depends(get_db)):
             "doi": study_data.doi,
             "pdf_filename": study_data.pdf_filename,
             "outputs_v1": study_data.outputs_v1,
-            "outputs_v2": study_data.outputs_v2
+            "outputs_v2": study_data.outputs_v2,
+            "created_by": current_user
         })
         
         # Get the inserted ID
@@ -92,7 +96,125 @@ async def create_study(study_data: StudyCreate, db: Session = Depends(get_db)):
         db.rollback()
         raise HTTPException(status_code=500, detail=str(e))
 
-@router.put("/{study_id}", response_model=Dict[str, Any])
+@router.put("/complete/{study_id}", response_model=Dict[str, Any])
+async def update_complete_study(study_id: int, study_data: dict, db: Session = Depends(get_db)):
+    """Update complete study with all relationships"""
+    try:
+        # Get current user (you'll need to implement auth to get actual user)
+        current_user = "system"  # Replace with actual logged user from auth
+        
+        # Update main study table
+        main_fields = ['title', 'year', 'summary', 'period_start', 'period_end', 'intervention_details', 'doi', 'category_id']
+        update_fields = []
+        params = {"study_id": study_id}
+        
+        for field in main_fields:
+            if field in study_data and study_data[field] is not None:
+                update_fields.append(f"{field} = :{field}")
+                params[field] = study_data[field]
+        
+        if update_fields:
+            update_fields.append("last_updated_date = NOW()")
+            update_fields.append("last_updated_by = :last_updated_by")
+            params["last_updated_by"] = current_user
+            
+            query = text(f"""
+                UPDATE studies 
+                SET {', '.join(update_fields)}
+                WHERE study_id = :study_id AND is_active = 1
+            """)
+            db.execute(query, params)
+        
+        # Update countries
+        if 'countries' in study_data:
+            db.execute(text("DELETE FROM studies_countries WHERE study_id = :study_id"), {"study_id": study_id})
+            for country_id in study_data['countries']:
+                db.execute(text("INSERT INTO studies_countries (study_id, country_id) VALUES (:study_id, :country_id)"), 
+                          {"study_id": study_id, "country_id": country_id})
+        
+        # Update regions
+        if 'regions' in study_data:
+            db.execute(text("DELETE FROM studies_regions WHERE study_id = :study_id"), {"study_id": study_id})
+            for region_id in study_data['regions']:
+                db.execute(text("INSERT INTO studies_regions (study_id, region_id) VALUES (:study_id, :region_id)"), 
+                          {"study_id": study_id, "region_id": region_id})
+        
+        # Update impact areas
+        if 'impact_areas' in study_data:
+            db.execute(text("DELETE FROM studies_impact_areas WHERE studies_study_id = :study_id"), {"study_id": study_id})
+            for area_id in study_data['impact_areas']:
+                db.execute(text("INSERT INTO studies_impact_areas (studies_study_id, clarisa_impacts_areas_impact_area_id) VALUES (:study_id, :area_id)"), 
+                          {"study_id": study_id, "area_id": area_id})
+        
+        # Update contributors (initiatives and centers)
+        if 'initiatives' in study_data or 'centers' in study_data:
+            db.execute(text("DELETE FROM studies_contributors WHERE study_id = :study_id"), {"study_id": study_id})
+            
+            initiatives = study_data.get('initiatives', [])
+            centers = study_data.get('centers', [])
+            
+            # Create combinations of initiatives and centers
+            if initiatives and centers:
+                for init_id in initiatives:
+                    for center_id in centers:
+                        db.execute(text("""
+                            INSERT INTO studies_contributors (study_id, studies_initiatives_id, clarisa_centers_center_id, is_active) 
+                            VALUES (:study_id, :init_id, :center_id, 1)
+                        """), {"study_id": study_id, "init_id": init_id, "center_id": center_id})
+            elif initiatives:
+                for init_id in initiatives:
+                    db.execute(text("""
+                        INSERT INTO studies_contributors (study_id, studies_initiatives_id, is_active) 
+                        VALUES (:study_id, :init_id, 1)
+                    """), {"study_id": study_id, "init_id": init_id})
+            elif centers:
+                for center_id in centers:
+                    db.execute(text("""
+                        INSERT INTO studies_contributors (study_id, clarisa_centers_center_id, is_active) 
+                        VALUES (:study_id, :center_id, 1)
+                    """), {"study_id": study_id, "center_id": center_id})
+        
+        # Update keywords
+        if 'keywords' in study_data:
+            db.execute(text("DELETE FROM studies_keywords WHERE study_id = :study_id"), {"study_id": study_id})
+            for keyword_id in study_data['keywords']:
+                db.execute(text("INSERT INTO studies_keywords (study_id, keyword_id, is_active) VALUES (:study_id, :keyword_id, 1)"), 
+                          {"study_id": study_id, "keyword_id": keyword_id})
+        
+        # Update crop types
+        if 'crop_types' in study_data:
+            db.execute(text("DELETE FROM studies_crop_types WHERE study_id = :study_id"), {"study_id": study_id})
+            for crop_id in study_data['crop_types']:
+                db.execute(text("INSERT INTO studies_crop_types (study_id, crop_type_id, is_active) VALUES (:study_id, :crop_id, 1)"), 
+                          {"study_id": study_id, "crop_id": crop_id})
+        
+        # Update indicators
+        if 'indicators' in study_data:
+            db.execute(text("DELETE FROM studies_indicators WHERE study_id = :study_id"), {"study_id": study_id})
+            for indicator in study_data['indicators']:
+                db.execute(text("""
+                    INSERT INTO studies_indicators (study_id, indicator_measure, unit_measure, result_reported, is_active) 
+                    VALUES (:study_id, :measure, :unit, :result, 1)
+                """), {
+                    "study_id": study_id,
+                    "measure": indicator.get('indicator_measured', ''),
+                    "unit": indicator.get('unit_of_measure', ''),
+                    "result": indicator.get('result_reported', '')
+                })
+        
+        db.commit()
+        
+        return {
+            "success": True,
+            "message": "Study updated completely",
+            "data": {"study_id": study_id}
+        }
+        
+    except Exception as e:
+        db.rollback()
+        logger.error(f"Error updating complete study: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
 async def update_study(study_id: int, study_data: StudyUpdate, db: Session = Depends(get_db)):
     """Update an existing study"""
     try:

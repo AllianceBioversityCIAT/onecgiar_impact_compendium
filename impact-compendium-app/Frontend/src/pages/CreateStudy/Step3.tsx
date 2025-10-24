@@ -112,27 +112,27 @@ export const CreateStudyStep3: React.FC = () => {
       const step2Data = JSON.parse(localStorage.getItem('studyFormStep2') || '{}');
       
       const completeStudyData = {
-        // Step 1 fields
-        study_id: step1Data.studyId,
+        // Step 1 fields - map to database columns
         title: step1Data.title,
         summary: step1Data.summary,
-        year_of_report: parseInt(step1Data.yearOfReport),
-        link_or_doi: step1Data.linkOrDoi,
-        category: step1Data.category,
+        year: parseInt(step1Data.yearOfReport),
+        doi: step1Data.linkOrDoi,
+        category_id: step1Data.category,
         period_start: step1Data.periodStart,
         period_end: step1Data.periodEnd,
-        intervention_type: step1Data.interventionType,
         intervention_details: step1Data.interventionDetails,
         
-        // Step 2 fields
-        crop_product_type: step2Data.cropProductType,
-        keywords: step2Data.keywords,
-        contributing_initiatives: step2Data.contributingInitiatives,
-        contributing_centers: step2Data.contributingCenters,
-        primary_cgiar_impact_area: step2Data.primaryCGIARImpactArea,
-        secondary_cgiar_impact_area: step2Data.secondaryCGIARImpactArea,
-        country_of_study: step2Data.countryOfStudy,
-        cgiar_regions: step2Data.cgiarRegions,
+        // Step 2 fields - map to relationship tables
+        crop_types: step2Data.cropProductType || [],
+        keywords: step2Data.keywords || [],
+        initiatives: step2Data.contributingInitiatives || [],
+        centers: step2Data.contributingCenters || [],
+        impact_areas: [
+          ...(step2Data.primaryCGIARImpactArea ? [step2Data.primaryCGIARImpactArea] : []),
+          ...(step2Data.secondaryCGIARImpactArea || [])
+        ],
+        countries: step2Data.countryOfStudy || [],
+        regions: step2Data.cgiarRegions || [],
         
         // Step 3 fields
         indicators: indicators.map(indicator => ({
@@ -142,13 +142,34 @@ export const CreateStudyStep3: React.FC = () => {
         }))
       };
 
-      await studyAPI.create(completeStudyData);
-      
-      // Clear localStorage
-      localStorage.removeItem('studyFormStep1');
-      localStorage.removeItem('studyFormStep2');
-      
-      console.log('Study created successfully, navigate to success page');
+      if (isEditMode && id) {
+        // Update existing study
+        const numericId = id.startsWith('ICD-') ? id.replace('ICD-', '') : id;
+        const response = await fetch(`${import.meta.env.VITE_API_BASE_URL}/studies-crud/complete/${numericId}`, {
+          method: 'PUT',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify(completeStudyData),
+        });
+        
+        if (!response.ok) {
+          throw new Error('Failed to update study');
+        }
+        
+        console.log('Study updated successfully');
+        navigate('/studies');
+      } else {
+        // Create new study
+        await studyAPI.create(completeStudyData);
+        
+        // Clear localStorage
+        localStorage.removeItem('studyFormStep1');
+        localStorage.removeItem('studyFormStep2');
+        
+        console.log('Study created successfully');
+        navigate('/studies');
+      }
       
     } catch (error) {
       console.error('Failed to create study:', error);

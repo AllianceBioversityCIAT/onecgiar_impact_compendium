@@ -1,18 +1,23 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Button } from './Button';
+import { ProgressStepper } from './ProgressStepper';
 import { authService } from '../../services/auth';
 
 interface HeaderBarProps {
   title: string;
   onAddStudy?: () => void;
   showAddButton?: boolean;
+  steps?: Array<{ id: number; label: string; completed?: boolean }>;
+  currentStep?: number;
 }
 
 export const HeaderBar: React.FC<HeaderBarProps> = ({ 
   title, 
   onAddStudy, 
-  showAddButton = true 
+  showAddButton = true,
+  steps,
+  currentStep
 }) => {
   const navigate = useNavigate();
   const [showUserMenu, setShowUserMenu] = useState(false);
@@ -71,6 +76,13 @@ export const HeaderBar: React.FC<HeaderBarProps> = ({
           />
         </div>
       </div>
+
+      {/* Center - Steps for forms */}
+      {steps && currentStep && (
+        <div className="flex-1 flex justify-center">
+          <ProgressStepper steps={steps} currentStep={currentStep} />
+        </div>
+      )}
 
       <div className="flex items-center space-x-4">
         {showAddButton ? (

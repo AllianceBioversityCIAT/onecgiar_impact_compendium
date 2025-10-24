@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
+import { FormLayout } from '../../layouts/FormLayout';
 import { AppLayout } from '../../layouts/AppLayout';
 import { ProgressStepper } from '../../components/ui/ProgressStepper';
 import { Input } from '../../components/ui/Input';
@@ -38,12 +39,14 @@ export const CreateStudyStep3: React.FC = () => {
   const [indicators, setIndicators] = useState<Indicator[]>(getSavedData);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [loading, setLoading] = useState(true);
+  const [mappingData, setMappingData] = useState(false);
 
   // Load study data for edit mode
   React.useEffect(() => {
     if (isEditMode && id) {
       const loadStudyData = async () => {
         try {
+          setMappingData(true);
           const numericId = id.startsWith('ICD-') ? id.replace('ICD-', '') : id;
           const response = await fetch(`${import.meta.env.VITE_API_BASE_URL}/studies/${numericId}`);
           
@@ -63,6 +66,8 @@ export const CreateStudyStep3: React.FC = () => {
           }
         } catch (error) {
           console.error('Step3: Failed to load study data:', error);
+        } finally {
+          setMappingData(false);
         }
       };
       loadStudyData();
@@ -188,17 +193,17 @@ export const CreateStudyStep3: React.FC = () => {
 
   const pageTitle = isEditMode ? "Edit study form" : "Create new study form";
 
-  if (loading) {
+  if (loading || mappingData) {
     return (
       <AppLayout title={pageTitle} showAddButton={false}>
         <div className="space-y-6">
           <h1 className="text-2xl font-bold text-[var(--ic-color-text)]">{pageTitle}</h1>
-          <ProgressStepper steps={steps} currentStep={3} />
           <Card>
             <div className="flex items-center justify-center py-12">
               <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
               <span className="ml-3 text-gray-600">
-                {isEditMode ? 'Loading study data...' : 'Loading form...'}
+                {mappingData ? 'Loading study data...' : 
+                 isEditMode ? 'Loading study data...' : 'Loading form...'}
               </span>
             </div>
           </Card>
@@ -208,11 +213,18 @@ export const CreateStudyStep3: React.FC = () => {
   }
 
   return (
-    <AppLayout title={pageTitle} showAddButton={false}>
+    <FormLayout 
+      title={pageTitle}
+      onBack={handleGoBack}
+      onNext={handleFinish}
+      onSaveDraft={() => console.log('Save draft')}
+      nextLabel={isSubmitting ? 'Submitting...' : 'Finish'}
+      isLoading={isSubmitting}
+      steps={steps}
+      currentStep={3}
+    >
       <div className="space-y-6">
         <h1 className="text-2xl font-bold text-[var(--ic-color-text)]">{pageTitle}</h1>
-
-        <ProgressStepper steps={steps} currentStep={3} />
 
         <div className="space-y-6">
           {/* Add Indicator Button */}
@@ -285,28 +297,8 @@ export const CreateStudyStep3: React.FC = () => {
               </div>
             </Card>
           ))}
-
-          {/* Navigation Buttons */}
-          <div className="flex justify-between pt-6">
-            <Button variant="outline" onClick={handleGoBack} className="flex items-center space-x-2">
-              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
-              </svg>
-              <span>Go Back</span>
-            </Button>
-            <Button 
-              onClick={handleFinish} 
-              disabled={isSubmitting}
-              className="flex items-center space-x-2"
-            >
-              <span>{isSubmitting ? 'Submitting...' : 'Finish'}</span>
-              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
-              </svg>
-            </Button>
-          </div>
         </div>
       </div>
-    </AppLayout>
+    </FormLayout>
   );
 };

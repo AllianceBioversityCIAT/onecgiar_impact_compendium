@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
+import { FormLayout } from '../../layouts/FormLayout';
 import { AppLayout } from '../../layouts/AppLayout';
 import { ProgressStepper } from '../../components/ui/ProgressStepper';
 import { Input } from '../../components/ui/Input';
@@ -176,7 +177,6 @@ export const CreateStudyStep1: React.FC = () => {
       <AppLayout title={pageTitle} showAddButton={false}>
         <div className="space-y-6">
           <h1 className="text-2xl font-bold text-[var(--ic-color-text)]">{pageTitle}</h1>
-          <ProgressStepper steps={steps} currentStep={1} />
           <Card>
             <div className="flex items-center justify-center py-12">
               <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
@@ -191,14 +191,19 @@ export const CreateStudyStep1: React.FC = () => {
   }
 
   return (
-    <AppLayout title={pageTitle} showAddButton={false}>
-      <div className="space-y-6">
-        <h1 className="text-2xl font-bold text-[var(--ic-color-text)]">{pageTitle}</h1>
-
-        <ProgressStepper steps={steps} currentStep={1} />
+    <FormLayout 
+      title={pageTitle}
+      onBack={handleGoBack}
+      onNext={handleNext}
+      onSaveDraft={() => console.log('Save draft')}
+      steps={steps}
+      currentStep={1}
+    >
+      <div className="space-y-4">
+        <h1 className="text-xl font-bold text-[var(--ic-color-text)]">{pageTitle}</h1>
 
         <Card>
-          <div className="space-y-6">
+          <div className="space-y-4">
             {/* Title */}
             <Input
               label="Title"
@@ -295,25 +300,9 @@ export const CreateStudyStep1: React.FC = () => {
                 />
               </div>
             </div>
-
-            {/* Navigation Buttons */}
-            <div className="flex justify-between pt-6">
-              <Button variant="outline" className="flex items-center space-x-2" onClick={handleGoBack}>
-                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
-                </svg>
-                <span>Go Back</span>
-              </Button>
-              <Button onClick={handleNext} className="flex items-center space-x-2">
-                <span>Next</span>
-                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
-                </svg>
-              </Button>
-            </div>
           </div>
         </Card>
       </div>
-    </AppLayout>
+    </FormLayout>
   );
 };

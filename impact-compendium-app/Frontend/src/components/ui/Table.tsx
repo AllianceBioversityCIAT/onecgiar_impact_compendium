@@ -44,9 +44,12 @@ export const Table: React.FC<TableProps> = ({
   const [draggedColumn, setDraggedColumn] = useState<number | null>(null);
 
   const handleRowToggle = (row: TableRow) => {
-    const newExpanded = localExpandedRow === row.id ? null : row.id;
-    setLocalExpandedRow(newExpanded);
-    onRowExpand?.(row);
+    if (onRowExpand) {
+      onRowExpand(row);
+    } else {
+      const newExpanded = localExpandedRow === row.id ? null : row.id;
+      setLocalExpandedRow(newExpanded);
+    }
   };
 
   const handleTitleClick = (row: TableRow) => {
@@ -110,16 +113,16 @@ export const Table: React.FC<TableProps> = ({
   };
 
   return (
-    <div className="bg-white rounded-lg shadow-sm border border-gray-200">
+    <div className="bg-white rounded-lg shadow-md border border-gray-200 overflow-hidden">
       <div className="overflow-x-auto">
         <table className="w-full">
-          <thead className="bg-gray-50 border-b border-gray-200">
+          <thead className="bg-gradient-to-r from-gray-50 to-gray-100 border-b border-gray-200">
             <tr>
-              <th className="w-8 px-2 py-3"></th>
+              <th className="w-8 px-3 py-4"></th>
               {columnOrder.map((column, index) => (
                 <th
                   key={column.key}
-                  className={`px-4 py-3 text-left text-sm font-bold text-gray-700 tracking-wider cursor-move ${column.width || ''} ${draggedColumn === index ? 'opacity-50' : ''} ${column.key === 'title' ? 'w-96 max-w-96' : ''}`}
+                  className={`px-4 py-4 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider cursor-move ${column.width || ''} ${draggedColumn === index ? 'opacity-50' : ''} ${column.key === 'title' ? 'w-96 max-w-96' : ''}`}
                   draggable
                   onDragStart={(e) => handleDragStart(e, index)}
                   onDragOver={handleDragOver}
@@ -131,9 +134,12 @@ export const Table: React.FC<TableProps> = ({
                     </svg>
                     {column.sortable ? (
                       <button
-                        onClick={() => handleSortClick(column)}
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          handleSortClick(column);
+                        }}
                         onKeyDown={(e) => handleSortKeyDown(e, column)}
-                        className="flex items-center gap-1 font-bold text-gray-700 hover:text-gray-900 focus:outline-none focus:text-gray-900"
+                        className="group flex items-center gap-1 font-bold text-gray-700 hover:text-gray-900 focus:outline-none focus:text-gray-900 transition-colors"
                         aria-sort={
                           sort?.field === column.key 
                             ? sort.dir === 'asc' ? 'ascending' : 'descending'
@@ -141,12 +147,12 @@ export const Table: React.FC<TableProps> = ({
                         }
                       >
                         {column.label}
-                        <span className="flex flex-col">
+                        <span className="flex flex-col ml-1">
                           <svg 
-                            className={`w-3 h-3 ${
+                            className={`w-3 h-3 transition-colors ${
                               sort?.field === column.key && sort.dir === 'asc' 
-                                ? 'text-gray-900' 
-                                : 'text-gray-300 group-hover:text-gray-400'
+                                ? 'text-blue-600' 
+                                : 'text-gray-300 group-hover:text-gray-500'
                             }`}
                             fill="currentColor" 
                             viewBox="0 0 20 20"
@@ -154,10 +160,10 @@ export const Table: React.FC<TableProps> = ({
                             <path fillRule="evenodd" d="M14.707 12.707a1 1 0 01-1.414 0L10 9.414l-3.293 3.293a1 1 0 01-1.414-1.414l4-4a1 1 0 011.414 0l4 4a1 1 0 010 1.414z" clipRule="evenodd" />
                           </svg>
                           <svg 
-                            className={`w-3 h-3 -mt-1 ${
+                            className={`w-3 h-3 -mt-1 transition-colors ${
                               sort?.field === column.key && sort.dir === 'desc' 
-                                ? 'text-gray-900' 
-                                : 'text-gray-300 group-hover:text-gray-400'
+                                ? 'text-blue-600' 
+                                : 'text-gray-300 group-hover:text-gray-500'
                             }`}
                             fill="currentColor" 
                             viewBox="0 0 20 20"
@@ -174,31 +180,30 @@ export const Table: React.FC<TableProps> = ({
               ))}
             </tr>
           </thead>
-          <tbody className="bg-white divide-y divide-gray-200">
+          <tbody className="bg-white divide-y divide-gray-100">
             {data.map((row, index) => {
-              const isExpanded = localExpandedRow === row.id;
+              const isExpanded = expandedRows.has(row.id) || localExpandedRow === row.id;
               const isEven = index % 2 === 0;
               
               return (
                 <React.Fragment key={row.id}>
                   <tr 
-                    className={`${isEven ? 'bg-white' : 'bg-gray-50'} transition-colors duration-150 ${isExpanded ? 'bg-yellow-50' : 'hover:bg-yellow-50'} cursor-pointer`}
-                    style={isExpanded ? { backgroundColor: 'var(--ic-color-expanded-bg)' } : {}}
+                    className={`border-b border-gray-100 hover:bg-gray-50 transition-colors duration-150 cursor-pointer ${isExpanded ? 'bg-blue-50' : ''}`}
                     onClick={() => handleTitleClick(row)}
                   >
-                    <td className="w-8 px-2 py-3">
+                    <td className="w-8 px-3 py-4">
                       <button
                         onClick={(e) => {
                           e.stopPropagation();
                           handleRowToggle(row);
                         }}
                         onKeyDown={(e) => handleKeyDown(e, row, 'expand')}
-                        className="p-1 rounded hover:bg-gray-100 focus:outline-none focus:ring-2 focus:ring-yellow-500"
+                        className="p-1 rounded hover:bg-gray-200 focus:outline-none focus:ring-2 focus:ring-blue-500 transition-colors duration-150"
                         aria-expanded={isExpanded}
                         aria-label={`${isExpanded ? 'Collapse' : 'Expand'} row details`}
                       >
                         <svg 
-                          className={`w-4 h-4 text-gray-400 transition-transform duration-200 ${isExpanded ? 'rotate-90' : ''}`}
+                          className={`w-4 h-4 text-gray-500 transition-transform duration-200 ${isExpanded ? 'rotate-90' : ''}`}
                           fill="none" 
                           stroke="currentColor" 
                           viewBox="0 0 24 24"
@@ -208,17 +213,27 @@ export const Table: React.FC<TableProps> = ({
                       </button>
                     </td>
                     {columnOrder.map((column) => (
-                      <td key={column.key} className={`px-4 py-3 text-sm ${column.key === 'title' ? 'w-96 max-w-96' : ''}`}>
+                      <td key={column.key} className={`px-4 py-4 text-sm ${column.key === 'title' ? 'w-96 max-w-96' : ''}`}>
                         {column.key === 'title' ? (
-                          <span className="font-medium text-gray-900 block truncate text-left" title={row[column.key]}>
+                          <span className="font-medium text-gray-900 block truncate text-left hover:text-blue-600 transition-colors" title={row[column.key]}>
                             {row[column.key]}
                           </span>
                         ) : column.key === 'category' ? (
                           <Badge variant={getCategoryBadgeVariant(row[column.key])}>
                             {row[column.key]}
                           </Badge>
+                        ) : column.key === 'id' ? (
+                          <span className="font-mono text-xs bg-gray-100 px-2 py-1 rounded text-gray-700">
+                            {row[column.key]}
+                          </span>
+                        ) : column.key === 'year' ? (
+                          <span className="font-semibold text-gray-800">
+                            {row[column.key]}
+                          </span>
                         ) : (
-                          <span className="text-gray-900">{row[column.key]}</span>
+                          <span className="text-gray-700">
+                            {Array.isArray(row[column.key]) ? row[column.key].join(', ') : row[column.key]}
+                          </span>
                         )}
                       </td>
                     ))}

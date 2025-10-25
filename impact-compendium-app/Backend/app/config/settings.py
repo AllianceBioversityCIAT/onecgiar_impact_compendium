@@ -28,6 +28,7 @@ class Settings(BaseSettings):
     ]
     
     # Database settings (will be populated from AWS Secrets Manager)
+    database_url: str = os.getenv("DATABASE_URL", "")
     db_host: str = os.getenv("DB_HOST", "localhost")
     db_port: int = int(os.getenv("DB_PORT", "3306"))
     db_name: str = os.getenv("DB_NAME", "impact_compendium")

@@ -6,12 +6,37 @@ from typing import List, Dict, Any, Optional
 from fastapi import APIRouter, Depends, HTTPException, Query, status
 from sqlalchemy.orm import Session
 from sqlalchemy import text
+from pydantic import BaseModel
 
 from app.db.connection import get_db
 import logging
 
 logger = logging.getLogger(__name__)
 router = APIRouter()
+
+class StudyCreateRequest(BaseModel):
+    studyId: str
+    title: str
+    summary: Optional[str] = None
+    year: int
+    doi: Optional[str] = None
+    category: str
+    periodStart: str
+    periodEnd: str
+    interventionType: str
+    interventionDetails: Optional[str] = None
+
+class StudyUpdateRequest(BaseModel):
+    studyId: Optional[str] = None
+    title: Optional[str] = None
+    summary: Optional[str] = None
+    year: Optional[int] = None
+    doi: Optional[str] = None
+    category: Optional[str] = None
+    periodStart: Optional[str] = None
+    periodEnd: Optional[str] = None
+    interventionType: Optional[str] = None
+    interventionDetails: Optional[str] = None
 
 def try_database_query(db: Optional[Session], query_func):
     """Try to execute a database query, return None if it fails"""
@@ -395,3 +420,135 @@ async def search_studies(
 ):
     """Search studies - delegates to main list endpoint"""
     return await list_studies(q=q, page=page, pageSize=pageSize, sort=sort, db=db)
+
+@router.post("/", response_model=Dict[str, Any])
+async def create_study(
+    study_data: StudyCreateRequest,
+    db: Optional[Session] = Depends(get_db)
+):
+    """Create a new study."""
+    
+    def db_create(session):
+        # Check if study ID already exists
+        check_query = text("SELECT study_id FROM studies WHERE study_id = :study_id")
+        existing = session.execute(check_query, {"study_id": study_data.studyId})
+        if existing.fetchone():
+            raise HTTPException(status_code=400, detail="Study ID already exists")
+        
+        # Insert new study
+        insert_query = text("""
+            INSERT INTO studies (study_id, title, summary, year, doi, category_id, is_active, created_at)
+            VALUES (:study_id, :title, :summary, :year, :doi, :category_id, 1, NOW())
+        """)
+        
+        session.execute(insert_query, {
+            "study_id": study_data.studyId,
+            "title": study_data.title,
+            "summary": study_data.summary,
+            "year": study_data.year,
+            "doi": study_data.doi,
+            "category_id": int(study_data.category) if study_data.category else 1
+        })
+        session.commit()
+        
+        return {"study_id": study_data.studyId}
+    
+    if db:
+        try:
+            result = db_create(db)
+            return {
+                "success": True,
+                "message": "Study created successfully",
+                "data": result
+            }
+        except HTTPException:
+            raise
+        except Exception as e:
+            logger.error(f"Database error creating study: {e}")
+            raise HTTPException(status_code=500, detail="Failed to create study")
+    
+    # Mock response for testing
+    return {
+        "success": True,
+        "message": "Study created successfully (mock)",
+        "data": {"study_id": study_data.studyId}
+    }
+
+@router.put("/{study_id}", response_model=Dict[str, Any])
+async def update_study(
+    study_id: str,
+    study_data: StudyUpdateRequest,
+    db: Optional[Session] = Depends(get_db)
+):
+    """Update an existing study."""
+    
+    # Extract numeric ID
+    try:
+        if study_id.startswith("ICD-"):
+            numeric_id = int(study_id.replace("ICD-", ""))
+        else:
+            numeric_id = int(study_id)
+    except ValueError:
+        raise HTTPException(status_code=400, detail="Invalid study ID format")
+    
+    def db_update(session):
+        # Check if study exists
+        check_query = text("SELECT study_id FROM studies WHERE study_id = :study_id AND is_active = 1")
+        existing = session.execute(check_query, {"study_id": numeric_id})
+        if not existing.fetchone():
+            raise HTTPException(status_code=404, detail="Study not found")
+        
+        # Build update query dynamically
+        update_fields = []
+        params = {"study_id": numeric_id}
+        
+        if study_data.studyId is not None:
+            update_fields.append("study_id = :new_study_id")
+            params["new_study_id"] = study_data.studyId
+        if study_data.title is not None:
+            update_fields.append("title = :title")
+            params["title"] = study_data.title
+        if study_data.summary is not None:
+            update_fields.append("summary = :summary")
+            params["summary"] = study_data.summary
+        if study_data.year is not None:
+            update_fields.append("year = :year")
+            params["year"] = study_data.year
+        if study_data.doi is not None:
+            update_fields.append("doi = :doi")
+            params["doi"] = study_data.doi
+        if study_data.category is not None:
+            update_fields.append("category_id = :category_id")
+            params["category_id"] = int(study_data.category)
+        
+        if update_fields:
+            update_query = text(f"""
+                UPDATE studies 
+                SET {', '.join(update_fields)}, last_updated_date = NOW()
+                WHERE study_id = :study_id
+            """)
+            session.execute(update_query, params)
+            session.commit()
+        
+        return {"study_id": study_data.studyId or numeric_id}
+    
+    if db:
+        try:
+            result = db_update(db)
+            return {
+                "success": True,
+                "message": "Study updated successfully",
+                "data": result
+            }
+        except HTTPException:
+            raise
+        except Exception as e:
+            logger.error(f"Database error updating study: {e}")
+            raise HTTPException(status_code=500, detail="Failed to update study")
+    
+    # Mock response for testing
+    return {
+        "success": True,
+        "message": "Study updated successfully (mock)",
+        "data": {"study_id": study_data.studyId or numeric_id}
+    }

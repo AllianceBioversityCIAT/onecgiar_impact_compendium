@@ -8,7 +8,7 @@ import { Select } from '../../components/ui/Select';
 import { Textarea } from '../../components/ui/Textarea';
 import { Button } from '../../components/ui/Button';
 import { Card } from '../../components/ui/Card';
-import { DatePicker } from '../../components/ui/DatePicker';
+import { SearchableSelect } from '../../components/ui/SearchableSelect';
 import { getReferenceData } from '../../services/api';
 
 const steps = [
@@ -365,12 +365,12 @@ export const CreateStudyStep1: React.FC = () => {
               </h3>
               
               <div className="space-y-4">
-                <Select
+                <SearchableSelect
                   label="Intervention type"
                   required
                   options={options.interventionTypes}
                   value={formData.interventionType}
-                  onChange={(e) => handleInputChange('interventionType', e.target.value)}
+                  onChange={(value) => handleInputChange('interventionType', value)}
                   error={errors.interventionType}
                 />
 

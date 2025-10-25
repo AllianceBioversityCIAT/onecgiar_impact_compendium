@@ -64,7 +64,9 @@ export const CreateStudyStep2: React.FC = () => {
         setOptions({
           cropTypes: cropTypes.map((item: any) => ({ value: item.id, label: item.name })),
           keywords: keywords.map((item: any) => ({ value: item.id, label: item.name })),
-          initiatives: initiatives.data ? initiatives.data.map((item: any) => ({ value: item.initiative_id, label: `${item.code} - ${item.name}` })) : [],
+          initiatives: initiatives.data ? initiatives.data
+            .sort((a: any, b: any) => (a.code || '').localeCompare(b.code || ''))
+            .map((item: any) => ({ value: item.initiative_id, label: `${item.code} - ${item.name}` })) : [],
           centers: centers.data ? centers.data.map((item: any) => ({ value: item.center_id, label: `${item.acronym} - ${item.name}` })) : [],
           impactAreas: impactAreas.data ? impactAreas.data.map((item: any) => ({ value: item.impact_area_id, label: item.name })) : [],
           countries: countries.data ? countries.data.filter((item: any) => 

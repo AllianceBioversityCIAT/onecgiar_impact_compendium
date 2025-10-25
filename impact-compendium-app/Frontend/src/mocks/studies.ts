@@ -10,18 +10,28 @@ const mockStudies: Study[] = [
     createdAt: '2024-01-15',
     updatedAt: '2024-02-20',
     authors: ['Dr. Jane Smith', 'Prof. John Doe'],
-    tags: ['climate', 'agriculture', 'africa']
+    tags: ['climate', 'agriculture', 'africa'],
+    year: 2024,
+    impact_areas: 'Climate adaptation and mitigation',
+    regions: 'Africa',
+    countries: 'Kenya, Ethiopia, Ghana',
+    center: 'CIMMYT'
   },
   {
     id: '2',
     title: 'Water Management Systems in Rice Production',
     description: 'Evaluation of water-efficient irrigation systems in Asian rice fields',
     category: 'Water Management',
-    status: 'Draft',
+    status: 'Published',
     createdAt: '2024-02-10',
     updatedAt: '2024-03-15',
     authors: ['Dr. Maria Garcia'],
-    tags: ['water', 'rice', 'irrigation']
+    tags: ['water', 'rice', 'irrigation'],
+    year: 2024,
+    impact_areas: 'Environmental health and biodiversity',
+    regions: 'Asia',
+    countries: 'Bangladesh, Vietnam, Philippines',
+    center: 'IRRI'
   },
   {
     id: '3',
@@ -32,32 +42,45 @@ const mockStudies: Study[] = [
     createdAt: '2024-01-20',
     updatedAt: '2024-02-25',
     authors: ['Dr. Ahmed Hassan', 'Dr. Lisa Chen'],
-    tags: ['nutrition', 'crops', 'diversity']
+    tags: ['nutrition', 'crops', 'diversity'],
+    year: 2024,
+    impact_areas: 'Nutrition, health and food security',
+    regions: 'Global',
+    countries: 'Multiple Countries',
+    center: 'ICRISAT'
   },
-  // Add study with ID 578 for testing
   {
-    id: '578',
-    title: 'Advanced Research Study 578',
-    description: 'This is the study with ID 578 that should be found when searching',
-    category: 'Research',
+    id: '4',
+    title: 'Sustainable Livestock Management',
+    description: 'Comprehensive study on sustainable livestock practices and their impact on rural livelihoods',
+    category: 'Livestock',
     status: 'Published',
-    createdAt: '2024-05-15',
-    updatedAt: '2024-06-20',
+    createdAt: '2023-05-15',
+    updatedAt: '2023-06-20',
     authors: ['Dr. Test Researcher'],
-    tags: ['test', 'search', '578']
+    tags: ['livestock', 'sustainability'],
+    year: 2023,
+    impact_areas: 'Poverty reduction, livelihoods and jobs',
+    regions: 'Africa',
+    countries: 'Kenya, Tanzania, Uganda',
+    center: 'ILRI'
   },
-  // Add more studies to simulate a larger dataset
-  ...Array.from({ length: 600 }, (_, i) => ({
-    id: (i + 4).toString(),
-    title: `Research Study ${i + 4}`,
-    description: `Detailed analysis and research findings for study number ${i + 4}`,
-    category: ['Agriculture', 'Water Management', 'Nutrition', 'Climate Change'][i % 4],
-    status: i % 3 === 0 ? 'Draft' : 'Published',
-    createdAt: `2024-${String(Math.floor(i / 50) + 1).padStart(2, '0')}-${String((i % 30) + 1).padStart(2, '0')}`,
-    updatedAt: `2024-${String(Math.floor(i / 50) + 2).padStart(2, '0')}-${String((i % 30) + 1).padStart(2, '0')}`,
-    authors: [`Researcher ${i + 4}`],
-    tags: ['research', 'study', `tag${i + 4}`]
-  }))
+  {
+    id: '5',
+    title: 'Gender Inclusion in Agricultural Value Chains',
+    description: 'Assessment of women\'s participation in agricultural value chains and economic empowerment',
+    category: 'Gender',
+    status: 'Published',
+    createdAt: '2024-03-10',
+    updatedAt: '2024-04-15',
+    authors: ['Dr. Sarah Johnson'],
+    tags: ['gender', 'value chains', 'empowerment'],
+    year: 2024,
+    impact_areas: 'Gender equality, youth and social inclusion',
+    regions: 'Latin America',
+    countries: 'Colombia, Peru, Ecuador',
+    center: 'CIAT'
+  }
 ];
 
 export interface StudiesResponse {

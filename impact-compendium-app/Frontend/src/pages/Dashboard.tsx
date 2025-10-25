@@ -18,6 +18,7 @@ interface Study {
   title: string;
   impact_areas: string;
   regions: string;
+  countries: string;
   center: string;
   category: string;
   contributors: string;
@@ -33,15 +34,16 @@ interface SearchParams {
 }
 
 const columns = [
-  { key: 'id', label: 'Id', width: 'w-16' },
+  { key: 'id', label: 'Study id', width: 'w-24' },
   { key: 'year', label: 'Year', sortable: true, width: 'w-20' },
-  { key: 'period', label: 'Period analyzed', width: 'w-32' },
-  { key: 'title', label: 'Title', sortable: true, width: 'w-16', className: 'truncate' },
+  { key: 'period', label: 'Period', width: 'w-28' },
+  { key: 'title', label: 'Title', sortable: true, width: 'w-80', className: 'truncate' },
   { key: 'impact_areas', label: 'Impact areas', width: 'w-48' },
   { key: 'regions', label: 'Regions', width: 'w-40' },
-  { key: 'center', label: 'Center', width: 'w-32' },
-  { key: 'category', label: 'Category', sortable: true, width: 'w-40' },
-  { key: 'contributors', label: 'Contributing initiatives', width: 'w-48' },
+  { key: 'countries', label: 'Countries', width: 'w-40' },
+  { key: 'center', label: 'Centers', width: 'w-32' },
+  { key: 'category', label: 'Category', sortable: true, width: 'w-32' },
+  { key: 'contributors', label: 'Initiatives', width: 'w-48' },
 ];
 
 export const Dashboard: React.FC = () => {
@@ -109,10 +111,11 @@ export const Dashboard: React.FC = () => {
           id: `ICD-${study.id || Math.random()}`,
           year: study.year || 2024,
           period: '2023-2024',
-          title: study.title || 'No title',
-          impact_areas: study.category || 'General',
-          regions: ['Global', 'Africa', 'Asia', 'Latin America'][Math.floor(Math.random() * 4)],
-          center: ['CIMMYT', 'IRRI', 'ICRISAT', 'CIAT'][Math.floor(Math.random() * 4)],
+          title: study.title ? study.title.charAt(0).toUpperCase() + study.title.slice(1).toLowerCase() : 'No title',
+          impact_areas: study.impact_areas || 'N/A',
+          regions: study.regions || 'N/A',
+          countries: study.countries || 'N/A',
+          center: study.center || 'N/A',
           category: study.category || 'Other',
           contributors: study.authors?.join(', ') || 'N/A',
           summary: study.description || 'No summary available'
@@ -153,14 +156,15 @@ export const Dashboard: React.FC = () => {
           total = studiesData.length;
         }
         
-        // Transform data to match table format - new API already provides enhanced format
+        // Transform data to match table format - use actual API data
         const transformedStudies = studiesData.map((study: any) => ({
           id: study.id || `ICD-${study.study_id || Math.random()}`,
           year: study.year || 'N/A',
           period: study.period ? `${study.period.start || ''}-${study.period.end || ''}` : 'N/A',
-          title: study.title || 'No title',
+          title: study.title ? study.title.charAt(0).toUpperCase() + study.title.slice(1).toLowerCase() : 'No title',
           impact_areas: study.impact_areas?.map((ia: any) => ia.name).join(', ') || 'N/A',
           regions: study.regions?.map((r: any) => r.name).join(', ') || 'N/A',
+          countries: study.countries?.map((c: any) => c.name).join(', ') || 'N/A',
           center: study.contributors?.centers?.map((c: any) => c.acronym || c.name).join(', ') || 'N/A',
           category: study.category?.name || 'Other',
           contributors: study.contributors?.initiatives?.map((i: any) => i.name).join(', ') || 'N/A',
@@ -179,10 +183,11 @@ export const Dashboard: React.FC = () => {
         id: `ICD-${study.id || Math.random()}`,
         year: study.year || 2024,
         period: '2023-2024',
-        title: study.title || 'No title',
-        impact_areas: study.category || 'General',
-        regions: ['Global', 'Africa', 'Asia', 'Latin America'][Math.floor(Math.random() * 4)],
-        center: ['CIMMYT', 'IRRI', 'ICRISAT', 'CIAT'][Math.floor(Math.random() * 4)],
+        title: study.title ? study.title.charAt(0).toUpperCase() + study.title.slice(1).toLowerCase() : 'No title',
+        impact_areas: study.impact_areas || 'N/A',
+        regions: study.regions || 'N/A',
+        countries: study.countries || 'N/A',
+        center: study.center || 'N/A',
         category: study.category || 'Other',
         contributors: study.authors?.join(', ') || 'N/A',
         summary: study.description || 'No summary available'

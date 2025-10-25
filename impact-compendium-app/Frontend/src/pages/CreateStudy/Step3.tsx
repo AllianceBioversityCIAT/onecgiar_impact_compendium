@@ -218,7 +218,7 @@ export const CreateStudyStep3: React.FC = () => {
       onBack={handleGoBack}
       onNext={handleFinish}
       onSaveDraft={() => console.log('Save draft')}
-      nextLabel={isSubmitting ? 'Submitting...' : 'Finish'}
+      nextLabel={isSubmitting ? 'Submitting...' : 'Save'}
       isLoading={isSubmitting}
       steps={steps}
       currentStep={3}

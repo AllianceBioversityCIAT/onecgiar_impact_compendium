@@ -52,11 +52,11 @@ export const Login: React.FC = () => {
 
         {/* Header Section */}
         <div className="flex flex-col gap-2 mx-auto lg:absolute w-full max-w-[448px] lg:left-[212.75px] lg:top-[218.7px] mb-8 lg:mb-0">
-          <h1 className="font-inter font-normal text-[24px] lg:text-[28px] leading-[36px] lg:leading-[42px] tracking-[0.382812px] text-[#333333]">
-            Log in to Impact Compendium
+          <h1 className="font-inter font-bold text-[24px] lg:text-[28px] leading-[36px] lg:leading-[42px] tracking-[0.382812px] text-[#333333]">
+            Log in
           </h1>
           <p className="font-inter font-normal text-[14px] leading-[22px] tracking-[-0.150391px] text-[#777777]">
-            Use your organization email to easily connect
+            Enter your email and password to access your account
           </p>
         </div>
 

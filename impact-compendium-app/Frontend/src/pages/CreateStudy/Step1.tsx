@@ -114,7 +114,7 @@ export const CreateStudyStep1: React.FC = () => {
       const loadStudyData = async () => {
         try {
           const numericId = id.startsWith('ICD-') ? id.replace('ICD-', '') : id;
-          const response = await fetch(`${import.meta.env.VITE_API_BASE_URL}/studies/${numericId}`);
+          const response = await fetch(`${import.meta.env.VITE_API_BASE_URL}/api/studies/${numericId}`);
           
           if (response.ok) {
             const apiResponse = await response.json();
@@ -156,7 +156,7 @@ export const CreateStudyStep1: React.FC = () => {
     
     setValidatingStudyId(true);
     try {
-      const response = await fetch(`${import.meta.env.VITE_API_BASE_URL}/studies/check-id/${encodeURIComponent(studyId)}`);
+      const response = await fetch(`${import.meta.env.VITE_API_BASE_URL}/api/studies/check-id/${encodeURIComponent(studyId)}`);
       const data = await response.json();
       
       if (data.exists) {

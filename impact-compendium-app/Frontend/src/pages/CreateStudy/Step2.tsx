@@ -127,7 +127,7 @@ export const CreateStudyStep2: React.FC = () => {
         try {
           setMappingData(true);
           const numericId = id.startsWith('ICD-') ? id.replace('ICD-', '') : id;
-          const response = await fetch(`${import.meta.env.VITE_API_BASE_URL}/studies/${numericId}`);
+          const response = await fetch(`${import.meta.env.VITE_API_BASE_URL}/api/studies/${numericId}`);
           
           if (response.ok) {
             const apiResponse = await response.json();

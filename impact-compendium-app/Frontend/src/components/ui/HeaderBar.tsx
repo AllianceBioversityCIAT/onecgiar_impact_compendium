@@ -10,6 +10,7 @@ interface HeaderBarProps {
   showAddButton?: boolean;
   steps?: Array<{ id: number; label: string; completed?: boolean }>;
   currentStep?: number;
+  onClose?: () => void;
 }
 
 export const HeaderBar: React.FC<HeaderBarProps> = ({ 
@@ -17,7 +18,8 @@ export const HeaderBar: React.FC<HeaderBarProps> = ({
   onAddStudy, 
   showAddButton = true,
   steps,
-  currentStep
+  currentStep,
+  onClose
 }) => {
   const navigate = useNavigate();
   const { user, logout } = useAuth();
@@ -85,13 +87,14 @@ export const HeaderBar: React.FC<HeaderBarProps> = ({
         </div>
       </div>
 
-      {/* Center - Navigation or Steps */}
-      {steps && currentStep ? (
-        <div className="flex-1 flex justify-center">
-          <ProgressStepper steps={steps} currentStep={currentStep} />
-        </div>
-      ) : (
-        <div className="flex-1 flex justify-center">
+      {/* Center - Navigation or Steps with smooth transition */}
+      <div className="flex-1 flex justify-center relative h-12">
+        {/* Navigation Menu */}
+        <div className={`absolute inset-0 flex justify-center items-center transition-all duration-500 ease-in-out ${
+          steps && currentStep 
+            ? 'opacity-0 transform translate-y-[-10px] pointer-events-none' 
+            : 'opacity-100 transform translate-y-0'
+        }`}>
           <nav className="flex items-center gap-2">
             <button
               onClick={() => navigate('/')}
@@ -130,17 +133,28 @@ export const HeaderBar: React.FC<HeaderBarProps> = ({
             </button>
           </nav>
         </div>
-      )}
+
+        {/* Progress Stepper */}
+        <div className={`absolute inset-0 flex justify-center items-center transition-all duration-500 ease-in-out ${
+          steps && currentStep 
+            ? 'opacity-100 transform translate-y-0' 
+            : 'opacity-0 transform translate-y-[10px] pointer-events-none'
+        }`}>
+          {steps && currentStep && (
+            <ProgressStepper steps={steps} currentStep={currentStep} />
+          )}
+        </div>
+      </div>
 
       <div className="flex items-center space-x-4">
-        {showAddButton ? (
+        {showAddButton && !steps ? (
           <Button onClick={onAddStudy} className="flex items-center space-x-2">
             <span>Add study</span>
             <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
             </svg>
           </Button>
-        ) : (
+        ) : !steps ? (
           /* Invisible placeholder to maintain spacing */
           <div className="invisible">
             <Button className="flex items-center space-x-2">
@@ -150,38 +164,51 @@ export const HeaderBar: React.FC<HeaderBarProps> = ({
               </svg>
             </Button>
           </div>
-        )}
+        ) : null}
         
-        {/* User Menu - Always visible */}
-        <div className="relative" ref={menuRef}>
+        {/* Close button for steps mode OR User Menu for normal mode */}
+        {steps && onClose ? (
           <button
-            onClick={() => setShowUserMenu(!showUserMenu)}
-            className="w-10 h-10 bg-[var(--ic-color-primary)] text-black rounded-full flex items-center justify-center font-semibold hover:opacity-90 transition-opacity"
+            onClick={onClose}
+            className="p-2 text-gray-500 hover:text-gray-700 hover:bg-gray-100 rounded-lg transition-colors"
+            title="Close"
           >
-            {getUserInitials()}
+            <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+            </svg>
           </button>
-          
-          {showUserMenu && (
-            <div className="absolute right-0 mt-2 w-48 bg-white rounded-lg shadow-lg border border-gray-200 py-2 z-50">
-              <div className="px-4 py-2 text-sm font-medium text-gray-900 border-b border-gray-100">
-                My Account
+        ) : (
+          /* User Menu - Only visible when not in steps mode */
+          <div className="relative" ref={menuRef}>
+            <button
+              onClick={() => setShowUserMenu(!showUserMenu)}
+              className="w-10 h-10 bg-[var(--ic-color-primary)] text-black rounded-full flex items-center justify-center font-semibold hover:opacity-90 transition-opacity"
+            >
+              {getUserInitials()}
+            </button>
+            
+            {showUserMenu && (
+              <div className="absolute right-0 mt-2 w-48 bg-white rounded-lg shadow-lg border border-gray-200 py-2 z-50">
+                <div className="px-4 py-2 text-sm font-medium text-gray-900 border-b border-gray-100">
+                  My Account
+                </div>
+                <button className="w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-50">
+                  Profile
+                </button>
+                <button className="w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-50">
+                  Settings
+                </button>
+                <hr className="my-1" />
+                <button 
+                  onClick={handleLogout}
+                  className="w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-50"
+                >
+                  Log out
+                </button>
               </div>
-              <button className="w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-50">
-                Profile
-              </button>
-              <button className="w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-50">
-                Settings
-              </button>
-              <hr className="my-1" />
-              <button 
-                onClick={handleLogout}
-                className="w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-50"
-              >
-                Log out
-              </button>
-            </div>
-          )}
-        </div>
+            )}
+          </div>
+        )}
       </div>
     </header>
   );

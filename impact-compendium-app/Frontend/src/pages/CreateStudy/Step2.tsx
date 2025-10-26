@@ -257,6 +257,10 @@ export const CreateStudyStep2: React.FC = () => {
     navigate(backPath);
   };
 
+  const handleClose = () => {
+    navigate('/dashboard');
+  };
+
   const pageTitle = isEditMode ? "Edit study form" : "Create new study form";
 
   return (
@@ -266,6 +270,7 @@ export const CreateStudyStep2: React.FC = () => {
       onNext={handleNext}
       steps={steps}
       currentStep={2}
+      onClose={handleClose}
     >
       <div className="space-y-6">
         <h1 className="text-2xl font-bold text-[var(--ic-color-text)]">{pageTitle}</h1>

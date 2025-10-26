@@ -9,6 +9,7 @@ interface AppLayoutProps {
   hasFormFooter?: boolean;
   steps?: Array<{ id: number; label: string; completed?: boolean }>;
   currentStep?: number;
+  onClose?: () => void;
 }
 
 export const AppLayout: React.FC<AppLayoutProps> = ({ 
@@ -18,7 +19,8 @@ export const AppLayout: React.FC<AppLayoutProps> = ({
   showAddButton = true,
   hasFormFooter = false,
   steps,
-  currentStep
+  currentStep,
+  onClose
 }) => {
   return (
     <div className="min-h-screen bg-[var(--ic-surface-muted)]">
@@ -28,6 +30,7 @@ export const AppLayout: React.FC<AppLayoutProps> = ({
         showAddButton={showAddButton}
         steps={steps}
         currentStep={currentStep}
+        onClose={onClose}
       />
       
       <main className={`max-w-[95vw] mx-auto px-4 py-4 pt-28 ${hasFormFooter ? 'pb-32' : 'pb-28'}`}>

@@ -13,6 +13,7 @@ interface FormLayoutProps {
   isLoading?: boolean;
   steps?: Array<{ id: number; label: string; completed?: boolean }>;
   currentStep?: number;
+  onClose?: () => void;
 }
 
 export const FormLayout: React.FC<FormLayoutProps> = ({
@@ -25,7 +26,8 @@ export const FormLayout: React.FC<FormLayoutProps> = ({
   nextLabel = "Next",
   isLoading = false,
   steps,
-  currentStep
+  currentStep,
+  onClose
 }) => {
   return (
     <AppLayout 
@@ -34,6 +36,7 @@ export const FormLayout: React.FC<FormLayoutProps> = ({
       hasFormFooter={true}
       steps={steps}
       currentStep={currentStep}
+      onClose={onClose}
     >
       {children}
       

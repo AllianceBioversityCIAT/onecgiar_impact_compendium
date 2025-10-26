@@ -222,6 +222,10 @@ export const CreateStudyStep1: React.FC = () => {
     navigate('/dashboard');
   };
 
+  const handleClose = () => {
+    navigate('/dashboard');
+  };
+
   const handleNext = async () => {
     if (validatingStudyId) {
       // Wait for validation to complete
@@ -264,6 +268,7 @@ export const CreateStudyStep1: React.FC = () => {
       onNext={handleNext}
       steps={steps}
       currentStep={1}
+      onClose={handleClose}
     >
       <div className="space-y-4">
         <h1 className="text-xl font-bold text-[var(--ic-color-text)]">{pageTitle}</h1>

@@ -236,6 +236,10 @@ export const CreateStudyStep3: React.FC = () => {
     navigate(backPath);
   };
 
+  const handleClose = () => {
+    navigate('/dashboard');
+  };
+
   const pageTitle = isEditMode ? "Edit study form" : "Create new study form";
 
   if (loading || mappingData) {
@@ -275,6 +279,7 @@ export const CreateStudyStep3: React.FC = () => {
       isLoading={isSubmitting}
       steps={steps}
       currentStep={3}
+      onClose={handleClose}
     >
       {/* Notification Toast */}
       {notification.show && (

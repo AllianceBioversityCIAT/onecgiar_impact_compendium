@@ -96,8 +96,13 @@ export const CreateStudyStep2: React.FC = () => {
 
   useEffect(() => {
     const loadInitialData = async () => {
-      if (isEditMode) {
-        // Load all data immediately for edit mode to show saved values
+      const savedData = getSavedData();
+      const hasFormData = Object.values(savedData).some(value => 
+        Array.isArray(value) ? value.length > 0 : value !== ''
+      );
+
+      if (isEditMode || hasFormData) {
+        // Load all data immediately for edit mode or when form data exists
         await Promise.all([
           loadReferenceDataItem('cropTypes', getReferenceData.cropTypes),
           loadReferenceDataItem('keywords', getReferenceData.keywords),

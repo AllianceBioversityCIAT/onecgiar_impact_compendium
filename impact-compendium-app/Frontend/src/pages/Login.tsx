@@ -1,208 +1,199 @@
-import React, { useState, useEffect } from 'react';
-import { Navigate, useNavigate } from 'react-router-dom';
-import { Input } from '../components/ui/Input';
-import { Button } from '../components/ui/Button';
-import { PasswordChange } from '../components/PasswordChange';
-import { ForgotPassword } from '../components/ForgotPassword';
+import React, { useState } from 'react';
 import { useAuth } from '../contexts/AuthContext';
-import { signIn } from 'aws-amplify/auth';
-import { signOut } from 'aws-amplify/auth';
+import { ForgotPassword } from '../components/ForgotPassword';
+import { PasswordChange } from '../components/PasswordChange';
 
 export const Login: React.FC = () => {
-  const navigate = useNavigate();
-  const { login, isAuthenticated, isLoading: authLoading, refreshUser } = useAuth();
-  const [formData, setFormData] = useState({
-    email: '',
-    password: ''
-  });
-  const [isLoading, setIsLoading] = useState(false);
+  const { login } = useAuth();
+  const [email, setEmail] = useState('');
+  const [password, setPassword] = useState('');
+  const [rememberMe, setRememberMe] = useState(false);
+  const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
-  const [needsPasswordChange, setNeedsPasswordChange] = useState(false);
-  const [showPassword, setShowPassword] = useState(false);
   const [showForgotPassword, setShowForgotPassword] = useState(false);
+  const [showPasswordChange, setShowPasswordChange] = useState(false);
 
-  // Redirect if already authenticated
-  useEffect(() => {
-    if (isAuthenticated && !authLoading) {
-      navigate('/', { replace: true });
-    }
-  }, [isAuthenticated, authLoading, navigate]);
-
-  const handleInputChange = (field: string, value: string) => {
-    setFormData(prev => ({ ...prev, [field]: value }));
-    if (error) setError('');
-  };
-
-  const handleLogin = async (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    setIsLoading(true);
+    setLoading(true);
     setError('');
 
     try {
-      // Clear any existing session first
-      try {
-        await signOut();
-      } catch (e) {
-        // Ignore signOut errors
-      }
-
-      // Try direct Amplify signIn to detect password change requirement
-      let username = formData.email;
-      if (formData.email === 'testuser@example.com') {
-        username = 'testuser';
-      }
-      
-      const signInResult = await signIn({
-        username: username,
-        password: formData.password,
-      });
-
-      if (signInResult.isSignedIn) {
-        await login(formData.email, formData.password);
-        navigate('/dashboard', { replace: true });
-      } else if (signInResult.nextStep?.signInStep === 'CONFIRM_SIGN_IN_WITH_NEW_PASSWORD_REQUIRED') {
-        setNeedsPasswordChange(true);
-      }
-    } catch (err: any) {
-      setError(err.message || 'Login failed. Please check your credentials.');
+      await login(email, password);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Login failed');
     } finally {
-      setIsLoading(false);
+      setLoading(false);
     }
   };
 
-  const handlePasswordChanged = async () => {
-    try {
-      // User is already authenticated after password change, just refresh the auth context
-      await refreshUser();
-      navigate('/', { replace: true });
-    } catch (err: any) {
-      setError(err.message || 'Failed to complete login after password change.');
-    }
-  };
+  if (showForgotPassword) {
+    return <ForgotPassword onBack={() => setShowForgotPassword(false)} />;
+  }
+
+  if (showPasswordChange) {
+    return <PasswordChange onBack={() => setShowPasswordChange(false)} />;
+  }
 
   return (
-    <div className="min-h-screen bg-gray-50 flex items-center justify-center py-12 px-4 sm:px-6 lg:px-8">
-      <div className="max-w-md w-full space-y-8">
-        {/* Card Container */}
-        <div className="bg-white rounded-xl shadow-lg p-8">
-          {/* Logo and Title */}
-          <div className="text-center mb-8">
-            <div className="mx-auto h-16 w-16 mb-4 flex items-center justify-center">
-              <svg className="h-12 w-12" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 51 42">
-                <path d="M25.3019 0.809967L50.3018 15.8198V25.7963L25.3019 40.81L0.301758 25.7963V15.8199L25.3019 0.809967Z" fill="#FDC82F"></path>
-                <path fillRule="evenodd" clipRule="evenodd" d="M0.301758 15.8198L25.3018 0.809967L50.3018 15.8198V25.7963L25.3018 40.81L0.301758 25.7963V15.8198ZM25.3018 34.441L44.9985 22.6122V19.0051L44.9975 19.0045L25.3018 30.8297L5.60602 19.0045L5.60506 19.0051V22.6122L25.3018 34.441ZM25.3018 25.3146L40.4036 16.2476L36.7247 14.0398L25.3018 20.8981L13.8789 14.0398L10.2 16.2476L25.3018 25.3146ZM25.3018 15.383L32.1308 11.2829L25.3018 7.18464L18.4728 11.2829L25.3018 15.383Z" fill="#000000"></path>
-                <path d="M25.3019 0.809967L0.301758 15.8199V25.7963L25.3018 40.81L25.3019 0.809967Z" fill="#FDC82F" fillOpacity="0.3"></path>
-              </svg>
+    <div className="min-h-screen bg-white flex">
+      {/* Left Panel - Login Form */}
+      <div className="w-[873.5px] bg-white flex flex-col">
+        {/* Logo Section */}
+        <div className="flex items-center gap-3 absolute left-[212.75px] top-[122.7px]">
+          {/* Logo Icon */}
+          <div className="w-12 h-12 relative">
+            <div className="absolute left-[25%] right-[25%] top-[8.33%] bottom-[33.33%] bg-[#FFC84F]"></div>
+            <div className="absolute left-[37.5%] right-[37.5%] top-[33.33%] bottom-[33.33%] bg-[#F07E28]"></div>
+          </div>
+          
+          {/* Logo Text */}
+          <div className="flex flex-col">
+            <div className="font-inter font-normal text-[20px] leading-6 tracking-[-0.449219px] text-[#333333]">
+              CGIAR
             </div>
-            <h2 className="text-2xl font-bold text-gray-900 mb-2">
+            <div className="font-inter font-normal text-[11px] leading-4 tracking-[0.564453px] text-[#777777]">
               Impact Compendium
-            </h2>
-            <p className="text-gray-600 text-sm">
-              Sign in to your account
-            </p>
+            </div>
+          </div>
+        </div>
+
+        {/* Header Section */}
+        <div className="flex flex-col gap-2 absolute w-[448px] left-[212.75px] top-[218.7px]">
+          <h1 className="font-inter font-normal text-[28px] leading-[42px] tracking-[0.382812px] text-[#333333]">
+            Log in to Impact Compendium
+          </h1>
+          <p className="font-inter font-normal text-[14px] leading-[22px] tracking-[-0.150391px] text-[#777777]">
+            Use your organization email to easily connect
+          </p>
+        </div>
+
+        {/* Form Section */}
+        <form onSubmit={handleSubmit} className="absolute w-[448px] left-[212.75px] top-[323.1px]">
+          {/* Email Field */}
+          <div className="flex flex-col gap-2 mb-[20px]">
+            <label className="font-inter font-medium text-[14px] leading-[14px] tracking-[-0.150391px] text-[#333333]">
+              Email address
+            </label>
+            <input
+              type="email"
+              value={email}
+              onChange={(e) => setEmail(e.target.value)}
+              placeholder="you@organization.org"
+              className="w-[448px] h-[44px] px-3 py-1 bg-[#F3F3F5] border border-[#E5E5E5] rounded-[10px] font-inter font-normal text-[14px] leading-[17px] tracking-[-0.150391px] text-[#717182] placeholder:text-[#717182]"
+              required
+            />
+          </div>
+
+          {/* Password Field */}
+          <div className="flex flex-col gap-2 mb-[20px]">
+            <label className="font-inter font-medium text-[14px] leading-[14px] tracking-[-0.150391px] text-[#333333]">
+              Password
+            </label>
+            <input
+              type="password"
+              value={password}
+              onChange={(e) => setPassword(e.target.value)}
+              placeholder="Enter your password"
+              className="w-[448px] h-[44px] px-3 py-1 bg-[#F3F3F5] border border-[#E5E5E5] rounded-[10px] font-inter font-normal text-[14px] leading-[17px] tracking-[-0.150391px] text-[#717182] placeholder:text-[#717182]"
+              required
+            />
+          </div>
+
+          {/* Remember Me & Forgot Password */}
+          <div className="flex justify-between items-center mb-[20px]">
+            <div className="flex items-center gap-2">
+              <input
+                type="checkbox"
+                id="remember"
+                checked={rememberMe}
+                onChange={(e) => setRememberMe(e.target.checked)}
+                className="w-4 h-4"
+              />
+              <label htmlFor="remember" className="font-inter font-normal text-[13px] leading-5 tracking-[-0.0761719px] text-[#777777]">
+                Remember me
+              </label>
+            </div>
+            <button
+              type="button"
+              onClick={() => setShowForgotPassword(true)}
+              className="font-inter font-normal text-[13px] leading-5 tracking-[-0.0761719px] text-[#F07E28] hover:underline"
+            >
+              Forgot password?
+            </button>
           </div>
 
           {/* Error Message */}
           {error && (
-            <div className="mb-6 bg-red-50 border border-red-200 rounded-lg p-3">
-              <div className="flex items-center">
-                <svg className="h-5 w-5 text-red-400 mr-2" fill="currentColor" viewBox="0 0 20 20">
-                  <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z" clipRule="evenodd" />
-                </svg>
-                <span className="text-red-700 text-sm">{error}</span>
-              </div>
+            <div className="mb-4 p-3 bg-red-50 border border-red-200 rounded-lg">
+              <p className="text-sm text-red-600">{error}</p>
             </div>
           )}
 
-          {/* Login Form, Password Change, or Forgot Password */}
-          {showForgotPassword ? (
-            <ForgotPassword onBack={() => setShowForgotPassword(false)} />
-          ) : needsPasswordChange ? (
-            <PasswordChange 
-              onPasswordChanged={handlePasswordChanged}
-              onError={setError}
-            />
-          ) : (
-            <form onSubmit={handleLogin} className="space-y-6">
-            <div>
-              <Input
-                label="Email address"
-                type="email"
-                placeholder="Enter your email"
-                value={formData.email}
-                onChange={(e) => handleInputChange('email', e.target.value)}
-                required
-                className="block w-full px-3 py-3 border border-gray-300 rounded-lg shadow-sm placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-yellow-500 focus:border-yellow-500"
-              />
-            </div>
+          {/* Sign In Button */}
+          <button
+            type="submit"
+            disabled={loading}
+            className="w-[448px] h-[48px] bg-gradient-to-br from-[#FFC84F] to-[#F07E28] rounded-[10px] font-inter font-medium text-[14px] leading-5 tracking-[-0.150391px] text-black hover:opacity-90 transition-opacity disabled:opacity-50 mb-[20px]"
+          >
+            {loading ? 'Signing in...' : 'Sign in'}
+          </button>
 
-            <div className="relative">
-              <Input
-                label="Password"
-                type={showPassword ? "text" : "password"}
-                placeholder="Enter your password"
-                value={formData.password}
-                onChange={(e) => handleInputChange('password', e.target.value)}
-                required
-                className="block w-full px-3 py-3 border border-gray-300 rounded-lg shadow-sm placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-yellow-500 focus:border-yellow-500"
-              />
-              <button
-                type="button"
-                className="absolute right-3 top-9 text-gray-400 hover:text-gray-600"
-                onClick={() => setShowPassword(!showPassword)}
-              >
-                {showPassword ? (
-                  <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13.875 18.825A10.05 10.05 0 0112 19c-4.478 0-8.268-2.943-9.543-7a9.97 9.97 0 011.563-3.029m5.858.908a3 3 0 114.243 4.243M9.878 9.878l4.242 4.242M9.878 9.878L3 3m6.878 6.878L21 21" />
-                  </svg>
-                ) : (
-                  <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
-                  </svg>
-                )}
-              </button>
+          {/* Divider */}
+          <div className="relative mb-[20px]">
+            <div className="absolute inset-0 flex items-center">
+              <div className="w-full border-t border-[#E5E5E5]"></div>
             </div>
-
-            <div>
-              <button
-                type="submit"
-                disabled={isLoading}
-                className="group relative w-full flex justify-center py-3 px-4 border border-transparent text-sm font-medium rounded-lg text-black bg-[#FFC850] hover:bg-[#E5B347] focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-[#FFC850] disabled:opacity-50 disabled:cursor-not-allowed transition-colors duration-200"
-              >
-                {isLoading ? (
-                  <div className="flex items-center">
-                    <svg className="animate-spin -ml-1 mr-3 h-5 w-5 text-black" fill="none" viewBox="0 0 24 24">
-                      <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
-                      <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-                    </svg>
-                    Signing in...
-                  </div>
-                ) : (
-                  'Sign in'
-                )}
-              </button>
+            <div className="relative flex justify-center">
+              <span className="bg-white px-4 font-inter font-normal text-[13px] leading-5 tracking-[-0.0761719px] text-[#777777]">
+                or
+              </span>
             </div>
-          </form>
-          )}
-
-          {/* Forgot Password */}
-          <div className="mt-6 text-center">
-            <button 
-              onClick={() => setShowForgotPassword(true)}
-              className="text-sm text-gray-600 hover:text-yellow-600 transition-colors duration-200"
-            >
-              Forgot your password?
-            </button>
           </div>
-        </div>
 
-        {/* Footer */}
-        <div className="text-center">
-          <p className="text-xs text-gray-500">
-            © 2025 CGIAR Alliance. All rights reserved.
+          {/* CGIAR Account Button */}
+          <button
+            type="button"
+            className="w-[448px] h-[48px] bg-white border border-[#E5E5E5] rounded-[10px] flex items-center justify-center gap-4 hover:bg-gray-50 transition-colors"
+          >
+            <div className="w-4 h-4 relative">
+              <div className="absolute left-[8.33%] right-[8.33%] top-[8.33%] bottom-[8.33%] bg-[#4285F4]"></div>
+              <div className="absolute left-[29.17%] right-[29.17%] top-[29.17%] bottom-[29.17%] bg-white"></div>
+            </div>
+            <span className="font-inter font-medium text-[14px] leading-5 tracking-[-0.150391px] text-[#333333]">
+              Continue with CGIAR account
+            </span>
+          </button>
+        </form>
+
+        {/* Footer Section */}
+        <div className="absolute w-[448px] left-[212.75px] top-[766.1px] flex flex-col gap-3">
+          <p className="font-inter font-normal text-[12px] leading-[19px] text-[#999999]">
+            Need help? Contact PRMS technical support at{' '}
+            <a href="mailto:prms-tech-support@cgiar.org" className="text-[#F07E28] hover:underline">
+              prms-tech-support@cgiar.org
+            </a>
+          </p>
+          <p className="font-inter font-normal text-[12px] leading-[18px] text-[#999999]">
+            By continuing, you acknowledge that you understand{' '}
+            <a href="#" className="text-[#F07E28] hover:underline">
+              Terms & Conditions
+            </a>
           </p>
         </div>
+      </div>
+
+      {/* Right Panel - Background Image */}
+      <div className="w-[809.5px] h-screen relative">
+        <div 
+          className="absolute inset-0 bg-cover bg-center"
+          style={{
+            backgroundImage: `url('/specs/images/logo.png')`,
+            backgroundSize: 'cover',
+            backgroundPosition: 'center'
+          }}
+        />
+        <div className="absolute inset-0 bg-gradient-to-br from-[rgba(185,106,40,0.15)] to-[rgba(240,126,40,0.1)]" />
       </div>
     </div>
   );

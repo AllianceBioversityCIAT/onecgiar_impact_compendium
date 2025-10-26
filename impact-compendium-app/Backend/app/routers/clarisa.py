@@ -143,7 +143,7 @@ async def list_regions(db: Session = Depends(get_db)):
     try:
         query = text("""
             SELECT region_id, region_name, acronym, is_active, created_at
-            FROM clarissa_CGIAR_regions 
+            FROM clarisa_cgiar_regions 
             WHERE is_active = 1
             ORDER BY region_name
         """)
@@ -180,7 +180,7 @@ async def list_countries(
     try:
         query = text("""
             SELECT country_id, country_name, is_active
-            FROM clarissa_countries 
+            FROM clarisa_countries 
             WHERE is_active = 1
             ORDER BY country_name
             LIMIT :limit OFFSET :skip

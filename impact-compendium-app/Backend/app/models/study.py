@@ -114,7 +114,7 @@ class StudyRegion(Base):
     
     studies_regions_id = Column(Integer, primary_key=True, index=True)
     study_id = Column(Integer, ForeignKey("studies.study_id"), nullable=False)
-    region_id = Column(Integer, ForeignKey("clarissa_CGIAR_regions.region_id"), nullable=False)
+    region_id = Column(Integer, ForeignKey("clarisa_cgiar_regions.region_id"), nullable=False)
     is_active = Column(Boolean, default=True)
     
     # Relationships
@@ -126,7 +126,7 @@ class StudyCountry(Base):
     
     studies_countries_id = Column(Integer, primary_key=True, index=True)
     study_id = Column(Integer, ForeignKey("studies.study_id"), nullable=False)
-    country_id = Column(Integer, ForeignKey("clarissa_countries.country_id"), nullable=False)
+    country_id = Column(Integer, ForeignKey("clarisa_countries.country_id"), nullable=False)
     is_active = Column(Boolean, default=True)
     
     # Relationships

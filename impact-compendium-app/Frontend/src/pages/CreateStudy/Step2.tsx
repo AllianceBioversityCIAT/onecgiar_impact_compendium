@@ -133,18 +133,6 @@ export const CreateStudyStep2: React.FC = () => {
             const apiResponse = await response.json();
             const studyData = apiResponse.data || apiResponse;
             
-            setFormData({
-              cropProductType: [],
-              keywords: [],
-              contributingInitiatives: [],
-              contributingCenters: [],
-              countryOfStudy: [],
-              cgiarRegions: [],
-              primaryCGIARImpactArea: studyData.primaryCGIARImpactArea || '',
-              secondaryCGIARImpactArea: studyData.secondaryCGIARImpactArea || ''
-            });
-            
-            
             // Map crops - handle database field names
             const cropIds = studyData.crops ? 
               studyData.crops.map((crop: any) => {
@@ -152,7 +140,6 @@ export const CreateStudyStep2: React.FC = () => {
                 return id;
               }) : [];
             
-
             // Map all data - access directly from studyData (not studyData.data)
             const keywordIds = studyData.keywords?.map((keyword: any) => keyword.id) || [];
             const initiativeIds = studyData.initiatives?.map((initiative: any) => initiative.id) || [];
@@ -166,8 +153,8 @@ export const CreateStudyStep2: React.FC = () => {
               keywords: keywordIds,
               contributingInitiatives: initiativeIds,
               contributingCenters: centerIds,
-              primaryCGIARImpactArea: impactAreaIds[0] || '',
-              secondaryCGIARImpactArea: impactAreaIds[1] || '', // Take second item as string, not array
+              primaryCGIARImpactArea: impactAreaIds[0]?.toString() || '',
+              secondaryCGIARImpactArea: impactAreaIds.slice(1).map((area: any) => area.toString()),
               countryOfStudy: countryIds,
               cgiarRegions: regionIds
             });

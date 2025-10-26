@@ -25,6 +25,22 @@ export const CreateStudyStep1: React.FC = () => {
   
   // Load saved data immediately and synchronously
   const getSavedData = () => {
+    if (isEditMode) {
+      // Don't load from localStorage in edit mode
+      return {
+        studyId: '',
+        title: '',
+        summary: '',
+        year: new Date().getFullYear().toString(),
+        doi: '',
+        category: '',
+        periodStart: '',
+        periodEnd: '',
+        interventionType: '',
+        interventionDetails: ''
+      };
+    }
+    
     const savedData = localStorage.getItem('studyFormStep1');
     return savedData ? JSON.parse(savedData) : {
       studyId: '',
@@ -59,9 +75,11 @@ export const CreateStudyStep1: React.FC = () => {
         ]);
         
         setOptions({
-          categories: categories.map((cat: any) => ({ value: cat.id, label: cat.name })),
-          interventionTypes: interventionTypes.map((type: any) => ({ value: type.id, label: type.name }))
+          categories: categories.map((cat: any) => ({ value: cat.id.toString(), label: cat.name })),
+          interventionTypes: interventionTypes.map((type: any) => ({ value: type.id.toString(), label: type.name }))
         });
+        
+        console.log('Step1 - Intervention options loaded:', interventionTypes.length, 'options');
       } catch (error) {
         console.error('Failed to load reference data:', error);
         // Fallback options
@@ -87,37 +105,22 @@ export const CreateStudyStep1: React.FC = () => {
     loadReferenceData();
   }, []);
 
+  const [studyData, setStudyData] = useState(null);
+  const [formDataInitialized, setFormDataInitialized] = useState(false);
+
   // Load study data for edit mode
   useEffect(() => {
     if (isEditMode && id) {
       const loadStudyData = async () => {
         try {
-          
-          // Extract numeric ID if it's in ICD-XXX format
           const numericId = id.startsWith('ICD-') ? id.replace('ICD-', '') : id;
-          
           const response = await fetch(`${import.meta.env.VITE_API_BASE_URL}/studies/${numericId}`);
           
           if (response.ok) {
             const apiResponse = await response.json();
-            
-            // Extract the actual study data from the nested response
-            const studyData = apiResponse.data || apiResponse;
-            
-            setFormData({
-              studyId: studyData.id || studyData.study_id || '',
-              title: studyData.title || '',
-              summary: studyData.summary || '',
-              year: studyData.year?.toString() || '2025',
-              doi: studyData.doi || studyData.link_or_doi || '',
-              category: studyData.category?.id?.toString() || '',
-              periodStart: studyData.period?.start?.toString() || '',
-              periodEnd: studyData.period?.end?.toString() || '',
-              interventionType: studyData.intervention?.type || '',
-              interventionDetails: studyData.intervention?.detailsShort || ''
-            });
-          } else {
-            console.error('API response not OK:', response.status, response.statusText);
+            const data = apiResponse.data || apiResponse;
+            console.log('Step1 Edit Mode - Raw study data loaded:', data);
+            setStudyData(data);
           }
         } catch (error) {
           console.error('Failed to load study data:', error);
@@ -126,6 +129,26 @@ export const CreateStudyStep1: React.FC = () => {
       loadStudyData();
     }
   }, [isEditMode, id]);
+
+  // Set form data when both study data and options are available (only once)
+  useEffect(() => {
+    if (studyData && options.interventionTypes.length > 0 && !formDataInitialized) {
+      setFormData({
+        studyId: studyData.id || studyData.study_id || '',
+        title: studyData.title || '',
+        summary: studyData.summary || '',
+        year: studyData.year?.toString() || '2025',
+        doi: studyData.doi || studyData.link_or_doi || '',
+        category: studyData.category?.id?.toString() || '',
+        periodStart: studyData.period?.start?.toString() || '',
+        periodEnd: studyData.period?.end?.toString() || '',
+        interventionType: (studyData.intervention?.id || studyData.intervention?.type || '').toString(),
+        interventionDetails: studyData.intervention?.detailsShort || studyData.intervention_details || ''
+      });
+      
+      setFormDataInitialized(true);
+    }
+  }, [studyData, options.interventionTypes.length, formDataInitialized]);
 
   // Validate Study ID uniqueness
   const validateStudyId = async (studyId: string) => {
@@ -376,14 +399,30 @@ export const CreateStudyStep1: React.FC = () => {
               </h3>
               
               <div className="space-y-4">
-                <CustomSelect
-                  label="Intervention type"
-                  required
-                  options={options.interventionTypes}
-                  value={formData.interventionType}
-                  onChange={(e) => handleInputChange('interventionType', e.target.value)}
-                  error={errors.interventionType}
-                />
+                <div className="space-y-1">
+                  <label className="block text-sm font-bold text-gray-700">
+                    Intervention type
+                    <span className="text-red-500 ml-1">*</span>
+                  </label>
+                  <select
+                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-1 focus:ring-yellow-500 focus:border-yellow-500 bg-[#F3F3F5]"
+                    value={formData.interventionType}
+                    onChange={(e) => {
+                      console.log('Intervention type changed to:', e.target.value);
+                      setFormData(prev => ({ ...prev, interventionType: e.target.value }));
+                    }}
+                  >
+                    <option value="">Select intervention type</option>
+                    {options.interventionTypes.map((type) => (
+                      <option key={type.value} value={type.value}>
+                        {type.label}
+                      </option>
+                    ))}
+                  </select>
+                  {errors.interventionType && (
+                    <p className="mt-1 text-sm text-red-600">{errors.interventionType}</p>
+                  )}
+                </div>
 
                 <Textarea
                   label="Intervention Details"

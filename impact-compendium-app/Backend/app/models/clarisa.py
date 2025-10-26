@@ -30,7 +30,7 @@ class ClarisaInitiative(Base):
 
 class ClarisaCGIARRegion(Base):
     """CLARISA CGIAR regions reference table"""
-    __tablename__ = "clarissa_CGIAR_regions"
+    __tablename__ = "clarisa_cgiar_regions"
     
     region_id = Column(Integer, primary_key=True, index=True)
     region_name = Column(String(255), nullable=False)
@@ -40,7 +40,7 @@ class ClarisaCGIARRegion(Base):
 
 class ClarisaCountry(Base):
     """CLARISA countries reference table"""
-    __tablename__ = "clarissa_countries"
+    __tablename__ = "clarisa_countries"
     
     country_id = Column(Integer, primary_key=True, index=True)
     country_name = Column(String(255), nullable=False)

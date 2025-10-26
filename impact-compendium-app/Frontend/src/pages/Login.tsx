@@ -5,7 +5,7 @@ import { ForgotPassword } from '../components/ForgotPassword';
 import { PasswordChange } from '../components/PasswordChange';
 
 export const Login: React.FC = () => {
-  const { login } = useAuth();
+  const { login, isAuthenticated } = useAuth();
   const navigate = useNavigate();
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
@@ -15,6 +15,13 @@ export const Login: React.FC = () => {
   const [showForgotPassword, setShowForgotPassword] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
   const [showPasswordChange, setShowPasswordChange] = useState(false);
+
+  // Redirect if already logged in
+  useEffect(() => {
+    if (isAuthenticated) {
+      navigate('/');
+    }
+  }, [isAuthenticated, navigate]);
 
   // Load saved email on component mount
   useEffect(() => {
@@ -41,7 +48,7 @@ export const Login: React.FC = () => {
       }
       
       // Redirect to main page after successful login
-      navigate('/dashboard');
+      navigate('/');
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Login failed');
     } finally {

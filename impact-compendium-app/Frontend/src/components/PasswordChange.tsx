@@ -115,7 +115,7 @@ export const PasswordChange: React.FC<PasswordChangeProps> = ({ onPasswordChange
         <button
           type="submit"
           disabled={isLoading}
-          className="w-full py-3 px-4 bg-yellow-400 hover:bg-yellow-500 text-black font-medium rounded-lg disabled:opacity-50"
+          className="w-full py-3 px-4 bg-[#FFC850] hover:bg-[#E5B347] text-black font-medium rounded-lg disabled:opacity-50"
         >
           {isLoading ? 'Changing Password...' : 'Change Password'}
         </button>

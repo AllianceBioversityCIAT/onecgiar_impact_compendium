@@ -24,7 +24,7 @@ export const Login: React.FC = () => {
   // Redirect if already authenticated
   useEffect(() => {
     if (isAuthenticated && !authLoading) {
-      navigate('/dashboard', { replace: true });
+      navigate('/', { replace: true });
     }
   }, [isAuthenticated, authLoading, navigate]);
 
@@ -74,7 +74,7 @@ export const Login: React.FC = () => {
     try {
       // User is already authenticated after password change, just refresh the auth context
       await refreshUser();
-      navigate('/dashboard', { replace: true });
+      navigate('/', { replace: true });
     } catch (err: any) {
       setError(err.message || 'Failed to complete login after password change.');
     }
@@ -168,7 +168,7 @@ export const Login: React.FC = () => {
               <button
                 type="submit"
                 disabled={isLoading}
-                className="group relative w-full flex justify-center py-3 px-4 border border-transparent text-sm font-medium rounded-lg text-black bg-yellow-400 hover:bg-yellow-500 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-yellow-500 disabled:opacity-50 disabled:cursor-not-allowed transition-colors duration-200"
+                className="group relative w-full flex justify-center py-3 px-4 border border-transparent text-sm font-medium rounded-lg text-black bg-[#FFC850] hover:bg-[#E5B347] focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-[#FFC850] disabled:opacity-50 disabled:cursor-not-allowed transition-colors duration-200"
               >
                 {isLoading ? (
                   <div className="flex items-center">

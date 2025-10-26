@@ -90,7 +90,7 @@ export const ForgotPassword: React.FC<ForgotPasswordProps> = ({ onBack }) => {
           <button
             type="submit"
             disabled={isLoading}
-            className="w-full py-3 px-4 bg-yellow-400 hover:bg-yellow-500 text-black font-medium rounded-lg disabled:opacity-50"
+            className="w-full py-3 px-4 bg-[#FFC850] hover:bg-[#E5B347] text-black font-medium rounded-lg disabled:opacity-50"
           >
             {isLoading ? 'Sending...' : 'Send Reset Code'}
           </button>
@@ -116,7 +116,7 @@ export const ForgotPassword: React.FC<ForgotPasswordProps> = ({ onBack }) => {
           <button
             type="submit"
             disabled={isLoading}
-            className="w-full py-3 px-4 bg-yellow-400 hover:bg-yellow-500 text-black font-medium rounded-lg disabled:opacity-50"
+            className="w-full py-3 px-4 bg-[#FFC850] hover:bg-[#E5B347] text-black font-medium rounded-lg disabled:opacity-50"
           >
             {isLoading ? 'Resetting...' : 'Reset Password'}
           </button>

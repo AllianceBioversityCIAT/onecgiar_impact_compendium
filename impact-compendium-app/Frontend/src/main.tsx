@@ -14,6 +14,7 @@ import { ProtectedRoute } from './components/ProtectedRoute';
 
 // Pages
 import { Login } from './pages/Login';
+import { Home } from './pages/Home';
 import { Dashboard } from './pages/Dashboard';
 import { Studies } from './pages/Studies';
 import { CreateStudyStep1 } from './pages/CreateStudy/Step1';
@@ -25,7 +26,11 @@ function App() {
     <Router future={{ v7_startTransition: true }}>
       <Routes>
         <Route path="/login" element={<Login />} />
-        <Route path="/" element={<Navigate to="/dashboard" replace />} />
+        <Route path="/" element={
+          <ProtectedRoute>
+            <Home />
+          </ProtectedRoute>
+        } />
         <Route path="/dashboard" element={
           <ProtectedRoute>
             <Dashboard />

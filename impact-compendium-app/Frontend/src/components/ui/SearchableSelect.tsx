@@ -61,7 +61,7 @@ export const SearchableSelect: React.FC<SearchableSelectProps> = ({
   };
 
   const inputStyles = `
-    w-full px-3 py-2 border rounded-lg text-sm bg-white
+    w-full px-3 py-2 border rounded-lg text-sm bg-[#F3F3F5]
     ${error 
       ? 'border-red-500 focus:border-red-500 focus:ring-red-500' 
       : 'border-gray-300 focus:border-yellow-500 focus:ring-yellow-500'
@@ -72,7 +72,7 @@ export const SearchableSelect: React.FC<SearchableSelectProps> = ({
   return (
     <div className="space-y-1" ref={containerRef}>
       {label && (
-        <label className="block text-sm font-medium text-gray-700">
+        <label className="block text-sm font-bold text-gray-700">
           {label}
           {required && <span className="text-red-500 ml-1">*</span>}
         </label>
@@ -94,7 +94,7 @@ export const SearchableSelect: React.FC<SearchableSelectProps> = ({
         </div>
         
         {isOpen && (
-          <div className="absolute z-10 w-full mt-1 bg-white border border-gray-300 rounded-lg shadow-lg max-h-60 overflow-auto">
+          <div className="absolute z-50 w-full mt-1 bg-white border border-gray-300 rounded-lg shadow-lg max-h-60 overflow-auto">
             {filteredOptions.length > 0 ? (
               filteredOptions.map((option) => (
                 <div

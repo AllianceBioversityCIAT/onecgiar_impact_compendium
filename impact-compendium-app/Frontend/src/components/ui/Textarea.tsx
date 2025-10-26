@@ -19,14 +19,14 @@ export const Textarea: React.FC<TextareaProps> = ({
       ? 'border-[var(--ic-error)] focus:border-[var(--ic-error)] focus:ring-[var(--ic-error)]' 
       : 'border-[var(--ic-border)] focus:border-[var(--ic-color-primary)] focus:ring-[var(--ic-color-primary)]'
     }
-    focus:outline-none focus:ring-1 bg-white
+    focus:outline-none focus:ring-1 bg-[#F3F3F5]
     placeholder:text-[var(--ic-color-neutral)]
   `;
 
   return (
     <div className="space-y-1">
       {label && (
-        <label className="block text-sm font-medium text-[var(--ic-color-text)]">
+        <label className="block text-sm font-bold text-[var(--ic-color-text)]">
           {label}
           {required && <span className="text-[var(--ic-error)] ml-1">*</span>}
         </label>

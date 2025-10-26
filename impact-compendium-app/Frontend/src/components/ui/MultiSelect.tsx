@@ -13,6 +13,7 @@ interface MultiSelectProps {
   placeholder?: string;
   value: string[];
   onChange: (values: string[]) => void;
+  onFocus?: () => void;
   className?: string;
 }
 
@@ -24,6 +25,7 @@ export const MultiSelect: React.FC<MultiSelectProps> = ({
   placeholder = 'Select options',
   value = [],
   onChange,
+  onFocus,
   className = ''
 }) => {
   const [isOpen, setIsOpen] = useState(false);
@@ -87,7 +89,7 @@ export const MultiSelect: React.FC<MultiSelectProps> = ({
   };
 
   const selectStyles = `
-    w-full px-3 py-2 border rounded-lg text-sm bg-white cursor-pointer
+    w-full px-3 py-2 border rounded-lg text-sm bg-[#F3F3F5] cursor-pointer
     ${error 
       ? 'border-red-500 focus:border-red-500 focus:ring-red-500' 
       : 'border-gray-300 focus:border-yellow-500 focus:ring-yellow-500'
@@ -98,7 +100,7 @@ export const MultiSelect: React.FC<MultiSelectProps> = ({
   return (
     <div className="space-y-1 relative" ref={dropdownRef}>
       {label && (
-        <label className="block text-sm font-medium text-gray-700">
+        <label className="block text-sm font-bold text-gray-700">
           {label}
           {required && <span className="text-red-500 ml-1">*</span>}
         </label>
@@ -108,6 +110,7 @@ export const MultiSelect: React.FC<MultiSelectProps> = ({
         <div
           className={`${selectStyles} ${className} flex justify-between items-center min-h-[2.5rem]`}
           onClick={() => {
+            onFocus?.();
             if (dropdownRef.current) {
               const rect = dropdownRef.current.getBoundingClientRect();
               const spaceBelow = window.innerHeight - rect.bottom;

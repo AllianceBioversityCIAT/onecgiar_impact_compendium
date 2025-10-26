@@ -23,7 +23,7 @@ export const Select: React.FC<SelectProps> = ({
   ...props
 }) => {
   const selectStyles = `
-    w-full px-3 py-2 border rounded-lg text-sm bg-white
+    w-full px-3 py-2 border rounded-lg text-sm bg-[#F3F3F5]
     ${error 
       ? 'border-red-500 focus:border-red-500 focus:ring-red-500' 
       : 'border-gray-300 focus:border-yellow-500 focus:ring-yellow-500'
@@ -34,7 +34,7 @@ export const Select: React.FC<SelectProps> = ({
   return (
     <div className="space-y-1">
       {label && (
-        <label className="block text-sm font-medium text-gray-700">
+        <label className="block text-sm font-bold text-gray-700">
           {label}
           {required && <span className="text-red-500 ml-1">*</span>}
         </label>

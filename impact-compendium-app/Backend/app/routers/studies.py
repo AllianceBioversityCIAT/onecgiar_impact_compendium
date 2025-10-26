@@ -179,6 +179,28 @@ def get_study_related_data(session, study_id):
             "centers": [{"id": 1, "acronym": "CGIAR"}]
         }
 
+@router.get("/check-id/{study_id}")
+async def check_study_id_exists(study_id: str, db: Session = Depends(get_db)):
+    """Check if a Study ID already exists"""
+    try:
+        # Check if study exists with this ID
+        query = text("""
+            SELECT COUNT(*) as count 
+            FROM studies 
+            WHERE study_id = :study_id
+        """)
+        
+        result = db.execute(query, {"study_id": study_id}).fetchone()
+        exists = result.count > 0 if result else False
+        
+        return {
+            "exists": exists,
+            "study_id": study_id
+        }
+    except Exception as e:
+        logger.error(f"Error checking study ID: {e}")
+        raise HTTPException(status_code=500, detail="Failed to check study ID")
+
 @router.get("/", response_model=Dict[str, Any])
 async def list_studies(
     q: Optional[str] = Query(None, description="Search query"),

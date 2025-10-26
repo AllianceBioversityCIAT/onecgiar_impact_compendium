@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo, useCallback } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { FormLayout } from '../../layouts/FormLayout';
 import { ProgressStepper } from '../../components/ui/ProgressStepper';
@@ -37,6 +37,15 @@ export const CreateStudyStep2: React.FC = () => {
   const [loading, setLoading] = useState(true);
   const [mappingData, setMappingData] = useState(false);
   const [formData, setFormData] = useState(getSavedData);
+  const [loadingStates, setLoadingStates] = useState({
+    cropTypes: false,
+    keywords: false,
+    initiatives: false,
+    centers: false,
+    impactAreas: false,
+    countries: false,
+    regions: false
+  });
 
   const [options, setOptions] = useState({
     cropTypes: [],
@@ -48,76 +57,68 @@ export const CreateStudyStep2: React.FC = () => {
     regions: []
   });
 
-  useEffect(() => {
-    const loadReferenceData = async () => {
-      try {
-        const [cropTypes, keywords, initiatives, centers, impactAreas, countries, regions] = await Promise.all([
-          getReferenceData.cropTypes(),
-          getReferenceData.keywords(),
-          getReferenceData.initiatives(),
-          getReferenceData.centers(),
-          getReferenceData.impactAreas(),
-          getReferenceData.countries(),
-          getReferenceData.regions()
-        ]);
-        
-        setOptions({
-          cropTypes: cropTypes.map((item: any) => ({ value: item.id, label: item.name })),
-          keywords: keywords.map((item: any) => ({ value: item.id, label: item.name })),
-          initiatives: initiatives.map((item: any) => ({ value: item.id, label: item.name })),
-          centers: centers.map((item: any) => ({ value: item.id, label: item.name })),
-          impactAreas: impactAreas.map((item: any) => ({ value: item.id, label: item.name })),
-          countries: countries.map((item: any) => ({ value: item.id, label: item.name })),
-          regions: regions.map((item: any) => ({ value: item.id, label: item.name }))
-        });
-        setLoading(false);
-      } catch (error) {
-        console.error('Failed to load reference data:', error);
-        // Fallback options
-        setOptions({
-          cropTypes: [
-            { value: 1, label: 'Maize' },
-            { value: 2, label: 'Rice' },
-            { value: 3, label: 'Wheat' },
-            { value: 4, label: 'Cassava' }
-          ],
-          keywords: [
-            { value: 1, label: 'Sustainability' },
-            { value: 2, label: 'Climate Change' },
-            { value: 3, label: 'Food Security' }
-          ],
-          initiatives: [
-            { value: 1, label: 'Accelerated Breeding' },
-            { value: '39', label: 'Accelerating Crop Improvement Through Genome Editing' },
-            { value: '7', label: 'ActioNs for Innovative climate change Mitigation & Adaptation of Livestock' }
-          ],
-          centers: [
-            { value: '1', label: 'CIMMYT' },
-            { value: '2', label: 'IRRI' },
-            { value: '3', label: 'ICRISAT' }
-          ],
-          impactAreas: [
-            { value: '1', label: 'Food Security' },
-            { value: '2', label: 'Climate Adaptation' },
-            { value: '3', label: 'Nutrition Security' }
-          ],
-          countries: [
-            { value: '1', label: 'Kenya' },
-            { value: '2', label: 'India' },
-            { value: '3', label: 'Philippines' }
-          ],
-          regions: [
-            { value: '1', label: 'East Africa' },
-            { value: '2', label: 'South Asia' },
-            { value: '3', label: 'Southeast Asia' }
-          ]
-        });
-        setLoading(false);
+  // Cache for reference data
+  const referenceDataCache = useMemo(() => new Map(), []);
+
+  const loadReferenceDataItem = useCallback(async (key: string, apiCall: () => Promise<any>) => {
+    if (referenceDataCache.has(key)) {
+      return referenceDataCache.get(key);
+    }
+
+    setLoadingStates(prev => ({ ...prev, [key]: true }));
+    const startTime = Date.now();
+    
+    try {
+      const data = await apiCall();
+      const formattedData = data.map((item: any) => ({ 
+        value: item.id, 
+        label: item.name 
+      }));
+      referenceDataCache.set(key, formattedData);
+      
+      // Ensure minimum 300ms display time for spinner visibility
+      const elapsedTime = Date.now() - startTime;
+      const minDisplayTime = 300;
+      
+      if (elapsedTime < minDisplayTime) {
+        await new Promise(resolve => setTimeout(resolve, minDisplayTime - elapsedTime));
       }
+      
+      setOptions(prev => ({ ...prev, [key]: formattedData }));
+      return formattedData;
+    } catch (error) {
+      console.error(`Failed to load ${key}:`, error);
+      return [];
+    } finally {
+      setLoadingStates(prev => ({ ...prev, [key]: false }));
+    }
+  }, [referenceDataCache]);
+
+  useEffect(() => {
+    const loadInitialData = async () => {
+      if (isEditMode) {
+        // Load all data immediately for edit mode to show saved values
+        await Promise.all([
+          loadReferenceDataItem('cropTypes', getReferenceData.cropTypes),
+          loadReferenceDataItem('keywords', getReferenceData.keywords),
+          loadReferenceDataItem('initiatives', getReferenceData.initiatives),
+          loadReferenceDataItem('centers', getReferenceData.centers),
+          loadReferenceDataItem('impactAreas', getReferenceData.impactAreas),
+          loadReferenceDataItem('countries', getReferenceData.countries),
+          loadReferenceDataItem('regions', getReferenceData.regions)
+        ]);
+      } else {
+        // Load only essential data first for new studies
+        await Promise.all([
+          loadReferenceDataItem('impactAreas', getReferenceData.impactAreas),
+          loadReferenceDataItem('cropTypes', getReferenceData.cropTypes)
+        ]);
+      }
+      setLoading(false);
     };
 
-    loadReferenceData();
-  }, []);
+    loadInitialData();
+  }, [loadReferenceDataItem, isEditMode]);
 
   // Load study data for edit mode - run after options are loaded
   useEffect(() => {
@@ -132,31 +133,25 @@ export const CreateStudyStep2: React.FC = () => {
             const apiResponse = await response.json();
             const studyData = apiResponse.data || apiResponse;
             
-            console.log('Step2: Study data for mapping:', {
-              countries: studyData.countries,
-              regions: studyData.regions,
-              impact_areas: studyData.impact_areas,
-              primaryCGIARImpactArea: studyData.primaryCGIARImpactArea,
-              secondaryCGIARImpactArea: studyData.secondaryCGIARImpactArea
+            setFormData({
+              cropProductType: [],
+              keywords: [],
+              contributingInitiatives: [],
+              contributingCenters: [],
+              countryOfStudy: [],
+              cgiarRegions: [],
+              primaryCGIARImpactArea: studyData.primaryCGIARImpactArea || '',
+              secondaryCGIARImpactArea: studyData.secondaryCGIARImpactArea || ''
             });
-            console.log('Step2: Countries data type:', typeof studyData.countries, studyData.countries);
             
-            console.log('=== CROP DEBUGGING ===');
-            console.log('Step2: studyData:', studyData);
-            console.log('Step2: studyData.crops:', studyData.crops);
-            console.log('Step2: Current options.cropTypes:', options.cropTypes);
             
             // Map crops - handle database field names
             const cropIds = studyData.crops ? 
               studyData.crops.map((crop: any) => {
-                console.log('Step2: Processing crop:', crop);
                 const id = typeof crop === 'number' ? crop : crop.id;
-                console.log('Step2: Extracted crop ID:', id, 'type:', typeof id);
                 return id;
               }) : [];
             
-            console.log('Step2: Final cropIds array:', cropIds);
-            console.log('=== END CROP DEBUGGING ===');
 
             // Map all data - access directly from studyData (not studyData.data)
             const keywordIds = studyData.keywords?.map((keyword: any) => keyword.id) || [];
@@ -189,7 +184,30 @@ export const CreateStudyStep2: React.FC = () => {
 
   // Remove the separate useEffect for loading saved data since it's now loaded immediately
 
-  const handleInputChange = (field: string, value: string | string[]) => {
+  // Lazy load data when dropdown is opened
+  const handleDropdownOpen = useCallback((key: string) => {
+    if (options[key as keyof typeof options].length === 0 && !loadingStates[key as keyof typeof loadingStates]) {
+      switch (key) {
+        case 'keywords':
+          loadReferenceDataItem('keywords', getReferenceData.keywords);
+          break;
+        case 'initiatives':
+          loadReferenceDataItem('initiatives', getReferenceData.initiatives);
+          break;
+        case 'centers':
+          loadReferenceDataItem('centers', getReferenceData.centers);
+          break;
+        case 'countries':
+          loadReferenceDataItem('countries', getReferenceData.countries);
+          break;
+        case 'regions':
+          loadReferenceDataItem('regions', getReferenceData.regions);
+          break;
+      }
+    }
+  }, [options, loadingStates, loadReferenceDataItem]);
+
+  const handleInputChange = useCallback((field: string, value: string | string[]) => {
     setFormData(prev => {
       const newData = { ...prev, [field]: value };
       
@@ -209,16 +227,13 @@ export const CreateStudyStep2: React.FC = () => {
       
       return newData;
     });
-  };
+  }, []);
 
   const getSecondaryImpactAreaOptions = () => {
     const filtered = options.impactAreas.filter(option => {
       const isMatch = Number(option.value) === Number(formData.primaryCGIARImpactArea);
-      console.log(`Comparing option ${option.value} (${typeof option.value}) with primary ${formData.primaryCGIARImpactArea} (${typeof formData.primaryCGIARImpactArea}) - Match: ${isMatch}`);
       return !isMatch;
     });
-    console.log('Secondary options - Primary selected:', formData.primaryCGIARImpactArea);
-    console.log('Secondary options - Filtered:', filtered);
     return filtered;
   };
 
@@ -257,7 +272,6 @@ export const CreateStudyStep2: React.FC = () => {
       title={pageTitle}
       onBack={handleGoBack}
       onNext={handleNext}
-      onSaveDraft={() => console.log('Save draft')}
       steps={steps}
       currentStep={2}
     >
@@ -292,10 +306,11 @@ export const CreateStudyStep2: React.FC = () => {
                 />
                 <MultiSelect
                   label="Keywords"
-                  options={options.keywords.length === 0 ? [{ value: '', label: 'Loading...' }] : options.keywords}
+                  options={loadingStates.keywords ? [{ value: '', label: 'Loading...' }] : options.keywords}
                   placeholder="Select options"
                   value={formData.keywords}
                   onChange={(values) => handleMultiSelectChange('keywords', values)}
+                  onFocus={() => handleDropdownOpen('keywords')}
                 />
               </div>
             </div>
@@ -308,17 +323,19 @@ export const CreateStudyStep2: React.FC = () => {
               <div className="grid grid-cols-2 gap-6">
                 <MultiSelect
                   label="Contributing Initiatives"
-                  options={options.initiatives.length === 0 ? [{ value: '', label: 'Loading...' }] : options.initiatives}
+                  options={loadingStates.initiatives ? [{ value: '', label: 'Loading...' }] : options.initiatives}
                   placeholder="Select options"
                   value={formData.contributingInitiatives}
                   onChange={(values) => handleInputChange('contributingInitiatives', values)}
+                  onFocus={() => handleDropdownOpen('initiatives')}
                 />
                 <MultiSelect
                   label="Contributing Centers"
-                  options={options.centers.length === 0 ? [{ value: '', label: 'Loading...' }] : options.centers}
+                  options={loadingStates.centers ? [{ value: '', label: 'Loading...' }] : options.centers}
                   placeholder="Select options"
                   value={formData.contributingCenters}
                   onChange={(values) => handleInputChange('contributingCenters', values)}
+                  onFocus={() => handleDropdownOpen('centers')}
                 />
               </div>
             </div>
@@ -355,17 +372,19 @@ export const CreateStudyStep2: React.FC = () => {
               <div className="grid grid-cols-2 gap-6">
                 <MultiSelect
                   label="Country of study"
-                  options={options.countries.length === 0 ? [{ value: '', label: 'Loading...' }] : options.countries}
+                  options={loadingStates.countries ? [{ value: '', label: 'Loading...' }] : options.countries}
                   placeholder="Select options"
                   value={formData.countryOfStudy}
                   onChange={(values) => handleInputChange('countryOfStudy', values)}
+                  onFocus={() => handleDropdownOpen('countries')}
                 />
                 <MultiSelect
                   label="CGIAR Regions"
-                  options={options.regions.length === 0 ? [{ value: '', label: 'Loading...' }] : options.regions}
+                  options={loadingStates.regions ? [{ value: '', label: 'Loading...' }] : options.regions}
                   placeholder="Select options"
                   value={formData.cgiarRegions}
                   onChange={(values) => handleInputChange('cgiarRegions', values)}
+                  onFocus={() => handleDropdownOpen('regions')}
                 />
               </div>
             </div>

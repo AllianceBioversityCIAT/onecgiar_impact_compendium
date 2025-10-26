@@ -162,7 +162,6 @@ class AuthService {
       await Promise.race([authPromise, timeoutPromise]);
       return true;
     } catch (error) {
-      console.log('Auth check failed:', error);
       return !!this.getToken();
     }
   }

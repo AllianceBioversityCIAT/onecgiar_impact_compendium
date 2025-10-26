@@ -93,6 +93,26 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     };
 
     initAuth();
+
+    // Listen for storage changes (login/logout from other tabs)
+    const handleStorageChange = async (e: StorageEvent) => {
+      if (e.key === 'ic_access_token') {
+        if (e.newValue) {
+          // User logged in from another tab
+          await refreshUser();
+        } else {
+          // User logged out from another tab
+          setUser(null);
+          setIsAuthenticated(false);
+        }
+      }
+    };
+
+    window.addEventListener('storage', handleStorageChange);
+
+    return () => {
+      window.removeEventListener('storage', handleStorageChange);
+    };
   }, []);
 
   const value: AuthContextType = {

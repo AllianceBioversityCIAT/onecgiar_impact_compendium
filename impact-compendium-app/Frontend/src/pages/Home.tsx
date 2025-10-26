@@ -14,7 +14,7 @@ export const Home: React.FC = () => {
   };
 
   return (
-    <AppLayout title="Home" showAddButton={true} onAddStudy={handleCreateStudy}>
+    <AppLayout title="Home" showAddButton={false}>
       <div className="min-h-screen bg-[#FAFAFA] -m-6">
         <div className="flex flex-col items-start px-16 pb-20 gap-8 max-w-[95vw] mx-auto">
         

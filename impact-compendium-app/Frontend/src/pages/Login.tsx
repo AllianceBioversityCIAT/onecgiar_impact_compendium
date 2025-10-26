@@ -42,10 +42,11 @@ export const Login: React.FC = () => {
         {/* Logo Section */}
         <div className="flex items-center gap-3 mx-auto lg:absolute lg:left-[212.75px] lg:top-[122.7px] mb-8 lg:mb-0">
           {/* Logo Icon */}
-          <div className="w-12 h-12 relative">
-            <div className="absolute left-[25%] right-[25%] top-[8.33%] bottom-[33.33%] bg-[#FFC84F]"></div>
-            <div className="absolute left-[37.5%] right-[37.5%] top-[33.33%] bottom-[33.33%] bg-[#F07E28]"></div>
-          </div>
+          <img 
+            src="/specs/images/logo.svg" 
+            alt="Impact Compendium Logo" 
+            className="w-12 h-12"
+          />
           
           {/* Logo Text */}
           <div className="flex flex-col">

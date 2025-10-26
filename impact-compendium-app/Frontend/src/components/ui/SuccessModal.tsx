@@ -66,7 +66,7 @@ export const SuccessModal: React.FC<SuccessModalProps> = ({
           </button>
           <button
             onClick={handleAction}
-            className="flex-1 px-4 py-3 bg-yellow-400 hover:bg-yellow-500 text-black rounded-lg font-medium transition-colors"
+            className="flex-1 px-4 py-3 bg-[#FFC850] hover:bg-[#E5B347] text-black rounded-lg font-medium transition-colors"
           >
             {actionLabel}
           </button>

@@ -134,35 +134,9 @@ export const Login: React.FC = () => {
           <button
             type="submit"
             disabled={loading}
-            className="w-[448px] h-[48px] bg-gradient-to-br from-[#FFC84F] to-[#F07E28] rounded-[10px] font-inter font-medium text-[14px] leading-5 tracking-[-0.150391px] text-black hover:opacity-90 transition-opacity disabled:opacity-50 mb-[20px]"
+            className="w-[448px] h-[48px] bg-gradient-to-br from-[#FFC84F] to-[#F07E28] rounded-[10px] font-inter font-medium text-[14px] leading-5 tracking-[-0.150391px] text-black hover:opacity-90 transition-opacity disabled:opacity-50"
           >
             {loading ? 'Signing in...' : 'Sign in'}
-          </button>
-
-          {/* Divider */}
-          <div className="relative mb-[20px]">
-            <div className="absolute inset-0 flex items-center">
-              <div className="w-full border-t border-[#E5E5E5]"></div>
-            </div>
-            <div className="relative flex justify-center">
-              <span className="bg-white px-4 font-inter font-normal text-[13px] leading-5 tracking-[-0.0761719px] text-[#777777]">
-                or
-              </span>
-            </div>
-          </div>
-
-          {/* CGIAR Account Button */}
-          <button
-            type="button"
-            className="w-[448px] h-[48px] bg-white border border-[#E5E5E5] rounded-[10px] flex items-center justify-center gap-4 hover:bg-gray-50 transition-colors"
-          >
-            <div className="w-4 h-4 relative">
-              <div className="absolute left-[8.33%] right-[8.33%] top-[8.33%] bottom-[8.33%] bg-[#4285F4]"></div>
-              <div className="absolute left-[29.17%] right-[29.17%] top-[29.17%] bottom-[29.17%] bg-white"></div>
-            </div>
-            <span className="font-inter font-medium text-[14px] leading-5 tracking-[-0.150391px] text-[#333333]">
-              Continue with CGIAR account
-            </span>
           </button>
         </form>
 

@@ -55,11 +55,6 @@ Thumbs.db
 *.log
 logs/
 
-# Database
-*.db
-*.sqlite
-*.sqlite3
-
 # AWS
 .aws/
 *.pem

@@ -9,7 +9,6 @@ import { Textarea } from '../../components/ui/Textarea';
 import { Button } from '../../components/ui/Button';
 import { Card } from '../../components/ui/Card';
 import { SearchableSelect } from '../../components/ui/SearchableSelect';
-import { CustomSelect } from '../../components/ui/CustomSelect';
 import { getReferenceData } from '../../services/api';
 
 const steps = [
@@ -79,7 +78,8 @@ export const CreateStudyStep1: React.FC = () => {
           interventionTypes: interventionTypes.map((type: any) => ({ value: type.id.toString(), label: type.name }))
         });
         
-        console.log('Step1 - Intervention options loaded:', interventionTypes.length, 'options');
+        console.log('Step1 - Categories loaded:', categories.length, 'options');
+        console.log('Step1 - First category:', categories[0]);
       } catch (error) {
         console.error('Failed to load reference data:', error);
         // Fallback options
@@ -399,30 +399,20 @@ export const CreateStudyStep1: React.FC = () => {
               </h3>
               
               <div className="space-y-4">
-                <div className="space-y-1">
-                  <label className="block text-sm font-bold text-gray-700">
-                    Intervention type
-                    <span className="text-red-500 ml-1">*</span>
-                  </label>
-                  <select
-                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-1 focus:ring-yellow-500 focus:border-yellow-500 bg-[#F3F3F5]"
-                    value={formData.interventionType}
-                    onChange={(e) => {
-                      console.log('Intervention type changed to:', e.target.value);
-                      setFormData(prev => ({ ...prev, interventionType: e.target.value }));
-                    }}
-                  >
-                    <option value="">Select intervention type</option>
-                    {options.interventionTypes.map((type) => (
-                      <option key={type.value} value={type.value}>
-                        {type.label}
-                      </option>
-                    ))}
-                  </select>
-                  {errors.interventionType && (
-                    <p className="mt-1 text-sm text-red-600">{errors.interventionType}</p>
-                  )}
-                </div>
+                <SearchableSelect
+                  label="Intervention type"
+                  required
+                  options={options.interventionTypes}
+                  value={formData.interventionType}
+                  onChange={(value) => {
+                    console.log('Intervention type changed to:', value);
+                    setFormData(prev => ({ ...prev, interventionType: value }));
+                  }}
+                  placeholder="Search intervention types..."
+                />
+                {errors.interventionType && (
+                  <p className="mt-1 text-sm text-red-600">{errors.interventionType}</p>
+                )}
 
                 <Textarea
                   label="Intervention Details"

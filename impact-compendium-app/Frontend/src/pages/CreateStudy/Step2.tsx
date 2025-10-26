@@ -154,7 +154,7 @@ export const CreateStudyStep2: React.FC = () => {
               contributingInitiatives: initiativeIds,
               contributingCenters: centerIds,
               primaryCGIARImpactArea: impactAreaIds[0]?.toString() || '',
-              secondaryCGIARImpactArea: impactAreaIds.slice(1).map((area: any) => area.toString()),
+              secondaryCGIARImpactArea: impactAreaIds[1]?.toString() || '',
               countryOfStudy: countryIds,
               cgiarRegions: regionIds
             });

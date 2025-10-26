@@ -23,14 +23,36 @@ def get_reference_data(db: Session, table: str, id_field: str = "id", name_field
 @router.get("/categories", response_model=List[Dict[str, Any]])
 async def get_categories(db: Session = Depends(get_db)):
     """Get study categories."""
-    data = get_reference_data(db, "study_categories")
-    if not data:
-        return [
-            {"id": 1, "name": "Impact Study"},
-            {"id": 2, "name": "Research Analysis"},
-            {"id": 3, "name": "Outcome Assessment"}
-        ]
-    return data
+    try:
+        # First, let's see what tables exist
+        show_tables_query = text("SHOW TABLES LIKE '%categor%'")
+        tables_result = db.execute(show_tables_query)
+        available_tables = [row[0] for row in tables_result.fetchall()]
+        logger.info(f"Available category tables: {available_tables}")
+        
+        # Try to describe the studies_categories table structure
+        if 'studies_categories' in available_tables:
+            describe_query = text("DESCRIBE studies_categories")
+            describe_result = db.execute(describe_query)
+            columns = [(row[0], row[1]) for row in describe_result.fetchall()]
+            logger.info(f"studies_categories table structure: {columns}")
+            
+            # Now try to get data with the correct column names
+            query = text("SELECT * FROM studies_categories LIMIT 5")
+            result = db.execute(query)
+            raw_data = result.fetchall()
+            logger.info(f"Sample data from studies_categories: {raw_data}")
+            
+            # Return the actual data (adjust based on what we find)
+            if raw_data:
+                # Assuming first column is ID and second is name
+                return [{"id": row[0], "name": row[1]} for row in raw_data]
+        
+        return []
+            
+    except Exception as e:
+        logger.error(f"Error getting categories from database: {e}")
+        return []
 
 @router.get("/intervention-types", response_model=List[Dict[str, Any]])
 async def get_intervention_types(db: Session = Depends(get_db)):

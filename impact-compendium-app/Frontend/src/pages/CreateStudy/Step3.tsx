@@ -7,6 +7,7 @@ import { Input } from '../../components/ui/Input';
 import { Button } from '../../components/ui/Button';
 import { Card } from '../../components/ui/Card';
 import { studyAPI } from '../../services/api';
+import { authService } from '../../services/auth';
 
 const steps = [
   { id: 1, label: 'Step 1', completed: true },
@@ -112,73 +113,82 @@ export const CreateStudyStep3: React.FC = () => {
     setIsSubmitting(true);
     
     try {
-      // Combine all form data from localStorage and current indicators
+      // Get all form data from localStorage
       const step1Data = JSON.parse(localStorage.getItem('studyFormStep1') || '{}');
       const step2Data = JSON.parse(localStorage.getItem('studyFormStep2') || '{}');
       
+      // Get current user
+      const currentUser = authService.getCurrentUser();
+      
+      // Prepare complete study data according to backend schema
       const completeStudyData = {
-        // Step 1 fields - map to database columns
+        // Step 1 data
+        studyId: parseInt(step1Data.studyId),
         title: step1Data.title,
         summary: step1Data.summary,
-        year: parseInt(step1Data.yearOfReport),
-        doi: step1Data.linkOrDoi,
-        category_id: step1Data.category,
-        period_start: step1Data.periodStart,
-        period_end: step1Data.periodEnd,
-        intervention_details: step1Data.interventionDetails,
+        year: parseInt(step1Data.year),
+        doi: step1Data.doi,
+        category: step1Data.category,
+        periodStart: step1Data.periodStart,
+        periodEnd: step1Data.periodEnd,
+        interventionType: step1Data.interventionType?.toString() || '',
+        interventionDetails: step1Data.interventionDetails,
         
-        // Step 2 fields - map to relationship tables
-        crop_types: step2Data.cropProductType || [],
-        keywords: step2Data.keywords || [],
-        initiatives: step2Data.contributingInitiatives || [],
-        centers: step2Data.contributingCenters || [],
-        impact_areas: [
-          ...(step2Data.primaryCGIARImpactArea ? [step2Data.primaryCGIARImpactArea] : []),
-          ...(step2Data.secondaryCGIARImpactArea || [])
-        ],
-        countries: step2Data.countryOfStudy || [],
-        regions: step2Data.cgiarRegions || [],
+        // Step 2 data
+        primaryCGIARImpactArea: step2Data.primaryCGIARImpactArea || '',
+        secondaryCGIARImpactAreas: Array.isArray(step2Data.secondaryCGIARImpactArea) ? step2Data.secondaryCGIARImpactArea.map(String) : [step2Data.secondaryCGIARImpactArea].filter(Boolean).map(String),
+        countries: (step2Data.countryOfStudy || []).map(String),
+        regions: (step2Data.cgiarRegions || []).map(String),
+        cropProductType: (step2Data.cropProductType || []).map(String),
+        keywords: (step2Data.keywords || []).map(String),
+        contributingInitiatives: (step2Data.contributingInitiatives || []).map(String),
+        contributingCenters: (step2Data.contributingCenters || []).map(String),
         
-        // Step 3 fields
+        // Step 3 data
         indicators: indicators.map(indicator => ({
-          indicator_measured: indicator.indicatorMeasured,
-          unit_of_measure: indicator.unitOfMeasure,
-          result_reported: indicator.resultReported
+          indicatorMeasure: indicator.indicatorMeasured,
+          unitMeasure: indicator.unitOfMeasure,
+          resultReported: indicator.resultReported
         }))
+        
+        // Note: created_by is now automatically captured from logged-in user in backend
       };
 
-      if (isEditMode && id) {
-        // Update existing study
-        const numericId = id.startsWith('ICD-') ? id.replace('ICD-', '') : id;
-        const response = await fetch(`${import.meta.env.VITE_API_BASE_URL}/studies-crud/complete/${numericId}`, {
-          method: 'PUT',
-          headers: {
-            'Content-Type': 'application/json',
-          },
-          body: JSON.stringify(completeStudyData),
-        });
-        
-        if (!response.ok) {
-          throw new Error('Failed to update study');
-        }
-        
-        console.log('Study updated successfully');
-        navigate('/studies');
-      } else {
-        // Create new study
-        await studyAPI.create(completeStudyData);
-        
-        // Clear localStorage
-        localStorage.removeItem('studyFormStep1');
-        localStorage.removeItem('studyFormStep2');
-        
-        console.log('Study created successfully');
-        navigate('/studies');
+      // Call the complete save endpoint
+      console.log('Sending study data:', completeStudyData);
+      
+      const response = await fetch(`${import.meta.env.VITE_API_BASE_URL}/studies/complete`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'X-User-Email': currentUser?.email || 'unknown@example.com',
+          ...authService.getAuthHeaders()
+        },
+        body: JSON.stringify(completeStudyData),
+      });
+      
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => ({ detail: 'Unknown error' }));
+        throw new Error(errorData.detail || errorData.message || 'Failed to save study');
       }
       
+      const result = await response.json();
+      
+      // Clear localStorage
+      localStorage.removeItem('studyFormStep1');
+      localStorage.removeItem('studyFormStep2');
+      localStorage.removeItem('studyFormStep3');
+      
+      // Show success message
+      alert('Study saved successfully!');
+      
+      // Navigate to studies list
+      navigate('/studies');
+      
     } catch (error) {
-      console.error('Failed to create study:', error);
-      alert('Failed to create study. Please try again.');
+      console.error('Failed to save study:', error);
+      console.error('Error details:', error.message, error.stack);
+      alert(`Failed to save study: ${error.message || 'Unknown error'}. Please try again.`);
     } finally {
       setIsSubmitting(false);
     }

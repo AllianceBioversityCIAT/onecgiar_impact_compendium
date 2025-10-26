@@ -249,36 +249,35 @@ export const StudyDetailsPanel: React.FC<StudyDetailsPanelProps> = ({ isOpen, on
           {/* Fixed Bottom Buttons */}
           <div className="absolute bottom-0 left-0 right-0 border-t bg-white p-4 space-y-3">
             <div className="flex gap-3">
-              <Button 
+              <button 
                 onClick={handleEdit} 
-                className="flex-1 bg-yellow-600 hover:bg-yellow-700 text-white font-medium py-3 flex items-center justify-center gap-2 transition-all duration-200 hover:shadow-md"
+                className="flex-1 bg-[#FEC750] hover:bg-[#E5B347] text-black font-medium py-3 px-4 rounded-lg flex items-center justify-center gap-2 transition-all duration-200"
               >
                 <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
                 </svg>
                 Edit Study
-              </Button>
-              <Button 
+              </button>
+              <button 
                 onClick={() => setShowDeleteConfirm(true)} 
-                className="flex-1 bg-red-600 hover:bg-red-700 text-white font-medium py-3 flex items-center justify-center gap-2 transition-all duration-200 hover:shadow-md"
+                className="flex-1 bg-[#F07F34] hover:bg-[#D6722E] text-black font-medium py-3 px-4 rounded-lg flex items-center justify-center gap-2 transition-all duration-200"
                 disabled={deleting}
               >
                 <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
                 </svg>
                 {deleting ? 'Deleting...' : 'Delete'}
-              </Button>
+              </button>
             </div>
-            <Button 
-              variant="secondary" 
+            <button 
               onClick={onClose} 
-              className="w-full py-3 flex items-center justify-center gap-2 font-medium transition-all duration-200 hover:bg-gray-100"
+              className="w-full border-2 border-gray-300 text-gray-700 bg-white hover:bg-gray-50 font-medium py-3 px-4 rounded-lg flex items-center justify-center gap-2 transition-all duration-200"
             >
               <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
               </svg>
               Close Panel
-            </Button>
+            </button>
           </div>
 
           {/* Delete Confirmation Modal */}

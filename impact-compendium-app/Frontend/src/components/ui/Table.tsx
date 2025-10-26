@@ -261,6 +261,10 @@ export const Table: React.FC<TableProps> = ({
                               </svg>
                             </button>
                           </div>
+                        ) : column.key === 'doi' ? (
+                          <span className="text-gray-700 block truncate max-w-32" title={row[column.key]}>
+                            {row[column.key]}
+                          </span>
                         ) : (
                           <span className="text-gray-700">
                             {Array.isArray(row[column.key]) ? row[column.key].join(', ') : row[column.key]}

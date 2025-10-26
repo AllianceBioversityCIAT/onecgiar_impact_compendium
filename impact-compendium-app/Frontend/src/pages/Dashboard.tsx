@@ -130,11 +130,14 @@ export const Dashboard: React.FC = () => {
         if (params.category) queryParams.set('category', params.category);
         if (params.q) queryParams.set('q', params.q);
         
-        // Always use the main studies endpoint
-        const endpoint = `/studies?${queryParams}`;
-        
-        const response = await fetch(`${import.meta.env.VITE_API_BASE_URL || 'http://localhost:8000'}${endpoint}`);
-        const data = await response.json();
+        const response = await studyAPI.getAll({
+          page: params.page.toString(),
+          pageSize: params.pageSize.toString(),
+          ...(params.sort && { sort: params.sort }),
+          ...(params.category && { category: params.category }),
+          ...(params.q && { q: params.q })
+        });
+        const data = response;
         
         // Handle new backend response format
         let studiesData = [];

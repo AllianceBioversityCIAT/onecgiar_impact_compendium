@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useAuth } from '../contexts/AuthContext';
 import { ForgotPassword } from '../components/ForgotPassword';
 import { PasswordChange } from '../components/PasswordChange';
@@ -14,6 +14,15 @@ export const Login: React.FC = () => {
   const [showPassword, setShowPassword] = useState(false);
   const [showPasswordChange, setShowPasswordChange] = useState(false);
 
+  // Load saved email on component mount
+  useEffect(() => {
+    const savedEmail = localStorage.getItem('rememberedEmail');
+    if (savedEmail) {
+      setEmail(savedEmail);
+      setRememberMe(true);
+    }
+  }, []);
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setLoading(true);
@@ -21,6 +30,13 @@ export const Login: React.FC = () => {
 
     try {
       await login(email, password);
+      
+      // Handle remember me functionality
+      if (rememberMe) {
+        localStorage.setItem('rememberedEmail', email);
+      } else {
+        localStorage.removeItem('rememberedEmail');
+      }
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Login failed');
     } finally {

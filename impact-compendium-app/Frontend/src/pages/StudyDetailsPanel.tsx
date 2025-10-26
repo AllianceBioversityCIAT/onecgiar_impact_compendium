@@ -109,8 +109,8 @@ export const StudyDetailsPanel: React.FC<StudyDetailsPanelProps> = ({ isOpen, on
           <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-yellow-500"></div>
         </div>
       ) : study ? (
-        <div className="relative">
-          <div className="space-y-6 mb-20">
+        <div className="relative min-h-full">
+          <div className="space-y-6 pb-32">
             <div>
               <h3 className="text-lg font-medium text-gray-900 mb-2">{study.title}</h3>
               <div className="flex items-center gap-2 mb-4">
@@ -247,7 +247,7 @@ export const StudyDetailsPanel: React.FC<StudyDetailsPanelProps> = ({ isOpen, on
           </div>
 
           {/* Fixed Bottom Buttons */}
-          <div className="absolute bottom-0 left-0 right-0 border-t bg-white p-4 space-y-3">
+          <div className="fixed bottom-0 right-0 w-96 border-t bg-white p-4 space-y-3">
             <div className="flex gap-3">
               <button 
                 onClick={handleEdit} 

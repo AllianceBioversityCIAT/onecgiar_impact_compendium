@@ -133,57 +133,45 @@ export const HeaderBar: React.FC<HeaderBarProps> = ({
       )}
 
       <div className="flex items-center space-x-4">
-        {showAddButton ? (
-          <>
-            <Button onClick={onAddStudy} className="flex items-center space-x-2">
-              <span>Add study</span>
-              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
-              </svg>
-            </Button>
-            
-            {/* User Menu */}
-            <div className="relative" ref={menuRef}>
-              <button
-                onClick={() => setShowUserMenu(!showUserMenu)}
-                className="w-10 h-10 bg-[var(--ic-color-primary)] text-black rounded-full flex items-center justify-center font-semibold hover:opacity-90 transition-opacity"
-              >
-                {getUserInitials()}
-              </button>
-              
-              {showUserMenu && (
-                <div className="absolute right-0 mt-2 w-48 bg-white rounded-lg shadow-lg border border-gray-200 py-2 z-50">
-                  <div className="px-4 py-2 text-sm font-medium text-gray-900 border-b border-gray-100">
-                    My Account
-                  </div>
-                  <button className="w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-50">
-                    Profile
-                  </button>
-                  <button className="w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-50">
-                    Settings
-                  </button>
-                  <hr className="my-1" />
-                  <button 
-                    onClick={handleLogout}
-                    className="w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-50"
-                  >
-                    Log out
-                  </button>
-                </div>
-              )}
-            </div>
-          </>
-        ) : (
-          /* X button for form mode */
-          <button
-            onClick={() => navigate('/studies')}
-            className="w-10 h-10 bg-gray-100 hover:bg-gray-200 rounded-full flex items-center justify-center transition-colors"
-          >
-            <svg className="w-5 h-5 text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+        {showAddButton && (
+          <Button onClick={onAddStudy} className="flex items-center space-x-2">
+            <span>Add study</span>
+            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
             </svg>
-          </button>
+          </Button>
         )}
+        
+        {/* User Menu - Always visible */}
+        <div className="relative" ref={menuRef}>
+          <button
+            onClick={() => setShowUserMenu(!showUserMenu)}
+            className="w-10 h-10 bg-[var(--ic-color-primary)] text-black rounded-full flex items-center justify-center font-semibold hover:opacity-90 transition-opacity"
+          >
+            {getUserInitials()}
+          </button>
+          
+          {showUserMenu && (
+            <div className="absolute right-0 mt-2 w-48 bg-white rounded-lg shadow-lg border border-gray-200 py-2 z-50">
+              <div className="px-4 py-2 text-sm font-medium text-gray-900 border-b border-gray-100">
+                My Account
+              </div>
+              <button className="w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-50">
+                Profile
+              </button>
+              <button className="w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-50">
+                Settings
+              </button>
+              <hr className="my-1" />
+              <button 
+                onClick={handleLogout}
+                className="w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-50"
+              >
+                Log out
+              </button>
+            </div>
+          )}
+        </div>
       </div>
     </header>
   );

@@ -40,13 +40,23 @@ export const Login: React.FC = () => {
       {/* Left Panel - Login Form */}
       <div className="w-full lg:w-[873.5px] bg-white flex flex-col px-4 lg:px-0 py-8 lg:py-0">
         {/* Logo Section */}
-        <div className="flex items-center justify-center mx-auto lg:absolute lg:left-[212.75px] lg:top-[122.7px] mb-8 lg:mb-0">
+        <div className="flex items-center gap-3 mx-auto lg:absolute lg:left-[212.75px] lg:top-[122.7px] mb-8 lg:mb-0">
           {/* Logo Icon */}
           <img 
             src="/logo.svg" 
             alt="Impact Compendium Logo" 
-            className="w-32 h-32 lg:w-48 lg:h-48"
+            className="w-16 h-16"
           />
+          
+          {/* Logo Text */}
+          <div className="flex flex-col">
+            <div className="font-inter font-normal text-[20px] leading-6 tracking-[-0.449219px] text-[#333333]">
+              CGIAR
+            </div>
+            <div className="font-inter font-normal text-[11px] leading-4 tracking-[0.564453px] text-[#777777]">
+              Impact Compendium
+            </div>
+          </div>
         </div>
 
         {/* Header Section */}

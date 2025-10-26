@@ -63,11 +63,11 @@ export const getReferenceData = {
   // Step 2 - Controlled Lists  
   cropTypes: () => apiGet('/reference/crop-types'),
   keywords: () => apiGet('/reference/keywords'),
-  initiatives: () => apiGet('/clarisa/initiatives/'),
-  centers: () => apiGet('/clarisa/centers/'),
-  impactAreas: () => apiGet('/clarisa/impact-areas/'),
-  countries: () => apiGet('/clarisa/countries/'),
-  regions: () => apiGet('/clarisa/regions/'),
+  initiatives: () => apiGet('/reference/initiatives'),
+  centers: () => apiGet('/reference/centers'),
+  impactAreas: () => apiGet('/reference/impact-areas'),
+  countries: () => apiGet('/reference/countries'),
+  regions: () => apiGet('/reference/regions'),
   
   // Step 3 - Indicators (if any controlled lists)
   indicatorUnits: () => apiGet('/reference/indicator-units'),

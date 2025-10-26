@@ -93,59 +93,89 @@ async def get_keywords(db: Session = Depends(get_db)):
 @router.get("/impact-areas", response_model=List[Dict[str, Any]])
 async def get_impact_areas(db: Session = Depends(get_db)):
     """Get impact areas."""
-    data = get_reference_data(db, "clarisa_impacts_areas")
-    if not data:
-        return [
-            {"id": 1, "name": "Food Security"},
-            {"id": 2, "name": "Climate Adaptation"},
-            {"id": 3, "name": "Nutrition Security"}
-        ]
-    return data
+    try:
+        query = text("SELECT impact_area_id, name FROM clarisa_impacts_areas ORDER BY name")
+        result = db.execute(query)
+        data = [{"id": row[0], "name": row[1]} for row in result.fetchall()]
+        if data:
+            return data
+    except Exception as e:
+        logger.error(f"Error getting impact areas data: {e}")
+    
+    return [
+        {"id": 1, "name": "Food Security"},
+        {"id": 2, "name": "Climate Adaptation"},
+        {"id": 3, "name": "Nutrition Security"}
+    ]
 
 @router.get("/initiatives", response_model=List[Dict[str, Any]])
 async def get_initiatives(db: Session = Depends(get_db)):
     """Get initiatives."""
-    data = get_reference_data(db, "clarisa_initiatives", "initiative_id", "name")
-    if not data:
-        return [
-            {"id": 1, "name": "Accelerated Breeding"},
-            {"id": 2, "name": "Climate Resilience"},
-            {"id": 3, "name": "Sustainable Intensification"}
-        ]
-    return data
+    try:
+        query = text("SELECT initiative_id, code, name FROM clarisa_initiatives ORDER BY code")
+        result = db.execute(query)
+        data = [{"id": row[0], "name": f"{row[1]} - {row[2]}"} for row in result.fetchall()]
+        if data:
+            return data
+    except Exception as e:
+        logger.error(f"Error getting initiatives data: {e}")
+    
+    return [
+        {"id": 1, "name": "INIT-01 - Accelerated Breeding"},
+        {"id": 39, "name": "INIT-39 - Accelerating Crop Improvement Through Genome Editing"},
+        {"id": 7, "name": "INIT-07 - ActioNs for Innovative climate change Mitigation & Adaptation of Livestock"}
+    ]
 
 @router.get("/centers", response_model=List[Dict[str, Any]])
 async def get_centers(db: Session = Depends(get_db)):
     """Get centers."""
-    data = get_reference_data(db, "clarisa_centers")
-    if not data:
-        return [
-            {"id": 1, "name": "CIMMYT"},
-            {"id": 2, "name": "IRRI"},
-            {"id": 3, "name": "ICRISAT"}
-        ]
-    return data
+    try:
+        query = text("SELECT center_id, acronym, name FROM clarisa_centers ORDER BY acronym")
+        result = db.execute(query)
+        data = [{"id": row[0], "name": f"{row[1]} - {row[2]}"} for row in result.fetchall()]
+        if data:
+            return data
+    except Exception as e:
+        logger.error(f"Error getting centers data: {e}")
+    
+    return [
+        {"id": 1, "name": "CIMMYT - International Maize and Wheat Improvement Center"},
+        {"id": 2, "name": "IRRI - International Rice Research Institute"},
+        {"id": 3, "name": "ICRISAT - International Crops Research Institute for the Semi-Arid Tropics"}
+    ]
 
 @router.get("/countries", response_model=List[Dict[str, Any]])
 async def get_countries(db: Session = Depends(get_db)):
     """Get countries."""
-    data = get_reference_data(db, "clarisa_countries")
-    if not data:
-        return [
-            {"id": 1, "name": "Kenya"},
-            {"id": 2, "name": "India"},
-            {"id": 3, "name": "Philippines"}
-        ]
-    return data
+    try:
+        query = text("SELECT country_id, country_name FROM clarissa_countries ORDER BY country_name")
+        result = db.execute(query)
+        data = [{"id": row[0], "name": row[1]} for row in result.fetchall()]
+        if data:
+            return data
+    except Exception as e:
+        logger.error(f"Error getting countries data: {e}")
+    
+    return [
+        {"id": 1, "name": "Kenya"},
+        {"id": 2, "name": "India"},
+        {"id": 3, "name": "Philippines"}
+    ]
 
 @router.get("/regions", response_model=List[Dict[str, Any]])
 async def get_regions(db: Session = Depends(get_db)):
     """Get regions."""
-    data = get_reference_data(db, "clarisa_cgiar_regions")
-    if not data:
-        return [
-            {"id": 1, "name": "East Africa"},
-            {"id": 2, "name": "South Asia"},
-            {"id": 3, "name": "Southeast Asia"}
-        ]
-    return data
+    try:
+        query = text("SELECT region_id, acronym, region_name FROM clarissa_CGIAR_regions ORDER BY acronym")
+        result = db.execute(query)
+        data = [{"id": row[0], "name": f"{row[1]} - {row[2]}"} for row in result.fetchall()]
+        if data:
+            return data
+    except Exception as e:
+        logger.error(f"Error getting regions data: {e}")
+    
+    return [
+        {"id": 1, "name": "EA - East Africa"},
+        {"id": 2, "name": "SA - South Asia"},
+        {"id": 3, "name": "SEA - Southeast Asia"}
+    ]

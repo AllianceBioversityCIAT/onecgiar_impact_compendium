@@ -296,15 +296,29 @@ async def list_studies(
         }
     
     try:
-        # Simple query that should work
-        query = text("SELECT study_id, title, year, summary, category_id, doi FROM studies WHERE is_active = 1 ORDER BY study_id DESC LIMIT :limit OFFSET :skip")
-        result = db.execute(query, {"limit": actual_limit, "skip": actual_skip})
+        # Build WHERE clause for search
+        where_clause = "WHERE is_active = 1"
+        params = {"limit": actual_limit, "skip": actual_skip}
+        
+        if q:
+            where_clause += " AND (CAST(study_id AS CHAR) LIKE :search_term OR title LIKE :search_term)"
+            params["search_term"] = f"%{q}%"
+        
+        # Get total count with search
+        count_query = text(f"SELECT COUNT(*) FROM studies {where_clause}")
+        count_params = {k: v for k, v in params.items() if k not in ['limit', 'skip']}
+        total_result = db.execute(count_query, count_params)
+        total_count = total_result.scalar()
+        
+        # Get paginated data with search
+        query = text(f"SELECT study_id, title, year, summary, category_id, doi FROM studies {where_clause} ORDER BY study_id DESC LIMIT :limit OFFSET :skip")
+        result = db.execute(query, params)
         studies = result.fetchall()
         
         data = []
         for row in studies:
             data.append({
-                "id": row[0],  # This should be the actual study_id from database
+                "id": row[0],
                 "title": row[1] or "No title",
                 "year": row[2] or "N/A",
                 "summary": row[3] or "No summary available",
@@ -312,16 +326,18 @@ async def list_studies(
                 "doi": row[5] or "N/A"
             })
         
+        total_pages = (total_count + pageSize - 1) // pageSize
+        
         return {
             "success": True,
             "data": data,
-            "total": len(data),
+            "total": total_count,
             "pagination": {
-                "total": len(data),
+                "total": total_count,
                 "count": len(data),
                 "page": page,
                 "pageSize": pageSize,
-                "totalPages": 1
+                "totalPages": total_pages
             }
         }
     except Exception as e:

@@ -353,7 +353,7 @@ export const Dashboard: React.FC = () => {
           <div className="relative flex-1">
             <input
               type="text"
-              placeholder="Search by ID, title, year, category, or any field..."
+              placeholder="Search by Study ID or Title..."
               value={searchParams.q}
               onChange={(e) => handleSearchChange(e.target.value)}
               onKeyDown={handleSearchKeyDown}

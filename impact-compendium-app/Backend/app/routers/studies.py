@@ -574,12 +574,19 @@ async def create_study(
         """)
         
         # Map category to valid database IDs (31-35)
+        # Handle both frontend IDs (1-5) and direct database IDs (31-35)
         category_mapping = {
             "1": 31,  # Impact Study
             "2": 32,  # Impact/Outcome story  
             "3": 33,  # Other
             "4": 34,  # Outcome Study
-            "5": 35   # Synthesis Study
+            "5": 35,  # Synthesis Study
+            # Also handle direct database IDs
+            "31": 31, # Impact Study
+            "32": 32, # Impact/Outcome story
+            "33": 33, # Other
+            "34": 34, # Outcome Study
+            "35": 35  # Synthesis Study
         }
         db_category_id = category_mapping.get(str(study_data.category), 31)
         
@@ -666,13 +673,20 @@ async def update_study(
                 update_fields.append("doi = :doi")
                 params["doi"] = study_data.doi
             if study_data.category is not None:
-                # Map category to valid database IDs (31-35) - same as create function
+                # Map category to valid database IDs (31-35)
+                # Handle both frontend IDs (1-5) and direct database IDs (31-35)
                 category_mapping = {
                     "1": 31,  # Impact Study
                     "2": 32,  # Impact/Outcome story  
                     "3": 33,  # Other
                     "4": 34,  # Outcome Study
-                    "5": 35   # Synthesis Study
+                    "5": 35,  # Synthesis Study
+                    # Also handle direct database IDs
+                    "31": 31, # Impact Study
+                    "32": 32, # Impact/Outcome story
+                    "33": 33, # Other
+                    "34": 34, # Outcome Study
+                    "35": 35  # Synthesis Study
                 }
                 db_category_id = category_mapping.get(str(study_data.category), 31)
                 update_fields.append("category_id = :category_id")
@@ -794,13 +808,20 @@ async def update_complete_study(
                 WHERE study_id = :study_id
             """)
             
-            # Map category to valid database IDs (31-35) - same as create function
+            # Map category to valid database IDs (31-35)
+            # Handle both frontend IDs (1-5) and direct database IDs (31-35)
             category_mapping = {
                 "1": 31,  # Impact Study
                 "2": 32,  # Impact/Outcome story  
                 "3": 33,  # Other
                 "4": 34,  # Outcome Study
-                "5": 35   # Synthesis Study
+                "5": 35,  # Synthesis Study
+                # Also handle direct database IDs
+                "31": 31, # Impact Study
+                "32": 32, # Impact/Outcome story
+                "33": 33, # Other
+                "34": 34, # Outcome Study
+                "35": 35  # Synthesis Study
             }
             
             db_category_id = category_mapping.get(str(study_data.category), 31)  # Default to Impact Study
@@ -1034,12 +1055,19 @@ async def save_complete_study(
             """)
             
             # Map category to valid database IDs (31-35)
+            # Handle both frontend IDs (1-5) and direct database IDs (31-35)
             category_mapping = {
                 "1": 31,  # Impact Study
                 "2": 32,  # Impact/Outcome story  
                 "3": 33,  # Other
                 "4": 34,  # Outcome Study
-                "5": 35   # Synthesis Study
+                "5": 35,  # Synthesis Study
+                # Also handle direct database IDs
+                "31": 31, # Impact Study
+                "32": 32, # Impact/Outcome story
+                "33": 33, # Other
+                "34": 34, # Outcome Study
+                "35": 35  # Synthesis Study
             }
             
             db_category_id = category_mapping.get(str(study_data.category), 31)  # Default to Impact Study

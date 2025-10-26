@@ -39,6 +39,7 @@ const columns = [
   { key: 'year', label: 'Year', sortable: true, width: 'w-20' },
   { key: 'category', label: 'Category', sortable: true, width: 'w-32' },
   { key: 'doi', label: 'DOI', width: 'w-32' },
+  { key: 'actions', label: 'Actions', width: 'w-24' },
 ];
 
 export const Dashboard: React.FC = () => {
@@ -49,6 +50,9 @@ export const Dashboard: React.FC = () => {
   const [totalStudies, setTotalStudies] = useState(0);
   const [selectedStudyId, setSelectedStudyId] = useState<string | null>(null);
   const [isDetailsPanelOpen, setIsDetailsPanelOpen] = useState(false);
+  const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
+  const [studyToDelete, setStudyToDelete] = useState<Study | null>(null);
+  const [deleting, setDeleting] = useState(false);
   
   // Search and filter state
   const [searchParams, setSearchParams] = useState<SearchParams>({
@@ -291,6 +295,40 @@ export const Dashboard: React.FC = () => {
     window.location.href = '/studies/new/step-1';
   };
 
+  const handleEditStudy = (study: Study) => {
+    window.location.href = `/studies/edit/${study.id}`;
+  };
+
+  const handleDeleteStudy = (study: Study) => {
+    setStudyToDelete(study);
+    setShowDeleteConfirm(true);
+  };
+
+  const confirmDelete = async () => {
+    if (!studyToDelete) return;
+    
+    setDeleting(true);
+    try {
+      const response = await fetch(`${import.meta.env.VITE_API_BASE_URL || 'http://localhost:8000'}/studies/${studyToDelete.id}`, {
+        method: 'DELETE'
+      });
+      
+      if (response.ok) {
+        // Refresh the studies list
+        fetchStudies(searchParams);
+      } else {
+        alert('Failed to delete study');
+      }
+    } catch (error) {
+      console.error('Error deleting study:', error);
+      alert('Error deleting study');
+    } finally {
+      setDeleting(false);
+      setShowDeleteConfirm(false);
+      setStudyToDelete(null);
+    }
+  };
+
   return (
     <AppLayout title="All Studies" onAddStudy={handleAddStudy}>
       <div className="space-y-6">
@@ -399,6 +437,8 @@ export const Dashboard: React.FC = () => {
                 dir: searchParams.sort.split(':')[1] as 'asc' | 'desc'
               } : undefined}
               onSortChange={handleSortChange}
+              onEdit={handleEditStudy}
+              onDelete={handleDeleteStudy}
             />
 
             {/* Pagination */}
@@ -419,6 +459,51 @@ export const Dashboard: React.FC = () => {
         onClose={handleClosePanelDetails}
         studyId={selectedStudyId}
       />
+
+      {/* Delete Confirmation Modal */}
+      {showDeleteConfirm && studyToDelete && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+          <div className="bg-white rounded-lg p-6 max-w-md w-full mx-4 shadow-xl">
+            <div className="flex items-center gap-3 mb-4">
+              <div className="flex-shrink-0 w-10 h-10 bg-red-100 rounded-full flex items-center justify-center">
+                <svg className="w-6 h-6 text-red-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4c-.77-.833-1.964-.833-2.732 0L3.732 16.5c-.77.833.192 2.5 1.732 2.5z" />
+                </svg>
+              </div>
+              <h3 className="text-lg font-semibold text-gray-900">Delete Study</h3>
+            </div>
+            <p className="text-sm text-gray-600 mb-6 leading-relaxed">
+              Are you sure you want to delete <span className="font-medium">"{studyToDelete.title}"</span>? This action cannot be undone and all associated data will be permanently removed.
+            </p>
+            <div className="flex gap-3">
+              <Button 
+                onClick={confirmDelete} 
+                className="flex-1 bg-red-600 hover:bg-red-700 text-white font-medium py-3 flex items-center justify-center gap-2 transition-all duration-200"
+                disabled={deleting}
+              >
+                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                </svg>
+                {deleting ? 'Deleting...' : 'Delete Study'}
+              </Button>
+              <Button 
+                variant="secondary" 
+                onClick={() => {
+                  setShowDeleteConfirm(false);
+                  setStudyToDelete(null);
+                }} 
+                className="flex-1 font-medium py-3 flex items-center justify-center gap-2 transition-all duration-200"
+                disabled={deleting}
+              >
+                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                </svg>
+                Cancel
+              </Button>
+            </div>
+          </div>
+        </div>
+      )}
     </AppLayout>
   );
 };

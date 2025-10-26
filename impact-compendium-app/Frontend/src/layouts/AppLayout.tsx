@@ -30,13 +30,13 @@ export const AppLayout: React.FC<AppLayoutProps> = ({
         currentStep={currentStep}
       />
       
-      <main className={`max-w-7xl mx-auto px-6 py-4 pt-28 ${hasFormFooter ? 'pb-24' : 'pb-20'}`}>
+      <main className={`max-w-[95vw] mx-auto px-4 py-4 pt-28 ${hasFormFooter ? 'pb-32' : 'pb-28'}`}>
         {hasFormFooter ? (
           <div>
             {children}
           </div>
         ) : (
-          <div className="bg-white rounded-lg shadow-sm border border-[var(--ic-border-light)] p-4">
+          <div className="bg-white rounded-lg shadow-sm border border-[var(--ic-border-light)] p-6">
             {children}
           </div>
         )}

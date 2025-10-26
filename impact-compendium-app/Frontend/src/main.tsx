@@ -22,7 +22,7 @@ import { CreateStudyStep3 } from './pages/CreateStudy/Step3';
 
 function App() {
   return (
-    <Router>
+    <Router future={{ v7_startTransition: true }}>
       <Routes>
         <Route path="/login" element={<Login />} />
         <Route path="/" element={<Navigate to="/dashboard" replace />} />

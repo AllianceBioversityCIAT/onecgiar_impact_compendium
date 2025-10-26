@@ -9,6 +9,7 @@ import { Textarea } from '../../components/ui/Textarea';
 import { Button } from '../../components/ui/Button';
 import { Card } from '../../components/ui/Card';
 import { SearchableSelect } from '../../components/ui/SearchableSelect';
+import { CustomSelect } from '../../components/ui/CustomSelect';
 import { getReferenceData } from '../../services/api';
 
 const steps = [
@@ -29,7 +30,7 @@ export const CreateStudyStep1: React.FC = () => {
       studyId: '',
       title: '',
       summary: '',
-      year: '2025',
+      year: new Date().getFullYear().toString(),
       doi: '',
       category: '',
       periodStart: '',
@@ -43,6 +44,7 @@ export const CreateStudyStep1: React.FC = () => {
 
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [loading, setLoading] = useState(true);
+  const [validatingStudyId, setValidatingStudyId] = useState(false);
   const [options, setOptions] = useState({
     categories: [],
     interventionTypes: []
@@ -90,17 +92,14 @@ export const CreateStudyStep1: React.FC = () => {
     if (isEditMode && id) {
       const loadStudyData = async () => {
         try {
-          console.log('Loading study with ID:', id); // Debug log
           
           // Extract numeric ID if it's in ICD-XXX format
           const numericId = id.startsWith('ICD-') ? id.replace('ICD-', '') : id;
           
           const response = await fetch(`${import.meta.env.VITE_API_BASE_URL}/studies/${numericId}`);
-          console.log('API response status:', response.status); // Debug log
           
           if (response.ok) {
             const apiResponse = await response.json();
-            console.log('Study data received:', apiResponse); // Debug log
             
             // Extract the actual study data from the nested response
             const studyData = apiResponse.data || apiResponse;
@@ -128,10 +127,38 @@ export const CreateStudyStep1: React.FC = () => {
     }
   }, [isEditMode, id]);
 
+  // Validate Study ID uniqueness
+  const validateStudyId = async (studyId: string) => {
+    if (!studyId || studyId === id) return; // Skip validation if empty or same as current ID in edit mode
+    
+    setValidatingStudyId(true);
+    try {
+      const response = await fetch(`${import.meta.env.VITE_API_BASE_URL}/studies/check-id/${encodeURIComponent(studyId)}`);
+      const data = await response.json();
+      
+      if (data.exists) {
+        setErrors(prev => ({ ...prev, studyId: 'This Study ID already exists. Please choose a different one.' }));
+      } else {
+        setErrors(prev => ({ ...prev, studyId: '' }));
+      }
+    } catch (error) {
+      console.error('Failed to validate Study ID:', error);
+      // Don't show error to user for validation failures
+    } finally {
+      setValidatingStudyId(false);
+    }
+  };
+
   const handleInputChange = (field: string, value: string) => {
     setFormData(prev => ({ ...prev, [field]: value }));
     if (errors[field]) {
       setErrors(prev => ({ ...prev, [field]: '' }));
+    }
+    
+    // Validate Study ID on change with debounce
+    if (field === 'studyId' && value) {
+      clearTimeout(window.studyIdTimeout);
+      window.studyIdTimeout = setTimeout(() => validateStudyId(value), 500);
     }
   };
 
@@ -152,8 +179,16 @@ export const CreateStudyStep1: React.FC = () => {
         newErrors.doi = 'Please enter a valid URL or DOI format.';
       }
     }
-    if (!formData.periodStart) newErrors.periodStart = 'This field is required.';
-    if (!formData.periodEnd) newErrors.periodEnd = 'This field is required.';
+    if (!formData.periodStart) {
+      newErrors.periodStart = 'This field is required.';
+    } else if (!/^\d{4}$/.test(formData.periodStart)) {
+      newErrors.periodStart = 'Please enter a valid 4-digit year.';
+    }
+    if (!formData.periodEnd) {
+      newErrors.periodEnd = 'This field is required.';
+    } else if (!/^\d{4}$/.test(formData.periodEnd)) {
+      newErrors.periodEnd = 'Please enter a valid 4-digit year.';
+    }
     if (!formData.interventionType) newErrors.interventionType = 'This field is required.';
 
     setErrors(newErrors);
@@ -165,6 +200,11 @@ export const CreateStudyStep1: React.FC = () => {
   };
 
   const handleNext = async () => {
+    if (validatingStudyId) {
+      // Wait for validation to complete
+      return;
+    }
+    
     if (validateForm()) {
       // Store form data locally only
       localStorage.setItem('studyFormStep1', JSON.stringify(formData));
@@ -199,7 +239,6 @@ export const CreateStudyStep1: React.FC = () => {
       title={pageTitle}
       onBack={handleGoBack}
       onNext={handleNext}
-      onSaveDraft={() => console.log('Save draft')}
       steps={steps}
       currentStep={1}
     >
@@ -209,7 +248,7 @@ export const CreateStudyStep1: React.FC = () => {
         <Card>
           <div className="space-y-4">
             {/* Study ID */}
-            <div className="w-1/3">
+            <div className="w-1/3 relative">
               <Input
                 label="Study ID"
                 required
@@ -219,6 +258,18 @@ export const CreateStudyStep1: React.FC = () => {
                 onChange={(e) => handleInputChange('studyId', e.target.value)}
                 error={errors.studyId}
               />
+              {validatingStudyId && (
+                <div className="absolute right-3 top-9 flex items-center">
+                  <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-blue-500"></div>
+                </div>
+              )}
+              {formData.studyId && !validatingStudyId && !errors.studyId && (
+                <div className="absolute right-3 top-9 flex items-center">
+                  <svg className="h-4 w-4 text-green-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                  </svg>
+                </div>
+              )}
             </div>
 
             {/* Title */}
@@ -245,7 +296,8 @@ export const CreateStudyStep1: React.FC = () => {
                 label="Year of report"
                 required
                 options={Array.from({length: 10}, (_, i) => {
-                  const year = 2025 - i;
+                  const currentYear = new Date().getFullYear();
+                  const year = currentYear - i;
                   return { value: year.toString(), label: year.toString() };
                 })}
                 value={formData.year}
@@ -274,23 +326,47 @@ export const CreateStudyStep1: React.FC = () => {
 
             {/* Period start and Period end Row */}
             <div className="grid grid-cols-2 gap-6">
-              <Input
-                label="Period start"
-                required
-                value={formData.periodStart}
-                onChange={(e) => handleInputChange('periodStart', e.target.value)}
-                error={errors.periodStart}
-                placeholder="YYYY"
-              />
+              <div>
+                <label className="block text-sm font-bold text-gray-700 mb-1">
+                  Period start
+                  <span className="text-red-500 ml-1">*</span>
+                </label>
+                <input
+                  type="number"
+                  min="1900"
+                  max="2100"
+                  className={`w-full px-3 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-yellow-500 focus:border-yellow-500 bg-[#F3F3F5] ${
+                    errors.periodStart ? 'border-red-500' : 'border-gray-300'
+                  }`}
+                  placeholder="YYYY"
+                  value={formData.periodStart}
+                  onChange={(e) => handleInputChange('periodStart', e.target.value)}
+                />
+                {errors.periodStart && (
+                  <p className="mt-1 text-sm text-red-600">{errors.periodStart}</p>
+                )}
+              </div>
 
-              <Input
-                label="Period end"
-                required
-                value={formData.periodEnd}
-                onChange={(e) => handleInputChange('periodEnd', e.target.value)}
-                error={errors.periodEnd}
-                placeholder="YYYY"
-              />
+              <div>
+                <label className="block text-sm font-bold text-gray-700 mb-1">
+                  Period end
+                  <span className="text-red-500 ml-1">*</span>
+                </label>
+                <input
+                  type="number"
+                  min="1900"
+                  max="2100"
+                  className={`w-full px-3 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-yellow-500 focus:border-yellow-500 bg-[#F3F3F5] ${
+                    errors.periodEnd ? 'border-red-500' : 'border-gray-300'
+                  }`}
+                  placeholder="YYYY"
+                  value={formData.periodEnd}
+                  onChange={(e) => handleInputChange('periodEnd', e.target.value)}
+                />
+                {errors.periodEnd && (
+                  <p className="mt-1 text-sm text-red-600">{errors.periodEnd}</p>
+                )}
+              </div>
             </div>
 
             {/* Intervention Information Section */}
@@ -300,12 +376,12 @@ export const CreateStudyStep1: React.FC = () => {
               </h3>
               
               <div className="space-y-4">
-                <SearchableSelect
+                <CustomSelect
                   label="Intervention type"
                   required
                   options={options.interventionTypes}
                   value={formData.interventionType}
-                  onChange={(value) => handleInputChange('interventionType', value)}
+                  onChange={(e) => handleInputChange('interventionType', e.target.value)}
                   error={errors.interventionType}
                 />
 

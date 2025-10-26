@@ -6,6 +6,7 @@ import { ProgressStepper } from '../../components/ui/ProgressStepper';
 import { Input } from '../../components/ui/Input';
 import { Button } from '../../components/ui/Button';
 import { Card } from '../../components/ui/Card';
+import { SuccessModal } from '../../components/ui/SuccessModal';
 import { studyAPI } from '../../services/api';
 import { authService } from '../../services/auth';
 
@@ -40,6 +41,7 @@ export const CreateStudyStep3: React.FC = () => {
   const [indicators, setIndicators] = useState<Indicator[]>(getSavedData);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [loading, setLoading] = useState(true);
+  const [showSuccessModal, setShowSuccessModal] = useState(false);
   const [mappingData, setMappingData] = useState(false);
 
   // Load study data for edit mode
@@ -155,7 +157,6 @@ export const CreateStudyStep3: React.FC = () => {
       };
 
       // Call the complete save endpoint
-      console.log('Sending study data:', completeStudyData);
       
       const response = await fetch(`${import.meta.env.VITE_API_BASE_URL}/studies/complete`, {
         method: 'POST',
@@ -179,11 +180,10 @@ export const CreateStudyStep3: React.FC = () => {
       localStorage.removeItem('studyFormStep2');
       localStorage.removeItem('studyFormStep3');
       
-      // Show success message
-      alert('Study saved successfully!');
+      // Show success modal
+      setShowSuccessModal(true);
       
-      // Navigate to studies list
-      navigate('/studies');
+      // Clear localStorage after successful save
       
     } catch (error) {
       console.error('Failed to save study:', error);
@@ -192,6 +192,11 @@ export const CreateStudyStep3: React.FC = () => {
     } finally {
       setIsSubmitting(false);
     }
+  };
+
+  const handleSuccessModalAction = () => {
+    setShowSuccessModal(false);
+    navigate('/studies');
   };
 
   const handleGoBack = () => {
@@ -218,6 +223,15 @@ export const CreateStudyStep3: React.FC = () => {
             </div>
           </Card>
         </div>
+
+        <SuccessModal
+          isOpen={showSuccessModal}
+          onClose={() => setShowSuccessModal(false)}
+          title="Study Saved Successfully!"
+          message={`Your ${isEditMode ? 'study has been updated' : 'new study has been created'} and saved to the Impact Compendium database. You can now view it in the studies list or continue working on other studies.`}
+          actionLabel="View Studies"
+          onAction={handleSuccessModalAction}
+        />
       </AppLayout>
     );
   }
@@ -227,7 +241,6 @@ export const CreateStudyStep3: React.FC = () => {
       title={pageTitle}
       onBack={handleGoBack}
       onNext={handleFinish}
-      onSaveDraft={() => console.log('Save draft')}
       nextLabel={isSubmitting ? 'Submitting...' : 'Save'}
       isLoading={isSubmitting}
       steps={steps}

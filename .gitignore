@@ -9,6 +9,23 @@ aws-credentials.json
 # Amazon Q Rules and Configuration
 .amazonq/
 
+# Internal Planning and Development Documentation
+planning/
+specs/cost/
+
+# Temporary and Debug Files
+test_*.js
+test_*.py
+*_test.js
+*_test.py
+debug_*.js
+debug_*.py
+
+# Internal Reports and Logs
+execution_log.txt
+*_validation_report.txt
+*_report.txt
+
 # Environment Variables
 .env
 .env.local

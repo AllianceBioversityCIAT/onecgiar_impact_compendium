@@ -189,12 +189,12 @@ export const Login: React.FC = () => {
         <div 
           className="absolute inset-0 bg-cover bg-center"
           style={{
-            backgroundImage: `url('/specs/images/logo.png')`,
+            backgroundImage: `url('/background.jpg')`,
             backgroundSize: 'cover',
             backgroundPosition: 'center'
           }}
         />
-        <div className="absolute inset-0 bg-gradient-to-br from-[rgba(185,106,40,0.15)] to-[rgba(240,126,40,0.1)]" />
+        <div className="absolute inset-0 bg-gradient-to-br from-[rgba(139,69,19,0.6)] to-[rgba(101,67,33,0.7)]" />
       </div>
     </div>
   );

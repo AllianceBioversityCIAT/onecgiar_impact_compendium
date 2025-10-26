@@ -205,6 +205,11 @@ export const CreateStudyStep3: React.FC = () => {
         setShowSuccessModal(true);
       }, 1500);
       
+      // Auto redirect after 3 seconds
+      setTimeout(() => {
+        navigate('/studies?sort=id%3Adesc');
+      }, 3000);
+      
       // Clear localStorage after successful save
       
     } catch (error) {
@@ -221,7 +226,7 @@ export const CreateStudyStep3: React.FC = () => {
 
   const handleSuccessModalAction = () => {
     setShowSuccessModal(false);
-    navigate('/dashboard');
+    navigate('/studies?sort=id%3Adesc');
   };
 
   const handleGoBack = () => {

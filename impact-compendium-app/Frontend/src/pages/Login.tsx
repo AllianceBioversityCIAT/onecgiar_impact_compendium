@@ -182,12 +182,6 @@ export const Login: React.FC = () => {
                 prms-tech-support@cgiar.org
               </a>
             </p>
-            <p className="font-inter font-normal text-[12px] leading-[18px] text-[#999999]">
-              By continuing, you acknowledge that you understand{' '}
-              <a href="#" className="text-[#F07E28] hover:underline">
-                Terms & Conditions
-              </a>
-            </p>
           </div>
         </div>
       </div>

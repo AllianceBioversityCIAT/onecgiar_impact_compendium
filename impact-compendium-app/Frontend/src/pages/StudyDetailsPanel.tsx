@@ -110,7 +110,7 @@ export const StudyDetailsPanel: React.FC<StudyDetailsPanelProps> = ({ isOpen, on
         </div>
       ) : study ? (
         <div className="flex flex-col h-full">
-          <div className="flex-1 overflow-y-auto space-y-6 pb-20">
+          <div className="flex-1 space-y-6 mb-20">
             <div>
               <h3 className="text-lg font-medium text-gray-900 mb-2">{study.title}</h3>
               <div className="flex items-center gap-2 mb-4">

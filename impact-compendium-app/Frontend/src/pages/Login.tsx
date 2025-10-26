@@ -1,10 +1,12 @@
 import React, { useState, useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
 import { ForgotPassword } from '../components/ForgotPassword';
 import { PasswordChange } from '../components/PasswordChange';
 
 export const Login: React.FC = () => {
   const { login } = useAuth();
+  const navigate = useNavigate();
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [rememberMe, setRememberMe] = useState(false);
@@ -37,6 +39,9 @@ export const Login: React.FC = () => {
       } else {
         localStorage.removeItem('rememberedEmail');
       }
+      
+      // Redirect to main page after successful login
+      navigate('/dashboard');
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Login failed');
     } finally {

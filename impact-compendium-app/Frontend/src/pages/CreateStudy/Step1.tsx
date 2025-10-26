@@ -166,76 +166,8 @@ export const CreateStudyStep1: React.FC = () => {
 
   const handleNext = async () => {
     if (validateForm()) {
-      // Store form data locally
+      // Store form data locally only
       localStorage.setItem('studyFormStep1', JSON.stringify(formData));
-      
-      // Save to backend if not in edit mode
-      if (!isEditMode) {
-        try {
-          const response = await fetch(`${import.meta.env.VITE_API_BASE_URL}/studies/`, {
-            method: 'POST',
-            headers: {
-              'Content-Type': 'application/json',
-            },
-            body: JSON.stringify({
-              studyId: formData.studyId,
-              title: formData.title,
-              summary: formData.summary,
-              year: parseInt(formData.year),
-              doi: formData.doi,
-              category: formData.category,
-              periodStart: formData.periodStart,
-              periodEnd: formData.periodEnd,
-              interventionType: formData.interventionType,
-              interventionDetails: formData.interventionDetails
-            })
-          });
-          
-          if (!response.ok) {
-            const errorData = await response.json();
-            throw new Error(errorData.detail || 'Failed to save study');
-          }
-          
-          const result = await response.json();
-          console.log('Study saved:', result);
-        } catch (error) {
-          console.error('Error saving study:', error);
-          // Continue to next step even if save fails (for development)
-        }
-      } else {
-        // Update existing study
-        try {
-          const response = await fetch(`${import.meta.env.VITE_API_BASE_URL}/studies/${id}`, {
-            method: 'PUT',
-            headers: {
-              'Content-Type': 'application/json',
-            },
-            body: JSON.stringify({
-              studyId: formData.studyId,
-              title: formData.title,
-              summary: formData.summary,
-              year: parseInt(formData.year),
-              doi: formData.doi,
-              category: formData.category,
-              periodStart: formData.periodStart,
-              periodEnd: formData.periodEnd,
-              interventionType: formData.interventionType,
-              interventionDetails: formData.interventionDetails
-            })
-          });
-          
-          if (!response.ok) {
-            const errorData = await response.json();
-            throw new Error(errorData.detail || 'Failed to update study');
-          }
-          
-          const result = await response.json();
-          console.log('Study updated:', result);
-        } catch (error) {
-          console.error('Error updating study:', error);
-          // Continue to next step even if update fails (for development)
-        }
-      }
       
       const nextPath = isEditMode ? `/studies/edit/${id}/step-2` : '/studies/new/step-2';
       navigate(nextPath);
@@ -277,14 +209,17 @@ export const CreateStudyStep1: React.FC = () => {
         <Card>
           <div className="space-y-4">
             {/* Study ID */}
-            <Input
-              label="Study ID"
-              required
-              placeholder="Enter unique study identifier"
-              value={formData.studyId}
-              onChange={(e) => handleInputChange('studyId', e.target.value)}
-              error={errors.studyId}
-            />
+            <div className="w-1/3">
+              <Input
+                label="Study ID"
+                required
+                type="number"
+                placeholder="Enter numeric study identifier"
+                value={formData.studyId}
+                onChange={(e) => handleInputChange('studyId', e.target.value)}
+                error={errors.studyId}
+              />
+            </div>
 
             {/* Title */}
             <Input

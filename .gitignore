@@ -6,6 +6,9 @@ aws-credentials.json
 *.p12
 *.pfx
 
+# Amazon Q Rules and Configuration
+.amazonq/
+
 # Environment Variables
 .env
 .env.local

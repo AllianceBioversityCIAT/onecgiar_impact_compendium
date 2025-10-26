@@ -65,10 +65,22 @@ export const Login: React.FC = () => {
   }
 
   return (
-    <div className="min-h-screen bg-white flex flex-col lg:flex-row">
+    <div className="min-h-screen bg-white flex flex-col lg:flex-row relative">
+      {/* Background Image - Responsive */}
+      <div 
+        className="absolute inset-0 lg:left-[873.5px] bg-cover bg-center"
+        style={{
+          backgroundImage: `url('/background.jpg')`,
+          backgroundSize: 'cover',
+          backgroundPosition: 'center'
+        }}
+      >
+        <div className="absolute inset-0 bg-gradient-to-br from-[rgba(139,69,19,0.6)] to-[rgba(101,67,33,0.7)]" />
+      </div>
+
       {/* Left Panel - Login Form */}
       <div 
-        className="w-full lg:w-[873.5px] flex flex-col justify-center items-center px-4 lg:px-0 py-8 lg:py-0 relative"
+        className="w-full lg:w-[873.5px] flex flex-col justify-center items-center px-4 lg:px-0 py-8 lg:py-0 relative z-10"
         style={{
           backgroundImage: `url('/texture-bg.png')`,
           backgroundSize: 'cover',
@@ -205,19 +217,6 @@ export const Login: React.FC = () => {
             </p>
           </div>
         </div>
-      </div>
-
-      {/* Right Panel - Background Image */}
-      <div className="hidden lg:block w-[809.5px] h-screen relative">
-        <div 
-          className="absolute inset-0 bg-cover bg-center"
-          style={{
-            backgroundImage: `url('/background.jpg')`,
-            backgroundSize: 'cover',
-            backgroundPosition: 'center'
-          }}
-        />
-        <div className="absolute inset-0 bg-gradient-to-br from-[rgba(139,69,19,0.6)] to-[rgba(101,67,33,0.7)]" />
       </div>
     </div>
   );

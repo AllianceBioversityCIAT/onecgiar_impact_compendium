@@ -109,8 +109,8 @@ export const StudyDetailsPanel: React.FC<StudyDetailsPanelProps> = ({ isOpen, on
           <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-yellow-500"></div>
         </div>
       ) : study ? (
-        <div className="flex flex-col h-full">
-          <div className="flex-1 space-y-6 mb-20">
+        <div className="relative">
+          <div className="space-y-6 mb-20">
             <div>
               <h3 className="text-lg font-medium text-gray-900 mb-2">{study.title}</h3>
               <div className="flex items-center gap-2 mb-4">

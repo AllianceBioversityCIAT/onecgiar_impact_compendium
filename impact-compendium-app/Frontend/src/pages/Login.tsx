@@ -55,7 +55,15 @@ export const Login: React.FC = () => {
   return (
     <div className="min-h-screen bg-white flex flex-col lg:flex-row">
       {/* Left Panel - Login Form */}
-      <div className="w-full lg:w-[873.5px] bg-white flex flex-col justify-center items-center px-4 lg:px-0 py-8 lg:py-0">
+      <div 
+        className="w-full lg:w-[873.5px] flex flex-col justify-center items-center px-4 lg:px-0 py-8 lg:py-0 relative"
+        style={{
+          backgroundImage: `url('/texture-bg.png')`,
+          backgroundSize: 'cover',
+          backgroundPosition: 'center',
+          backgroundRepeat: 'no-repeat'
+        }}
+      >
         <div className="w-full max-w-[448px] space-y-8">
           {/* Logo Section */}
           <div className="flex items-center justify-center">

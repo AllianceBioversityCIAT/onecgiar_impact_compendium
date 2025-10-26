@@ -45,7 +45,7 @@ export const Login: React.FC = () => {
           <img 
             src="/logo.svg" 
             alt="Impact Compendium Logo" 
-            className="w-24 h-24 lg:w-32 lg:h-32"
+            className="w-32 h-32 lg:w-48 lg:h-48"
           />
         </div>
 

@@ -64,21 +64,11 @@ export const CreateStudyStep2: React.FC = () => {
         setOptions({
           cropTypes: cropTypes.map((item: any) => ({ value: item.id, label: item.name })),
           keywords: keywords.map((item: any) => ({ value: item.id, label: item.name })),
-          initiatives: initiatives.data ? initiatives.data
-            .sort((a: any, b: any) => (a.code || '').localeCompare(b.code || ''))
-            .map((item: any) => ({ value: item.initiative_id, label: `${item.code} - ${item.name}` })) : [],
-          centers: centers.data ? centers.data.map((item: any) => ({ value: item.center_id, label: `${item.acronym} - ${item.name}` })) : [],
-          impactAreas: impactAreas.data ? impactAreas.data.map((item: any) => ({ value: item.impact_area_id, label: item.name })) : [],
-          countries: countries.data ? countries.data.filter((item: any) => 
-            item.country_name !== 'All' && 
-            !item.country_name.toLowerCase().includes('all')
-          ).map((item: any) => ({ value: item.country_id, label: item.country_name })) : [],
-          regions: regions.data ? regions.data.filter((item: any) => 
-            item.region_name !== 'All' && 
-            item.region_name !== 'no specific' && 
-            !item.region_name.toLowerCase().includes('all') &&
-            !item.region_name.toLowerCase().includes('no specific')
-          ).map((item: any) => ({ value: item.region_id, label: `${item.acronym} - ${item.region_name}` })) : []
+          initiatives: initiatives.map((item: any) => ({ value: item.id, label: item.name })),
+          centers: centers.map((item: any) => ({ value: item.id, label: item.name })),
+          impactAreas: impactAreas.map((item: any) => ({ value: item.id, label: item.name })),
+          countries: countries.map((item: any) => ({ value: item.id, label: item.name })),
+          regions: regions.map((item: any) => ({ value: item.id, label: item.name }))
         });
         setLoading(false);
       } catch (error) {
@@ -86,43 +76,40 @@ export const CreateStudyStep2: React.FC = () => {
         // Fallback options
         setOptions({
           cropTypes: [
-            { value: 'maize', label: 'Maize' },
-            { value: 'rice', label: 'Rice' },
-            { value: 'wheat', label: 'Wheat' },
-            { value: 'cassava', label: 'Cassava' }
+            { value: 1, label: 'Maize' },
+            { value: 2, label: 'Rice' },
+            { value: 3, label: 'Wheat' },
+            { value: 4, label: 'Cassava' }
           ],
           keywords: [
-            { value: 'sustainability', label: 'Sustainability' },
-            { value: 'climate-change', label: 'Climate Change' },
-            { value: 'food-security', label: 'Food Security' }
+            { value: 1, label: 'Sustainability' },
+            { value: 2, label: 'Climate Change' },
+            { value: 3, label: 'Food Security' }
           ],
           initiatives: [
-            { value: 'INIT-01', label: 'INIT-01 - Accelerated Breeding' },
-            { value: 'INIT-02', label: 'INIT-02 - Breeding Resources' },
-            { value: 'INIT-03', label: 'INIT-03 - Climate Adaptation' }
+            { value: 1, label: 'Accelerated Breeding' },
+            { value: '39', label: 'Accelerating Crop Improvement Through Genome Editing' },
+            { value: '7', label: 'ActioNs for Innovative climate change Mitigation & Adaptation of Livestock' }
           ],
           centers: [
-            { value: 'cimmyt', label: 'CIMMYT' },
-            { value: 'irri', label: 'IRRI' },
-            { value: 'icrisat', label: 'ICRISAT' }
+            { value: '1', label: 'CIMMYT' },
+            { value: '2', label: 'IRRI' },
+            { value: '3', label: 'ICRISAT' }
           ],
           impactAreas: [
-            { value: 'nutrition', label: 'Nutrition, health and food security' },
-            { value: 'poverty', label: 'Poverty reduction, livelihoods and jobs' },
-            { value: 'gender', label: 'Gender equality, youth and social inclusion' },
-            { value: 'climate', label: 'Climate adaptation and mitigation' },
-            { value: 'environment', label: 'Environmental health and biodiversity' }
+            { value: '1', label: 'Food Security' },
+            { value: '2', label: 'Climate Adaptation' },
+            { value: '3', label: 'Nutrition Security' }
           ],
           countries: [
-            { value: 'nigeria', label: 'Nigeria' },
-            { value: 'kenya', label: 'Kenya' },
-            { value: 'ethiopia', label: 'Ethiopia' },
-            { value: 'tanzania', label: 'Tanzania' }
+            { value: '1', label: 'Kenya' },
+            { value: '2', label: 'India' },
+            { value: '3', label: 'Philippines' }
           ],
           regions: [
-            { value: 'WA', label: 'WA - West Africa' },
-            { value: 'EA', label: 'EA - East Africa' },
-            { value: 'SA', label: 'SA - Southern Africa' }
+            { value: '1', label: 'East Africa' },
+            { value: '2', label: 'South Asia' },
+            { value: '3', label: 'Southeast Asia' }
           ]
         });
         setLoading(false);
@@ -134,7 +121,7 @@ export const CreateStudyStep2: React.FC = () => {
 
   // Load study data for edit mode - run after options are loaded
   useEffect(() => {
-    if (isEditMode && id && options.keywords.length > 0) {
+    if (isEditMode && id && !loading && options.cropTypes.length > 0) {
       const loadStudyData = async () => {
         try {
           setMappingData(true);
@@ -154,47 +141,30 @@ export const CreateStudyStep2: React.FC = () => {
             });
             console.log('Step2: Countries data type:', typeof studyData.countries, studyData.countries);
             
-            // Map crops - use new format from database
+            console.log('=== CROP DEBUGGING ===');
+            console.log('Step2: studyData:', studyData);
+            console.log('Step2: studyData.crops:', studyData.crops);
+            console.log('Step2: Current options.cropTypes:', options.cropTypes);
+            
+            // Map crops - handle database field names
             const cropIds = studyData.crops ? 
-              studyData.crops.map((crop: any) => 
-                typeof crop === 'number' ? crop : crop.id
-              ) : [];
+              studyData.crops.map((crop: any) => {
+                console.log('Step2: Processing crop:', crop);
+                const id = typeof crop === 'number' ? crop : crop.id;
+                console.log('Step2: Extracted crop ID:', id, 'type:', typeof id);
+                return id;
+              }) : [];
+            
+            console.log('Step2: Final cropIds array:', cropIds);
+            console.log('=== END CROP DEBUGGING ===');
 
-            // Map keywords - use new format from database
-            const keywordIds = studyData.keywords ? 
-              studyData.keywords.map((keyword: any) => 
-                typeof keyword === 'number' ? keyword : keyword.id
-              ) : [];
-
-            // Map initiatives - use new format from database
-            const initiativeIds = studyData.initiatives ? 
-              studyData.initiatives.map((initiative: any) => 
-                typeof initiative === 'number' ? initiative : initiative.id
-              ) : [];
-
-            // Map centers - use new format from database  
-            const centerIds = studyData.centers ? 
-              studyData.centers.map((center: any) => 
-                typeof center === 'number' ? center : center.id
-              ) : [];
-
-            // Map countries - handle both formats: direct IDs or objects with id/name
-            const countryIds = studyData.countries ? 
-              studyData.countries.map((country: any) => 
-                typeof country === 'number' ? country : country.id
-              ) : [];
-
-            // Map regions - handle both formats: direct IDs or objects with id/region_id
-            const regionIds = studyData.regions ? 
-              studyData.regions.map((region: any) => 
-                typeof region === 'number' ? region : region.id
-              ) : [];
-
-            // Map impact areas for primary and secondary fields
-            const impactAreaIds = studyData.impact_areas ? 
-              studyData.impact_areas.map((area: any) => 
-                typeof area === 'number' ? area : area.id
-              ) : [];
+            // Map all data - access directly from studyData (not studyData.data)
+            const keywordIds = studyData.keywords?.map((keyword: any) => keyword.id) || [];
+            const initiativeIds = studyData.initiatives?.map((initiative: any) => initiative.id) || [];
+            const centerIds = studyData.centers?.map((center: any) => center.id) || [];
+            const countryIds = studyData.countries?.map((country: any) => country.id) || [];
+            const regionIds = studyData.regions?.map((region: any) => region.id) || [];
+            const impactAreaIds = studyData.impact_areas?.map((area: any) => area.id) || [];
 
             setFormData({
               cropProductType: cropIds,
@@ -202,7 +172,7 @@ export const CreateStudyStep2: React.FC = () => {
               contributingInitiatives: initiativeIds,
               contributingCenters: centerIds,
               primaryCGIARImpactArea: impactAreaIds[0] || '',
-              secondaryCGIARImpactArea: impactAreaIds.slice(1) || [],
+              secondaryCGIARImpactArea: impactAreaIds[1] || '', // Take second item as string, not array
               countryOfStudy: countryIds,
               cgiarRegions: regionIds
             });
@@ -215,7 +185,7 @@ export const CreateStudyStep2: React.FC = () => {
       };
       loadStudyData();
     }
-  }, [isEditMode, id, options.keywords]);
+  }, [isEditMode, id, loading, options.cropTypes]);
 
   // Remove the separate useEffect for loading saved data since it's now loaded immediately
 
@@ -225,8 +195,15 @@ export const CreateStudyStep2: React.FC = () => {
       
       // If primary impact area changed, clear secondary if it matches
       if (field === 'primaryCGIARImpactArea' && typeof value === 'string') {
-        if (prev.secondaryCGIARImpactArea === value) {
+        if (Number(prev.secondaryCGIARImpactArea) === Number(value)) {
           newData.secondaryCGIARImpactArea = '';
+        }
+      }
+      
+      // If secondary impact area changed, clear primary if it matches
+      if (field === 'secondaryCGIARImpactArea' && typeof value === 'string') {
+        if (Number(prev.primaryCGIARImpactArea) === Number(value)) {
+          newData.primaryCGIARImpactArea = '';
         }
       }
       
@@ -235,7 +212,18 @@ export const CreateStudyStep2: React.FC = () => {
   };
 
   const getSecondaryImpactAreaOptions = () => {
-    return options.impactAreas.filter(option => option.value !== formData.primaryCGIARImpactArea);
+    const filtered = options.impactAreas.filter(option => {
+      const isMatch = Number(option.value) === Number(formData.primaryCGIARImpactArea);
+      console.log(`Comparing option ${option.value} (${typeof option.value}) with primary ${formData.primaryCGIARImpactArea} (${typeof formData.primaryCGIARImpactArea}) - Match: ${isMatch}`);
+      return !isMatch;
+    });
+    console.log('Secondary options - Primary selected:', formData.primaryCGIARImpactArea);
+    console.log('Secondary options - Filtered:', filtered);
+    return filtered;
+  };
+
+  const getPrimaryImpactAreaOptions = () => {
+    return options.impactAreas.filter(option => Number(option.value) !== Number(formData.secondaryCGIARImpactArea));
   };
 
   const handleMultiSelectChange = (field: string, values: string[]) => {
@@ -344,7 +332,7 @@ export const CreateStudyStep2: React.FC = () => {
                 <Select
                   label="Primary CGIAR Impact Area"
                   required
-                  options={options.impactAreas.length === 0 ? [{ value: '', label: 'Loading...' }] : options.impactAreas}
+                  options={options.impactAreas.length === 0 ? [{ value: '', label: 'Loading...' }] : getPrimaryImpactAreaOptions()}
                   value={formData.primaryCGIARImpactArea}
                   onChange={(e) => handleInputChange('primaryCGIARImpactArea', e.target.value)}
                 />

@@ -34,16 +34,11 @@ interface SearchParams {
 }
 
 const columns = [
-  { key: 'id', label: 'Study id', width: 'w-24' },
-  { key: 'year', label: 'Year', sortable: true, width: 'w-20' },
-  { key: 'period', label: 'Period', width: 'w-28' },
+  { key: 'id', label: 'Study ID', sortable: true, width: 'w-24' },
   { key: 'title', label: 'Title', sortable: true, width: 'w-80', className: 'truncate' },
-  { key: 'impact_areas', label: 'Impact areas', width: 'w-48' },
-  { key: 'regions', label: 'Regions', width: 'w-40' },
-  { key: 'countries', label: 'Countries', width: 'w-40' },
-  { key: 'center', label: 'Centers', width: 'w-32' },
+  { key: 'year', label: 'Year', sortable: true, width: 'w-20' },
   { key: 'category', label: 'Category', sortable: true, width: 'w-32' },
-  { key: 'contributors', label: 'Initiatives', width: 'w-48' },
+  { key: 'doi', label: 'DOI', width: 'w-32' },
 ];
 
 export const Dashboard: React.FC = () => {
@@ -60,7 +55,7 @@ export const Dashboard: React.FC = () => {
     q: '',
     page: 1,
     pageSize: 10,
-    sort: '',
+    sort: 'id:desc',  // Default sort by ID descending
     category: ''
   });
 
@@ -129,14 +124,10 @@ export const Dashboard: React.FC = () => {
         queryParams.set('pageSize', params.pageSize.toString());
         if (params.sort) queryParams.set('sort', params.sort);
         if (params.category) queryParams.set('category', params.category);
+        if (params.q) queryParams.set('q', params.q);
         
-        let endpoint;
-        if (params.q) {
-          queryParams.set('q', params.q);
-          endpoint = `/studies/search/?${queryParams}`;
-        } else {
-          endpoint = `/studies?${queryParams}`;
-        }
+        // Always use the main studies endpoint
+        const endpoint = `/studies?${queryParams}`;
         
         const response = await fetch(`${import.meta.env.VITE_API_BASE_URL || 'http://localhost:8000'}${endpoint}`);
         const data = await response.json();
@@ -158,17 +149,12 @@ export const Dashboard: React.FC = () => {
         
         // Transform data to match table format - use actual API data
         const transformedStudies = studiesData.map((study: any) => ({
-          id: study.id || `ICD-${study.study_id || Math.random()}`,
+          id: study.id,
+          title: study.title || 'No title',
           year: study.year || 'N/A',
-          period: study.period ? `${study.period.start || ''}-${study.period.end || ''}` : 'N/A',
-          title: study.title ? study.title.charAt(0).toUpperCase() + study.title.slice(1).toLowerCase() : 'No title',
-          impact_areas: study.impact_areas?.map((ia: any) => ia.name).join(', ') || 'N/A',
-          regions: study.regions?.map((r: any) => r.name).join(', ') || 'N/A',
-          countries: study.countries?.map((c: any) => c.name).join(', ') || 'N/A',
-          center: study.contributors?.centers?.map((c: any) => c.acronym || c.name).join(', ') || 'N/A',
-          category: study.category?.name || 'Other',
-          contributors: study.contributors?.initiatives?.map((i: any) => i.name).join(', ') || 'N/A',
-          summary: study.summary || 'No summary available'
+          category: study.category?.name || 'Research',
+          doi: study.doi || 'N/A',
+          summary: study.summary || 'No summary available'  // Keep for expanded view
         }));
         
         setStudies(transformedStudies);
@@ -201,9 +187,10 @@ export const Dashboard: React.FC = () => {
 
   // Fetch studies when search params change
   useEffect(() => {
-    fetchStudies(searchParams);
-    updateURL(searchParams);
-  }, [searchParams.q, searchParams.page, searchParams.pageSize, searchParams.sort, searchParams.category, fetchStudies, updateURL]);
+    const paramsWithDebouncedQuery = { ...searchParams, q: debouncedQuery };
+    fetchStudies(paramsWithDebouncedQuery);
+    updateURL(paramsWithDebouncedQuery);
+  }, [debouncedQuery, searchParams.page, searchParams.pageSize, searchParams.sort, searchParams.category, fetchStudies, updateURL]);
 
   const handleSearchChange = (value: string) => {
     setSearchParams(prev => ({ ...prev, q: value, page: 1 }));
@@ -249,7 +236,7 @@ export const Dashboard: React.FC = () => {
       q: '',
       page: 1,
       pageSize: 10,
-      sort: '',
+      sort: 'id:desc',  // Default sort by ID descending
       category: ''
     });
   };
@@ -396,6 +383,16 @@ export const Dashboard: React.FC = () => {
               data={studies}
               onRowExpand={handleRowExpand}
               expandedRows={expandedRows}
+              expandRender={(row) => (
+                <div className="p-4 bg-gray-50 border-t">
+                  <div className="space-y-2">
+                    <h4 className="font-medium text-gray-900">Summary</h4>
+                    <p className="text-gray-700 text-sm leading-relaxed">
+                      {row.summary || 'No summary available'}
+                    </p>
+                  </div>
+                </div>
+              )}
               onTitleClick={handleTitleClick}
               sort={searchParams.sort ? {
                 field: searchParams.sort.split(':')[0],

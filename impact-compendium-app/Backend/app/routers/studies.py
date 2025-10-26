@@ -2,7 +2,7 @@
 Studies router with aligned structure between list and detail endpoints
 """
 
-from typing import List, Dict, Any, Optional
+from typing import List, Dict, Any, Optional, Union
 from fastapi import APIRouter, Depends, HTTPException, Query, status, Request
 from sqlalchemy.orm import Session
 from sqlalchemy import text
@@ -82,14 +82,14 @@ class StudyCompleteRequest(BaseModel):
     interventionDetails: Optional[str] = None
     
     # Step 2 data
-    primaryCGIARImpactArea: str
-    secondaryCGIARImpactAreas: List[str] = []
-    countries: List[str] = []
-    regions: List[str] = []
-    cropProductType: List[str] = []
-    keywords: List[str] = []
-    contributingInitiatives: List[str] = []
-    contributingCenters: List[str] = []
+    primaryCGIARImpactArea: Union[str, int]
+    secondaryCGIARImpactAreas: List[Union[str, int]] = []
+    countries: List[Union[str, int]] = []
+    regions: List[Union[str, int]] = []
+    cropProductType: List[Union[str, int]] = []
+    keywords: List[Union[str, int]] = []
+    contributingInitiatives: List[Union[str, int]] = []
+    contributingCenters: List[Union[str, int]] = []
     
     # Step 3 data
     indicators: List[Dict[str, Any]] = []
@@ -195,15 +195,16 @@ async def list_studies(
     actual_skip = (page - 1) * pageSize
     actual_limit = pageSize
     
-    # Build ORDER BY clause
-    order_clause = "ORDER BY study_id ASC"
+    # Build ORDER BY clause - default to study_id DESC for newest first
+    order_clause = "ORDER BY s.study_id DESC"
     if sort:
         try:
             field, direction = sort.split(':')
             field_mapping = {
-                'year': 'year',
-                'title': 'title',
-                'category': 'category_id'
+                'year': 's.year',
+                'title': 's.title',
+                'category': 's.category_id',
+                'id': 's.study_id'
             }
             if field in field_mapping and direction in ['asc', 'desc']:
                 order_clause = f"ORDER BY {field_mapping[field]} {direction.upper()}"
@@ -211,27 +212,29 @@ async def list_studies(
             pass
     
     # Build WHERE clause
-    where_conditions = ["is_active = 1"]
+    where_conditions = ["s.is_active = 1"]
     params = {"limit": actual_limit, "skip": actual_skip}
     
     if q:
-        where_conditions.append("(CAST(study_id AS CHAR) LIKE :search_term OR title LIKE :search_term OR summary LIKE :search_term)")
+        where_conditions.append("(CAST(s.study_id AS CHAR) LIKE :search_term OR s.title LIKE :search_term OR s.summary LIKE :search_term)")
         params["search_term"] = f"%{q}%"
     
     if year_from:
-        where_conditions.append("year >= :year_from")
+        where_conditions.append("s.year >= :year_from")
         params["year_from"] = year_from
         
     if year_to:
-        where_conditions.append("year <= :year_to")
+        where_conditions.append("s.year <= :year_to")
         params["year_to"] = year_to
     
     where_clause = "WHERE " + " AND ".join(where_conditions)
     
     def db_query(session):
+        # Optimized single query to get basic study data
         query = text(f"""
-            SELECT study_id, title, year, summary, is_active, created_at, category_id, doi, study_intervention_types_intervention_type_id
-            FROM studies 
+            SELECT s.study_id, s.title, s.year, s.summary, s.is_active, s.created_at, 
+                   s.category_id, s.doi, s.study_intervention_types_intervention_type_id
+            FROM studies s
             {where_clause}
             {order_clause}
             LIMIT :limit OFFSET :skip
@@ -241,92 +244,73 @@ async def list_studies(
         studies = result.fetchall()
         
         # Get total count
-        count_query = text(f"SELECT COUNT(*) FROM studies {where_clause}")
+        count_query = text(f"SELECT COUNT(*) FROM studies s {where_clause}")
         count_params = {k: v for k, v in params.items() if k not in ['limit', 'skip']}
         total_result = session.execute(count_query, count_params)
         total = total_result.scalar()
         
-        # Transform to match detail endpoint structure
+        # Transform to simplified structure for list view
         enhanced_data = []
         for row in studies:
-            study_id = row[0]
-            related_data = get_study_related_data(session, study_id)
-            
             enhanced_data.append({
-                "id": f"ICD-{row[0]}",
+                "id": row[0],  # Database ID is already numeric
                 "title": row[1] or "No title",
                 "summary": row[3],
                 "year": row[2],
-                "period": {"start": row[2] - 1 if row[2] else None, "end": row[2]} if row[2] else None,
-                "category": {"id": row[6] or 1, "name": "Research"},
-                "intervention": {"type": "Research Study", "detailsShort": "Study intervention details"},
-                "contributors": {
-                    "initiatives": related_data["initiatives"],
-                    "centers": related_data["centers"]
-                },
-                "impact_areas": related_data["impact_areas"],
-                "regions": related_data["regions"],
-                "countries": related_data["countries"],
-                "indicators_highlight": [
-                    {"indicator_measure": "Impact Score", "unit": "%", "result_reported": "85%"}
-                ],
-                "doi": row[7]
+                "category": {"id": row[6] or 1, "name": "Research"},  # Use generic name for now
+                "doi": row[7],
+                "created_at": row[5].isoformat() if row[5] else None
             })
         
         return {"data": enhanced_data, "total": total}
     
-    # Try database first
-    db_result = try_database_query(db, db_query)
-    
-    if db_result:
+    # Force database query - return real data with DESC order
+    if not db:
         return {
             "success": True,
-            **db_result,
-            "pagination": {
-                "total": db_result["total"],
-                "count": len(db_result["data"]),
-                "page": page,
-                "pageSize": pageSize,
-                "totalPages": (db_result["total"] + pageSize - 1) // pageSize
-            }
+            "data": [],
+            "total": 0,
+            "pagination": {"total": 0, "count": 0, "page": page, "pageSize": pageSize, "totalPages": 0}
         }
     
-    # Fallback to mock data
-    mock_data = []
-    for i in range(min(pageSize, 5)):
-        mock_data.append({
-            "id": f"ICD-{i+1}",
-            "title": f"Mock Study {i+1}",
-            "summary": "Mock summary for testing purposes",
-            "year": 2024,
-            "period": {"start": 2023, "end": 2024},
-            "category": {"id": 1, "name": "Research"},
-            "intervention": {"type": "Research Study", "detailsShort": "Study intervention details"},
-            "contributors": {
-                "initiatives": [{"id": 1, "name": "CGIAR Initiative"}],
-                "centers": [{"id": 1, "acronym": "CGIAR"}]
-            },
-            "impact_areas": [{"id": 1, "name": "Nutrition, Health and Food Security"}],
-            "regions": [{"id": 1, "name": "Global"}],
-            "countries": [{"id": 1, "name": "Multiple Countries"}],
-            "indicators_highlight": [
-                {"indicator_measure": "Impact Score", "unit": "%", "result_reported": "85%"}
-            ],
-            "doi": None
-        })
-    
-    return {
-        "success": True,
-        "data": mock_data,
-        "pagination": {
-            "total": 5,
-            "count": len(mock_data),
-            "page": page,
-            "pageSize": pageSize,
-            "totalPages": 1
-        },
-        "note": "Using mock data"
-    }
+    try:
+        # Simple query that should work
+        query = text("SELECT study_id, title, year, summary, category_id, doi FROM studies WHERE is_active = 1 ORDER BY study_id DESC LIMIT :limit OFFSET :skip")
+        result = db.execute(query, {"limit": actual_limit, "skip": actual_skip})
+        studies = result.fetchall()
+        
+        data = []
+        for row in studies:
+            data.append({
+                "id": row[0],  # This should be the actual study_id from database
+                "title": row[1] or "No title",
+                "year": row[2] or "N/A",
+                "summary": row[3] or "No summary available",
+                "category": {"id": row[4] or 1, "name": "Research"},
+                "doi": row[5] or "N/A"
+            })
+        
+        return {
+            "success": True,
+            "data": data,
+            "total": len(data),
+            "pagination": {
+                "total": len(data),
+                "count": len(data),
+                "page": page,
+                "pageSize": pageSize,
+                "totalPages": 1
+            }
+        }
+    except Exception as e:
+        logger.error(f"Database error: {e}")
+        return {
+            "success": False,
+            "error": str(e),
+            "data": [],
+            "total": 0,
+            "pagination": {"total": 0, "count": 0, "page": page, "pageSize": pageSize, "totalPages": 0}
+        }
 
 @router.get("/{study_id}", response_model=Dict[str, Any])
 async def get_study_detail(
@@ -637,6 +621,10 @@ async def save_complete_study(
 ):
     """Save complete study with all steps data and relationships."""
     
+    # Log incoming data for debugging
+    logger.info(f"Received save request for study {study_data.studyId}")
+    logger.info(f"Study data: {study_data.dict()}")
+    
     # Get current logged-in user
     current_user = get_current_user_from_request(request)
     
@@ -682,6 +670,78 @@ async def save_complete_study(
                 "created_by": current_user
             })
             
+            # Log the study insert
+            logger.info(f"Inserting study with ID: {study_data.studyId}")
+            
+            # Clear existing relationships for this study
+            logger.info(f"Clearing existing relationships for study {study_data.studyId}")
+            db.execute(text("DELETE FROM studies_contributors WHERE study_id = :study_id"), {"study_id": study_data.studyId})
+            db.execute(text("DELETE FROM studies_countries WHERE study_id = :study_id"), {"study_id": study_data.studyId})
+            db.execute(text("DELETE FROM studies_regions WHERE study_id = :study_id"), {"study_id": study_data.studyId})
+            db.execute(text("DELETE FROM studies_impact_areas WHERE studies_study_id = :study_id"), {"study_id": study_data.studyId})
+            db.execute(text("DELETE FROM studies_keywords WHERE study_id = :study_id"), {"study_id": study_data.studyId})
+            db.execute(text("DELETE FROM studies_crop_types WHERE study_id = :study_id"), {"study_id": study_data.studyId})
+            db.execute(text("DELETE FROM studies_indicators WHERE study_id = :study_id"), {"study_id": study_data.studyId})
+            
+            logger.info(f"Cleared existing relationships for study {study_data.studyId}")
+            
+            # Save Step 2 relationships
+            logger.info(f"Saving relationships for study {study_data.studyId}")
+            
+            # Contributing Initiatives and Centers (use INSERT IGNORE to avoid duplicates)
+            for initiative_id in study_data.contributingInitiatives:
+                if initiative_id:
+                    logger.info(f"Adding initiative {initiative_id}")
+                    db.execute(text("INSERT IGNORE INTO studies_contributors (study_id, studies_initiatives_id, clarisa_centers_center_id) VALUES (:study_id, :initiative_id, NULL)"), 
+                              {"study_id": study_data.studyId, "initiative_id": int(initiative_id)})
+            
+            for center_id in study_data.contributingCenters:
+                if center_id:
+                    logger.info(f"Adding center {center_id}")
+                    db.execute(text("INSERT IGNORE INTO studies_contributors (study_id, studies_initiatives_id, clarisa_centers_center_id) VALUES (:study_id, NULL, :center_id)"), 
+                              {"study_id": study_data.studyId, "center_id": int(center_id)})
+            
+            # Countries
+            for country_id in study_data.countries:
+                if country_id:
+                    logger.info(f"Adding country {country_id}")
+                    db.execute(text("INSERT INTO studies_countries (study_id, country_id) VALUES (:study_id, :country_id)"), 
+                              {"study_id": study_data.studyId, "country_id": int(country_id)})
+            
+            # Regions
+            for region_id in study_data.regions:
+                if region_id:
+                    logger.info(f"Adding region {region_id}")
+                    db.execute(text("INSERT INTO studies_regions (study_id, region_id) VALUES (:study_id, :region_id)"), 
+                              {"study_id": study_data.studyId, "region_id": int(region_id)})
+            
+            # Impact Areas (Primary)
+            if study_data.primaryCGIARImpactArea:
+                logger.info(f"Adding primary impact area {study_data.primaryCGIARImpactArea}")
+                db.execute(text("INSERT INTO studies_impact_areas (studies_study_id, clarisa_impacts_areas_impact_area_id) VALUES (:study_id, :impact_area_id)"), 
+                          {"study_id": study_data.studyId, "impact_area_id": int(study_data.primaryCGIARImpactArea)})
+            
+            # Impact Areas (Secondary)
+            for impact_area_id in study_data.secondaryCGIARImpactAreas:
+                if impact_area_id:
+                    logger.info(f"Adding secondary impact area {impact_area_id}")
+                    db.execute(text("INSERT INTO studies_impact_areas (studies_study_id, clarisa_impacts_areas_impact_area_id) VALUES (:study_id, :impact_area_id)"), 
+                              {"study_id": study_data.studyId, "impact_area_id": int(impact_area_id)})
+            
+            # Keywords
+            for keyword_id in study_data.keywords:
+                if keyword_id:
+                    logger.info(f"Adding keyword {keyword_id}")
+                    db.execute(text("INSERT INTO studies_keywords (study_id, keyword_id) VALUES (:study_id, :keyword_id)"), 
+                              {"study_id": study_data.studyId, "keyword_id": int(keyword_id)})
+            
+            # Crop Types
+            for crop_id in study_data.cropProductType:
+                if crop_id:
+                    logger.info(f"Adding crop type {crop_id}")
+                    db.execute(text("INSERT INTO studies_crop_types (study_id, crop_type_id) VALUES (:study_id, :crop_id)"), 
+                              {"study_id": study_data.studyId, "crop_id": int(crop_id)})
+            
             # Save indicators
             for indicator in study_data.indicators:
                 indicator_insert = text("""
@@ -698,19 +758,28 @@ async def save_complete_study(
                     "result_reported": indicator.get("resultReported", "")
                 })
             
+            logger.info(f"Committing transaction for study {study_data.studyId}")
             db.commit()
+            logger.info(f"Successfully committed study {study_data.studyId}")
             
             return {
                 "success": True,
-                "message": f"Study saved successfully to database (user: {current_user})",
+                "message": f"Study {study_data.studyId} saved successfully to database (user: {current_user})",
                 "data": {"study_id": study_data.studyId}
             }
             
         except Exception as e:
-            db.rollback()
-            logger.error(f"Database error: {e}")
-            # Fall back to mock if database fails
-            pass
+            logger.error(f"Database error saving study {study_data.studyId}: {e}")
+            logger.error(f"Error type: {type(e)}")
+            logger.error(f"Error details: {str(e)}")
+            try:
+                db.rollback()
+                logger.error(f"Rolled back transaction for study {study_data.studyId}")
+            except Exception as rollback_error:
+                logger.error(f"Rollback failed: {rollback_error}")
+            
+            # Return error instead of falling back to mock
+            raise HTTPException(status_code=500, detail=f"Database error: {str(e)}")
     
     # Mock response if database fails
     return {
@@ -718,3 +787,52 @@ async def save_complete_study(
         "message": f"Study saved successfully (mock - user: {current_user})",
         "data": {"study_id": study_data.studyId}
     }
+
+@router.delete("/{study_id}", response_model=Dict[str, Any])
+async def delete_study(
+    study_id: int,
+    request: Request,
+    db: Optional[Session] = Depends(get_db)
+):
+    """Delete a study and all its related data."""
+    
+    # Get current logged-in user
+    current_user = get_current_user_from_request(request)
+    
+    if not db:
+        raise HTTPException(status_code=500, detail="Database connection not available")
+    
+    try:
+        logger.info(f"Deleting study {study_id} by user {current_user}")
+        
+        # Delete relationships first (same as in save function)
+        db.execute(text("DELETE FROM studies_contributors WHERE study_id = :study_id"), {"study_id": study_id})
+        db.execute(text("DELETE FROM studies_countries WHERE study_id = :study_id"), {"study_id": study_id})
+        db.execute(text("DELETE FROM studies_regions WHERE study_id = :study_id"), {"study_id": study_id})
+        db.execute(text("DELETE FROM studies_impact_areas WHERE studies_study_id = :study_id"), {"study_id": study_id})
+        db.execute(text("DELETE FROM studies_keywords WHERE study_id = :study_id"), {"study_id": study_id})
+        db.execute(text("DELETE FROM studies_crop_types WHERE study_id = :study_id"), {"study_id": study_id})
+        db.execute(text("DELETE FROM studies_indicators WHERE study_id = :study_id"), {"study_id": study_id})
+        
+        # Delete main study record
+        result = db.execute(text("DELETE FROM studies WHERE study_id = :study_id"), {"study_id": study_id})
+        
+        if result.rowcount == 0:
+            raise HTTPException(status_code=404, detail=f"Study {study_id} not found")
+        
+        db.commit()
+        logger.info(f"Successfully deleted study {study_id}")
+        
+        return {
+            "success": True,
+            "message": f"Study {study_id} deleted successfully by {current_user}",
+            "data": {"study_id": study_id}
+        }
+        
+    except HTTPException:
+        db.rollback()
+        raise
+    except Exception as e:
+        db.rollback()
+        logger.error(f"Error deleting study {study_id}: {e}")
+        raise HTTPException(status_code=500, detail=f"Failed to delete study: {str(e)}")

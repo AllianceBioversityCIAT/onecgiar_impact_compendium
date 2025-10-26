@@ -109,6 +109,8 @@ export const Login: React.FC = () => {
                 onChange={(e) => setEmail(e.target.value)}
                 placeholder="you@organization.org"
                 className="w-full h-[44px] px-3 py-1 bg-[#F3F3F5] border border-[#E5E5E5] rounded-[10px] font-inter font-normal text-[14px] leading-[17px] tracking-[-0.150391px] text-[#717182] placeholder:text-[#717182]"
+                data-testid="email-input"
+                aria-label="Email address"
                 required
               />
             </div>
@@ -125,12 +127,16 @@ export const Login: React.FC = () => {
                   onChange={(e) => setPassword(e.target.value)}
                   placeholder="Enter your password"
                   className="w-full h-[44px] px-3 py-1 pr-10 bg-[#F3F3F5] border border-[#E5E5E5] rounded-[10px] font-inter font-normal text-[14px] leading-[17px] tracking-[-0.150391px] text-[#717182] placeholder:text-[#717182]"
+                  data-testid="password-input"
+                  aria-label="Password"
                   required
                 />
                 <button
                   type="button"
                   onClick={() => setShowPassword(!showPassword)}
                   className="absolute right-3 top-1/2 transform -translate-y-1/2 text-[#717182] hover:text-[#333333]"
+                  data-testid="toggle-password"
+                  aria-label={showPassword ? "Hide password" : "Show password"}
                 >
                   {showPassword ? (
                     <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -155,6 +161,8 @@ export const Login: React.FC = () => {
                   checked={rememberMe}
                   onChange={(e) => setRememberMe(e.target.checked)}
                   className="w-4 h-4"
+                  data-testid="remember-checkbox"
+                  aria-label="Remember me"
                 />
                 <label htmlFor="remember" className="font-inter font-normal text-[13px] leading-5 tracking-[-0.0761719px] text-[#777777]">
                   Remember me
@@ -181,6 +189,7 @@ export const Login: React.FC = () => {
               type="submit"
               disabled={loading}
               className="w-full h-[48px] bg-gradient-to-br from-[#FFC84F] to-[#F07E28] rounded-[10px] font-inter font-medium text-[14px] leading-5 tracking-[-0.150391px] text-black hover:opacity-90 transition-opacity disabled:opacity-50"
+              data-testid="login-submit"
             >
               {loading ? 'Logging in...' : 'Login'}
             </button>

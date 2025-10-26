@@ -34,7 +34,7 @@ export const StudyDetailsPanel: React.FC<StudyDetailsPanelProps> = ({ isOpen, on
       setLoading(true);
       
       // Use the new detail endpoint
-      fetch(`${import.meta.env.VITE_API_BASE_URL || 'http://localhost:8000'}/studies/${studyId}`)
+      fetch(`${import.meta.env.VITE_API_BASE_URL || 'http://localhost:8000'}/api/studies/${studyId}`)
         .then(response => response.json())
         .then(data => {
           if (data.success && data.data) {
@@ -83,7 +83,7 @@ export const StudyDetailsPanel: React.FC<StudyDetailsPanelProps> = ({ isOpen, on
     
     setDeleting(true);
     try {
-      const response = await fetch(`${import.meta.env.VITE_API_BASE_URL || 'http://localhost:8000'}/studies/${studyId}`, {
+      const response = await fetch(`${import.meta.env.VITE_API_BASE_URL || 'http://localhost:8000'}/api/studies/${studyId}`, {
         method: 'DELETE'
       });
       

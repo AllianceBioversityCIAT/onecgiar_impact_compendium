@@ -34,7 +34,7 @@ import { authService } from './auth';
  * Uses environment variables for different deployment environments.
  */
 const API = {
-  baseURL: import.meta.env.VITE_API_BASE_URL || "http://localhost:8000",
+  baseURL: `${import.meta.env.VITE_API_BASE_URL || "http://localhost:8000"}/api`,
   timeout: 30000, // 30 seconds
   retryAttempts: 3
 };
@@ -248,20 +248,20 @@ export const apiDelete = async (endpoint: string): Promise<any> => {
  */
 export const getReferenceData = {
   // Step 1 - Study Classification
-  categories: () => apiGet('/api/reference/categories'),
-  interventionTypes: () => apiGet('/api/reference/intervention-types'),
+  categories: () => apiGet('/reference/categories'),
+  interventionTypes: () => apiGet('/reference/intervention-types'),
   
   // Step 2 - Geographic and Organizational Data
-  cropTypes: () => apiGet('/api/reference/crop-types'),
-  keywords: () => apiGet('/api/reference/keywords'),
-  initiatives: () => apiGet('/api/reference/initiatives'),
-  centers: () => apiGet('/api/reference/centers'),
-  impactAreas: () => apiGet('/api/reference/impact-areas'),
-  countries: () => apiGet('/api/reference/countries'),
-  regions: () => apiGet('/api/reference/regions'),
+  cropTypes: () => apiGet('/reference/crop-types'),
+  keywords: () => apiGet('/reference/keywords'),
+  initiatives: () => apiGet('/reference/initiatives'),
+  centers: () => apiGet('/reference/centers'),
+  impactAreas: () => apiGet('/reference/impact-areas'),
+  countries: () => apiGet('/reference/countries'),
+  regions: () => apiGet('/reference/regions'),
   
   // Step 3 - Measurement and Indicators
-  indicatorUnits: () => apiGet('/api/reference/indicator-units'),
+  indicatorUnits: () => apiGet('/reference/indicator-units'),
 };
 
 /**
@@ -288,7 +288,7 @@ export const studyAPI = {
    */
   getAll: (params?: Record<string, any>) => {
     const queryString = params ? `?${new URLSearchParams(params).toString()}` : '';
-    return apiGet(`/api/studies${queryString}`);
+    return apiGet(`/studies${queryString}`);
   },
   
   /**
@@ -299,7 +299,7 @@ export const studyAPI = {
    * @param {string} id - Study ID
    * @returns {Promise<any>} Complete study object
    */
-  getById: (id: string) => apiGet(`/api/studies/${id}`),
+  getById: (id: string) => apiGet(`/studies/${id}`),
   
   /**
    * Create New Study
@@ -309,7 +309,7 @@ export const studyAPI = {
    * @param {any} data - Study data object
    * @returns {Promise<any>} Created study with generated ID
    */
-  create: (data: any) => apiPost('/api/studies', data),
+  create: (data: any) => apiPost('/studies', data),
   
   /**
    * Update Existing Study
@@ -320,7 +320,7 @@ export const studyAPI = {
    * @param {any} data - Updated study data
    * @returns {Promise<any>} Updated study object
    */
-  update: (id: string, data: any) => apiPut(`/api/studies/${id}`, data),
+  update: (id: string, data: any) => apiPut(`/studies/${id}`, data),
   
   /**
    * Delete Study
@@ -330,7 +330,7 @@ export const studyAPI = {
    * @param {string} id - Study ID to delete
    * @returns {Promise<any>} Deletion confirmation
    */
-  delete: (id: string) => apiDelete(`/api/studies/${id}`),
+  delete: (id: string) => apiDelete(`/studies/${id}`),
 };
 
 /**

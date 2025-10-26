@@ -422,11 +422,6 @@ async def get_study_detail(
             "regions": related_data["regions"],
             "keywords": keywords or [{"id": 1, "name": "Not Available"}],
             "indicators": indicators,
-            "narratives": [
-                {"section_key": "background", "content": "This study examines the impact of climate-smart agricultural practices..."},
-                {"section_key": "methodology", "content": "We employed a randomized controlled trial design..."},
-                {"section_key": "results", "content": "The results show significant improvements in crop yields..."}
-            ],
             "created_at": study[5].isoformat() if study[5] else None,
             "last_updated_date": study[5].isoformat() if study[5] else None
         }

@@ -2,7 +2,7 @@ import React, { useState, useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Button } from './Button';
 import { ProgressStepper } from './ProgressStepper';
-import { authService } from '../../services/auth';
+import { useAuth } from '../../contexts/AuthContext';
 
 interface HeaderBarProps {
   title: string;
@@ -20,6 +20,7 @@ export const HeaderBar: React.FC<HeaderBarProps> = ({
   currentStep
 }) => {
   const navigate = useNavigate();
+  const { user, logout } = useAuth();
   const [showUserMenu, setShowUserMenu] = useState(false);
   const menuRef = useRef<HTMLDivElement>(null);
   
@@ -35,9 +36,14 @@ export const HeaderBar: React.FC<HeaderBarProps> = ({
     return () => document.removeEventListener('mousedown', handleClickOutside);
   }, []);
   
-  const handleLogout = () => {
-    authService.logout();
-    window.location.href = '/login';
+  const handleLogout = async () => {
+    try {
+      await logout();
+    } catch (error) {
+      console.error('Logout failed:', error);
+      // Redirect anyway
+      window.location.href = '/login';
+    }
   };
 
   const handleLogoClick = () => {
@@ -46,8 +52,6 @@ export const HeaderBar: React.FC<HeaderBarProps> = ({
 
   // Get user initials from logged user's email
   const getUserInitials = () => {
-    const user = authService.getCurrentUser();
-    
     if (user && user.email) {
       const email = user.email;
       const namePart = email.split('@')[0]; // Get part before @

@@ -1,11 +1,17 @@
+import { authService } from './auth';
+
 const API = {
   baseURL: import.meta.env.VITE_API_BASE_URL || "http://localhost:8000"
 };
 
-// Auth helper function to avoid circular dependency
-const getAuthHeaders = () => {
-  const token = localStorage.getItem('ic_access_token');
-  return token ? { Authorization: `Bearer ${token}` } : {};
+// Auth helper function
+const getAuthHeaders = async () => {
+  try {
+    return await authService.getAuthHeaders();
+  } catch (error) {
+    console.error('Failed to get auth headers:', error);
+    return {};
+  }
 };
 
 const handleAuthError = () => {
@@ -16,11 +22,12 @@ const handleAuthError = () => {
 
 // Generic API helpers with auth
 export const apiGet = async (endpoint: string) => {
+  const authHeaders = await getAuthHeaders();
   const response = await fetch(`${API.baseURL}${endpoint}`, {
     method: 'GET',
     headers: {
       'Content-Type': 'application/json',
-      ...getAuthHeaders(),
+      ...authHeaders,
     },
   });
   
@@ -35,11 +42,12 @@ export const apiGet = async (endpoint: string) => {
 };
 
 export const apiPost = async (endpoint: string, data: any) => {
+  const authHeaders = await getAuthHeaders();
   const response = await fetch(`${API.baseURL}${endpoint}`, {
     method: 'POST',
     headers: {
       'Content-Type': 'application/json',
-      ...getAuthHeaders(),
+      ...authHeaders,
     },
     body: JSON.stringify(data),
   });

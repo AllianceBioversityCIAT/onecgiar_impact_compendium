@@ -27,38 +27,55 @@ class TokenResponse(BaseModel):
 @router.post("/login", response_model=Dict[str, Any])
 async def login(login_data: LoginRequest):
     """
-    Login endpoint - In production, this would redirect to Cognito Hosted UI
-    For now, returns mock token for development
+    Login endpoint - This is for development/testing only
+    In production, frontend uses AWS Amplify to authenticate directly with Cognito
     """
     try:
-        # In production, this would initiate Cognito authentication flow
-        # For development, return mock token
-        if login_data.email and login_data.password:
-            return {
-                "success": True,
-                "message": "Login successful",
-                "data": {
-                    "access_token": "mock_jwt_token_12345",
-                    "token_type": "Bearer",
-                    "expires_in": 3600,
-                    "user": {
-                        "email": login_data.email,
-                        "name": "Mock User",
-                        "role": "researcher"
+        # For development, we can return mock data or redirect to Cognito
+        # In a real implementation, this would redirect to Cognito Hosted UI
+        # or use AWS SDK to authenticate
+        
+        if cognito_auth.mock_mode:
+            # Development mock mode
+            if login_data.email and login_data.password:
+                return {
+                    "success": True,
+                    "message": "Login successful (mock mode)",
+                    "data": {
+                        "access_token": "mock_jwt_token_12345",
+                        "token_type": "Bearer",
+                        "expires_in": 3600,
+                        "user": {
+                            "email": login_data.email,
+                            "name": "Mock User",
+                            "role": "researcher"
+                        }
+                    },
+                    "cognito_info": {
+                        "user_pool_id": cognito_auth.user_pool_id or "not-configured",
+                        "client_id": cognito_auth.client_id or "not-configured",
+                        "region": cognito_auth.region,
+                        "mock_mode": cognito_auth.mock_mode
                     }
-                },
+                }
+        else:
+            # Production mode - frontend should use Amplify directly
+            return {
+                "success": False,
+                "message": "Direct login not supported. Please use AWS Amplify authentication on the frontend.",
+                "redirect_to_amplify": True,
                 "cognito_info": {
-                    "user_pool_id": cognito_auth.user_pool_id or "not-configured",
-                    "client_id": cognito_auth.client_id or "not-configured",
+                    "user_pool_id": cognito_auth.user_pool_id,
+                    "client_id": cognito_auth.client_id,
                     "region": cognito_auth.region,
                     "mock_mode": cognito_auth.mock_mode
                 }
             }
-        else:
-            raise HTTPException(
-                status_code=status.HTTP_400_BAD_REQUEST,
-                detail="Email and password are required"
-            )
+        
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Email and password are required"
+        )
         
     except HTTPException:
         raise

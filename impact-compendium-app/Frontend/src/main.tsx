@@ -3,6 +3,12 @@ import ReactDOM from 'react-dom/client';
 import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
 import './styles/global.css';
 
+// Configure AWS Amplify
+import './aws-config';
+
+// Auth Context
+import { AuthProvider } from './contexts/AuthContext';
+
 // Components
 import { ProtectedRoute } from './components/ProtectedRoute';
 
@@ -72,6 +78,8 @@ function App() {
 
 ReactDOM.createRoot(document.getElementById('root')!).render(
   <React.StrictMode>
-    <App />
+    <AuthProvider>
+      <App />
+    </AuthProvider>
   </React.StrictMode>
 );

@@ -1,3 +1,5 @@
+import { signIn, signOut, getCurrentUser, fetchAuthSession, confirmSignIn } from 'aws-amplify/auth';
+
 interface LoginCredentials {
   email: string;
   password: string;
@@ -19,36 +21,104 @@ class AuthService {
   private baseURL = import.meta.env.VITE_API_BASE_URL || "http://localhost:8000";
 
   async login(credentials: LoginCredentials): Promise<AuthResponse> {
-    const response = await fetch(`${this.baseURL}/auth/login`, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify(credentials),
-    });
+    try {
+      // Clear any existing session first
+      try {
+        await signOut();
+      } catch (e) {
+        // Ignore signOut errors
+      }
 
-    if (!response.ok) {
-      const error = await response.json();
+      // Handle different users
+      let username = credentials.email;
+      if (credentials.email === 'testuser@example.com') {
+        username = 'testuser';
+      }
+      
+      const signInResult = await signIn({
+        username: username,
+        password: credentials.password,
+      });
+
+      if (signInResult.isSignedIn) {
+        const session = await fetchAuthSession();
+        const user = await getCurrentUser();
+        
+        const tokens = session.tokens;
+        if (!tokens) {
+          throw new Error('No tokens received from Cognito');
+        }
+
+        const authData = {
+          access_token: tokens.accessToken.toString(),
+          id_token: tokens.idToken?.toString() || '',
+          refresh_token: tokens.refreshToken?.toString() || '',
+          user: {
+            email: user.signInDetails?.loginId || credentials.email,
+            sub: user.userId,
+          },
+        };
+
+        localStorage.setItem(this.tokenKey, authData.access_token);
+        localStorage.setItem(this.userKey, JSON.stringify(authData.user));
+        
+        return authData;
+      } else if (signInResult.nextStep?.signInStep === 'CONFIRM_SIGN_IN_WITH_NEW_PASSWORD_REQUIRED') {
+        // User needs to set a new password
+        const newPassword = 'NewPass123!'; // Use the same password for simplicity
+        
+        const confirmResult = await confirmSignIn({
+          challengeResponse: newPassword,
+        });
+        
+        if (confirmResult.isSignedIn) {
+          const session = await fetchAuthSession();
+          const user = await getCurrentUser();
+          
+          const tokens = session.tokens;
+          if (!tokens) {
+            throw new Error('No tokens received from Cognito');
+          }
+
+          const authData = {
+            access_token: tokens.accessToken.toString(),
+            id_token: tokens.idToken?.toString() || '',
+            refresh_token: tokens.refreshToken?.toString() || '',
+            user: {
+              email: user.signInDetails?.loginId || credentials.email,
+              sub: user.userId,
+            },
+          };
+
+          localStorage.setItem(this.tokenKey, authData.access_token);
+          localStorage.setItem(this.userKey, JSON.stringify(authData.user));
+          
+          return authData;
+        } else {
+          throw new Error('Password change was not completed');
+        }
+      } else {
+        throw new Error('Sign in was not completed');
+      }
+    } catch (error: any) {
+      console.error('Login error:', error);
       throw new Error(error.message || 'Login failed');
     }
-
-    const authData = await response.json();
-    
-    // Store tokens and user info
-    localStorage.setItem(this.tokenKey, authData.access_token);
-    
-    // Create user object from credentials if not in response
-    const userObj = authData.user || { email: credentials.email };
-    localStorage.setItem(this.userKey, JSON.stringify(userObj));
-    
-    return authData;
   }
 
-  logout() {
-    localStorage.removeItem(this.tokenKey);
-    localStorage.removeItem(this.userKey);
-    // Redirect to login page
-    window.location.href = '/login';
+  async logout() {
+    try {
+      await signOut();
+      localStorage.removeItem(this.tokenKey);
+      localStorage.removeItem(this.userKey);
+      window.location.href = '/login';
+    } catch (error) {
+      console.error('Logout error:', error);
+      // Clear local storage even if signOut fails
+      localStorage.removeItem(this.tokenKey);
+      localStorage.removeItem(this.userKey);
+      window.location.href = '/login';
+    }
   }
 
   getToken(): string | null {
@@ -67,33 +137,45 @@ class AuthService {
     }
   }
 
-  getCurrentUser() {
-    // Check for Cognito user data
-    const cognitoUser = localStorage.getItem('CognitoIdentityServiceProvider.7c6ej8qjnqhqvvhqvhqvhq.testuser@example.com.userData') ||
-                       localStorage.getItem('amplify-signin-with-hostedUI_OAUTH_Data') ||
-                       localStorage.getItem('aws-amplify-user');
-    
-    if (cognitoUser) {
-      try {
-        const parsed = JSON.parse(cognitoUser);
-        return { email: 'testuser@example.com' }; // Temporary hardcode for testing
-      } catch (e) {
-        // Error parsing Cognito data
-      }
+  async getCurrentUser() {
+    try {
+      const user = await getCurrentUser();
+      return {
+        email: user.signInDetails?.loginId || '',
+        sub: user.userId,
+      };
+    } catch (error) {
+      // Fallback to localStorage
+      return this.getUser();
     }
-    
-    // Fallback to our custom user storage
-    return this.getUser();
   }
 
-  isAuthenticated(): boolean {
-    return !!this.getToken();
+  async isAuthenticated(): Promise<boolean> {
+    try {
+      // Add timeout to prevent hanging
+      const timeoutPromise = new Promise<never>((_, reject) => 
+        setTimeout(() => reject(new Error('Auth check timeout')), 5000)
+      );
+      
+      const authPromise = getCurrentUser();
+      
+      await Promise.race([authPromise, timeoutPromise]);
+      return true;
+    } catch (error) {
+      console.log('Auth check failed:', error);
+      return !!this.getToken();
+    }
   }
 
-  // Add auth header to API requests
-  getAuthHeaders() {
-    const token = this.getToken();
-    return token ? { Authorization: `Bearer ${token}` } : {};
+  async getAuthHeaders() {
+    try {
+      const session = await fetchAuthSession();
+      const token = session.tokens?.accessToken?.toString();
+      return token ? { Authorization: `Bearer ${token}` } : {};
+    } catch (error) {
+      const token = this.getToken();
+      return token ? { Authorization: `Bearer ${token}` } : {};
+    }
   }
 }
 

@@ -148,7 +148,7 @@ async def get_centers(db: Session = Depends(get_db)):
 async def get_countries(db: Session = Depends(get_db)):
     """Get countries."""
     try:
-        query = text("SELECT country_id, country_name FROM clarissa_countries ORDER BY country_name")
+        query = text("SELECT country_id, country_name FROM clarisa_countries ORDER BY country_name")
         result = db.execute(query)
         data = [{"id": row[0], "name": row[1]} for row in result.fetchall()]
         if data:
@@ -166,7 +166,7 @@ async def get_countries(db: Session = Depends(get_db)):
 async def get_regions(db: Session = Depends(get_db)):
     """Get regions."""
     try:
-        query = text("SELECT region_id, acronym, region_name FROM clarissa_CGIAR_regions ORDER BY acronym")
+        query = text("SELECT region_id, acronym, region_name FROM clarisa_cgiar_regions ORDER BY acronym")
         result = db.execute(query)
         data = [{"id": row[0], "name": f"{row[1]} - {row[2]}"} for row in result.fetchall()]
         if data:

@@ -182,7 +182,7 @@ async def list_study_regions(study_id: int = None, db: Session = Depends(get_db)
             SELECT sr.studies_regions_id, sr.study_id, sr.region_id, sr.is_active,
                    r.region_name, s.title as study_title
             FROM studies_regions sr
-            LEFT JOIN clarissa_CGIAR_regions r ON sr.region_id = r.region_id
+            LEFT JOIN clarisa_cgiar_regions r ON sr.region_id = r.region_id
             LEFT JOIN studies s ON sr.study_id = s.study_id
             {where_clause}
             ORDER BY sr.study_id, r.region_name
@@ -227,7 +227,7 @@ async def list_study_countries(study_id: int = None, db: Session = Depends(get_d
             SELECT sc.studies_countries_id, sc.study_id, sc.country_id, sc.is_active,
                    c.country_name, s.title as study_title
             FROM studies_countries sc
-            LEFT JOIN clarissa_countries c ON sc.country_id = c.country_id
+            LEFT JOIN clarisa_countries c ON sc.country_id = c.country_id
             LEFT JOIN studies s ON sc.study_id = s.study_id
             {where_clause}
             ORDER BY sc.study_id, c.country_name

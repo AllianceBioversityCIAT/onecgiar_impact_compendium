@@ -43,6 +43,11 @@ export const CreateStudyStep3: React.FC = () => {
   const [loading, setLoading] = useState(true);
   const [showSuccessModal, setShowSuccessModal] = useState(false);
   const [mappingData, setMappingData] = useState(false);
+  const [notification, setNotification] = useState<{
+    type: 'success' | 'error' | 'info';
+    message: string;
+    show: boolean;
+  }>({ type: 'info', message: '', show: false });
 
   // Load study data for edit mode
   React.useEffect(() => {
@@ -111,8 +116,16 @@ export const CreateStudyStep3: React.FC = () => {
     }
   };
 
+  const showNotification = (type: 'success' | 'error' | 'info', message: string) => {
+    setNotification({ type, message, show: true });
+    setTimeout(() => {
+      setNotification(prev => ({ ...prev, show: false }));
+    }, 5000);
+  };
+
   const handleFinish = async () => {
     setIsSubmitting(true);
+    showNotification('info', 'Saving your study...');
     
     try {
       // Get all form data from localStorage
@@ -156,8 +169,12 @@ export const CreateStudyStep3: React.FC = () => {
         // Note: created_by is now automatically captured from logged-in user in backend
       };
 
+      // Log the complete data being sent to the API
+      console.log('=== STEP 3 SAVE DATA ===');
+      console.log('Complete study data being sent:', JSON.stringify(completeStudyData, null, 2));
+      console.log('========================');
+
       // Call the complete save endpoint
-      
       const response = await fetch(`${import.meta.env.VITE_API_BASE_URL}/studies/complete`, {
         method: 'POST',
         headers: {
@@ -180,15 +197,23 @@ export const CreateStudyStep3: React.FC = () => {
       localStorage.removeItem('studyFormStep2');
       localStorage.removeItem('studyFormStep3');
       
-      // Show success modal
-      setShowSuccessModal(true);
+      // Show success notification
+      showNotification('success', `Study ${completeStudyData.studyId} saved successfully! Redirecting to studies list...`);
+      
+      // Show success modal after a brief delay
+      setTimeout(() => {
+        setShowSuccessModal(true);
+      }, 1500);
       
       // Clear localStorage after successful save
       
     } catch (error) {
       console.error('Failed to save study:', error);
       console.error('Error details:', error.message, error.stack);
-      alert(`Failed to save study: ${error.message || 'Unknown error'}. Please try again.`);
+      
+      // Show user-friendly error notification
+      const errorMessage = error.message || 'An unexpected error occurred while saving your study.';
+      showNotification('error', `Save failed: ${errorMessage} Please check your data and try again.`);
     } finally {
       setIsSubmitting(false);
     }
@@ -196,7 +221,7 @@ export const CreateStudyStep3: React.FC = () => {
 
   const handleSuccessModalAction = () => {
     setShowSuccessModal(false);
-    navigate('/studies');
+    navigate('/dashboard');
   };
 
   const handleGoBack = () => {
@@ -241,11 +266,39 @@ export const CreateStudyStep3: React.FC = () => {
       title={pageTitle}
       onBack={handleGoBack}
       onNext={handleFinish}
-      nextLabel={isSubmitting ? 'Submitting...' : 'Save'}
+      nextLabel={isSubmitting ? 'Saving...' : 'Save'}
       isLoading={isSubmitting}
       steps={steps}
       currentStep={3}
     >
+      {/* Notification Toast */}
+      {notification.show && (
+        <div className={`fixed top-4 right-4 z-50 max-w-md p-4 rounded-lg shadow-lg transition-all duration-300 ${
+          notification.type === 'success' ? 'bg-green-500 text-white' :
+          notification.type === 'error' ? 'bg-red-500 text-white' :
+          'bg-blue-500 text-white'
+        }`}>
+          <div className="flex items-center space-x-2">
+            {notification.type === 'success' && (
+              <svg className="w-5 h-5" fill="currentColor" viewBox="0 0 20 20">
+                <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd" />
+              </svg>
+            )}
+            {notification.type === 'error' && (
+              <svg className="w-5 h-5" fill="currentColor" viewBox="0 0 20 20">
+                <path fillRule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7 4a1 1 0 11-2 0 1 1 0 012 0zm-1-9a1 1 0 00-1 1v4a1 1 0 102 0V6a1 1 0 00-1-1z" clipRule="evenodd" />
+              </svg>
+            )}
+            {notification.type === 'info' && (
+              <svg className="w-5 h-5 animate-spin" fill="currentColor" viewBox="0 0 20 20">
+                <path fillRule="evenodd" d="M4 2a1 1 0 011 1v2.101a7.002 7.002 0 0111.601 2.566 1 1 0 11-1.885.666A5.002 5.002 0 005.999 7H9a1 1 0 010 2H4a1 1 0 01-1-1V3a1 1 0 011-1zm.008 9.057a1 1 0 011.276.61A5.002 5.002 0 0014.001 13H11a1 1 0 110-2h5a1 1 0 011 1v5a1 1 0 11-2 0v-2.101a7.002 7.002 0 01-11.601-2.566 1 1 0 01.61-1.276z" clipRule="evenodd" />
+              </svg>
+            )}
+            <span className="text-sm font-medium">{notification.message}</span>
+          </div>
+        </div>
+      )}
+
       <div className="space-y-6">
         <h1 className="text-2xl font-bold text-[var(--ic-color-text)]">{pageTitle}</h1>
 

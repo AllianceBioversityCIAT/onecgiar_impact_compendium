@@ -24,7 +24,7 @@ class StudyCountry(Base):
     
     id = Column(Integer, primary_key=True)
     study_id = Column(Integer, ForeignKey("studies.id"), nullable=False)
-    country_id = Column(Integer, ForeignKey("clarissa_countries.id"), nullable=False)
+    country_id = Column(Integer, ForeignKey("clarisa_countries.id"), nullable=False)
 
 class StudyCropType(Base):
     """Crop types associated with studies."""
@@ -68,7 +68,7 @@ class StudyRegion(Base):
     
     id = Column(Integer, primary_key=True)
     study_id = Column(Integer, ForeignKey("studies.id"), nullable=False)
-    region_id = Column(Integer, ForeignKey("clarissa_CGIAR_regions.id"), nullable=False)
+    region_id = Column(Integer, ForeignKey("clarisa_cgiar_regions.id"), nullable=False)
 
 class StudyInterventionType(Base):
     """Intervention types associated with studies."""

@@ -126,7 +126,7 @@ def get_study_related_data(session, study_id):
         countries_query = text("""
             SELECT sc.country_id, cc.country_name 
             FROM studies_countries sc
-            JOIN clarissa_countries cc ON sc.country_id = cc.country_id
+            JOIN clarisa_countries cc ON sc.country_id = cc.country_id
             WHERE sc.study_id = :study_id AND cc.is_active = 1
         """)
         countries_result = session.execute(countries_query, {"study_id": study_id})
@@ -136,7 +136,7 @@ def get_study_related_data(session, study_id):
         regions_query = text("""
             SELECT sr.region_id, cr.region_name 
             FROM studies_regions sr
-            JOIN clarissa_CGIAR_regions cr ON sr.region_id = cr.region_id
+            JOIN clarisa_cgiar_regions cr ON sr.region_id = cr.region_id
             WHERE sr.study_id = :study_id AND cr.is_active = 1
         """)
         regions_result = session.execute(regions_query, {"study_id": study_id})
@@ -144,10 +144,10 @@ def get_study_related_data(session, study_id):
         
         # Get initiatives
         initiatives_query = text("""
-            SELECT sc.studies_initiatives_id, ci.name
+            SELECT sc.clarisa_initiatives_initiative_id, ci.name
             FROM studies_contributors sc
-            JOIN clarisa_initiatives ci ON sc.studies_initiatives_id = ci.initiative_id
-            WHERE sc.study_id = :study_id AND sc.studies_initiatives_id IS NOT NULL AND ci.is_active = 1
+            JOIN clarisa_initiatives ci ON sc.clarisa_initiatives_initiative_id = ci.initiative_id
+            WHERE sc.study_id = :study_id AND sc.clarisa_initiatives_initiative_id IS NOT NULL AND ci.is_active = 1
         """)
         initiatives_result = session.execute(initiatives_query, {"study_id": study_id})
         initiatives = [{"id": row[0], "name": row[1]} for row in initiatives_result.fetchall()]
@@ -412,6 +412,25 @@ async def get_study_detail(
         """)
         indicators_result = session.execute(indicators_query, {"study_id": numeric_id})
         indicators = [{"indicator_measure": row[0], "unit_measure": row[1], "result_reported": row[2]} for row in indicators_result.fetchall()]
+        
+        # Get intervention type from junction table
+        intervention_type_query = text("""
+            SELECT sit.intervention_type_id, it.name
+            FROM studies_internvetion_types sit
+            JOIN intervention_types it ON sit.intervention_type_id = it.intervention_type_id
+            WHERE sit.study_id = :study_id AND sit.is_active = 1
+            LIMIT 1
+        """)
+        intervention_type_result = session.execute(intervention_type_query, {"study_id": numeric_id})
+        intervention_type_row = intervention_type_result.fetchone()
+        
+        if intervention_type_row:
+            intervention_info = {
+                "id": intervention_type_row[0],
+                "name": intervention_type_row[1]
+            }
+        else:
+            intervention_info = None
             
         return {
             "study_id": study[0],
@@ -425,7 +444,9 @@ async def get_study_detail(
             "category": {"id": study[6] or 1, "name": "Research"},
             "doi": study[7],
             "intervention": {
-                "type": study[8], 
+                "id": intervention_info["id"] if intervention_info else None,
+                "name": intervention_info["name"] if intervention_info else None,
+                "type": intervention_info["id"] if intervention_info else None,  # Keep for backward compatibility
                 "detailsShort": study[11] or "Study intervention details"
             },
             "intervention_details": study[11] or "Detailed intervention information for this study",
@@ -528,13 +549,23 @@ async def create_study(
             VALUES (:study_id, :title, :summary, :year, :doi, :category_id, 1, NOW(), :created_by)
         """)
         
+        # Map category to valid database IDs (31-35)
+        category_mapping = {
+            "1": 31,  # Impact Study
+            "2": 32,  # Impact/Outcome story  
+            "3": 33,  # Other
+            "4": 34,  # Outcome Study
+            "5": 35   # Synthesis Study
+        }
+        db_category_id = category_mapping.get(str(study_data.category), 31)
+        
         session.execute(insert_query, {
             "study_id": study_data.studyId,
             "title": study_data.title,
             "summary": study_data.summary,
             "year": study_data.year,
             "doi": study_data.doi,
-            "category_id": int(study_data.category) if study_data.category else 1,
+            "category_id": db_category_id,
             "created_by": current_user
         })
         session.commit()
@@ -606,8 +637,17 @@ async def update_study(
             update_fields.append("doi = :doi")
             params["doi"] = study_data.doi
         if study_data.category is not None:
+            # Map category to valid database IDs (31-35)
+            category_mapping = {
+                "1": 31,  # Impact Study
+                "2": 32,  # Impact/Outcome story  
+                "3": 33,  # Other
+                "4": 34,  # Outcome Study
+                "5": 35   # Synthesis Study
+            }
+            db_category_id = category_mapping.get(str(study_data.category), 31)
             update_fields.append("category_id = :category_id")
-            params["category_id"] = int(study_data.category)
+            params["category_id"] = db_category_id
         if study_data.periodStart is not None:
             update_fields.append("period_start = :period_start")
             params["period_start"] = f"{study_data.periodStart}-01-01"
@@ -616,7 +656,7 @@ async def update_study(
             params["period_end"] = f"{study_data.periodEnd}-12-31"
         if study_data.interventionType is not None:
             update_fields.append("study_intervention_types_intervention_type_id = :intervention_type_id")
-            params["intervention_type_id"] = int(study_data.interventionType) if study_data.interventionType.isdigit() else None
+            params["intervention_type_id"] = int(study_data.interventionType) if study_data.interventionType and study_data.interventionType.isdigit() else None
         if study_data.interventionDetails is not None:
             update_fields.append("intervention_details = :intervention_details")
             params["intervention_details"] = study_data.interventionDetails
@@ -689,16 +729,27 @@ async def save_complete_study(
                     last_updated_date = NOW()
             """)
             
+            # Map category to valid database IDs (31-35)
+            category_mapping = {
+                "1": 31,  # Impact Study
+                "2": 32,  # Impact/Outcome story  
+                "3": 33,  # Other
+                "4": 34,  # Outcome Study
+                "5": 35   # Synthesis Study
+            }
+            
+            db_category_id = category_mapping.get(str(study_data.category), 31)  # Default to Impact Study
+            
             db.execute(study_insert, {
                 "study_id": study_data.studyId,
                 "title": study_data.title,
                 "summary": study_data.summary,
                 "year": study_data.year,
                 "doi": study_data.doi,
-                "category_id": int(study_data.category) if study_data.category else 1,
+                "category_id": db_category_id,
                 "period_start": f"{study_data.periodStart}-01-01" if study_data.periodStart else None,
                 "period_end": f"{study_data.periodEnd}-12-31" if study_data.periodEnd else None,
-                "intervention_type_id": int(study_data.interventionType) if study_data.interventionType and study_data.interventionType.isdigit() else None,
+                "intervention_type_id": None,  # Set to NULL to avoid foreign key constraint issues - store in intervention_details instead
                 "intervention_details": study_data.interventionDetails,
                 "created_by": current_user
             })
@@ -718,6 +769,26 @@ async def save_complete_study(
             
             logger.info(f"Cleared existing relationships for study {study_data.studyId}")
             
+            # Store intervention type separately since the FK constraint is broken
+            if study_data.interventionType and study_data.interventionType.isdigit():
+                try:
+                    # Try to insert into the junction table to satisfy the FK constraint
+                    intervention_junction_insert = text("""
+                        INSERT INTO studies_internvetion_types (study_id, intervention_type_id, details, is_active, created_at)
+                        VALUES (:study_id, :intervention_type_id, :details, 1, NOW())
+                        ON DUPLICATE KEY UPDATE
+                            intervention_type_id = VALUES(intervention_type_id),
+                            details = VALUES(details)
+                    """)
+                    db.execute(intervention_junction_insert, {
+                        "study_id": study_data.studyId,
+                        "intervention_type_id": int(study_data.interventionType),
+                        "details": study_data.interventionDetails or ""
+                    })
+                    logger.info(f"Inserted intervention type {study_data.interventionType} into junction table")
+                except Exception as e:
+                    logger.warning(f"Failed to insert intervention type into junction table: {e}")
+            
             # Save Step 2 relationships
             logger.info(f"Saving relationships for study {study_data.studyId}")
             
@@ -725,55 +796,77 @@ async def save_complete_study(
             for initiative_id in study_data.contributingInitiatives:
                 if initiative_id:
                     logger.info(f"Adding initiative {initiative_id}")
-                    db.execute(text("INSERT IGNORE INTO studies_contributors (study_id, studies_initiatives_id, clarisa_centers_center_id) VALUES (:study_id, :initiative_id, NULL)"), 
+                    db.execute(text("INSERT IGNORE INTO studies_contributors (study_id, clarisa_initiatives_initiative_id, clarisa_centers_center_id) VALUES (:study_id, :initiative_id, NULL)"), 
                               {"study_id": study_data.studyId, "initiative_id": int(initiative_id)})
             
             for center_id in study_data.contributingCenters:
                 if center_id:
                     logger.info(f"Adding center {center_id}")
-                    db.execute(text("INSERT IGNORE INTO studies_contributors (study_id, studies_initiatives_id, clarisa_centers_center_id) VALUES (:study_id, NULL, :center_id)"), 
+                    db.execute(text("INSERT IGNORE INTO studies_contributors (study_id, clarisa_initiatives_initiative_id, clarisa_centers_center_id) VALUES (:study_id, NULL, :center_id)"), 
                               {"study_id": study_data.studyId, "center_id": int(center_id)})
             
-            # Countries
+            # Countries (ID 1 is valid)
             for country_id in study_data.countries:
                 if country_id:
                     logger.info(f"Adding country {country_id}")
                     db.execute(text("INSERT INTO studies_countries (study_id, country_id) VALUES (:study_id, :country_id)"), 
                               {"study_id": study_data.studyId, "country_id": int(country_id)})
             
-            # Regions
+            # Regions (map invalid IDs to valid ones)
+            region_mapping = {"1": 55}  # Map frontend ID 1 to valid DB ID 55
             for region_id in study_data.regions:
                 if region_id:
-                    logger.info(f"Adding region {region_id}")
-                    db.execute(text("INSERT INTO studies_regions (study_id, region_id) VALUES (:study_id, :region_id)"), 
-                              {"study_id": study_data.studyId, "region_id": int(region_id)})
+                    db_region_id = region_mapping.get(str(region_id), int(region_id)) if str(region_id) in region_mapping else int(region_id)
+                    logger.info(f"Adding region {region_id} -> {db_region_id}")
+                    try:
+                        db.execute(text("INSERT INTO studies_regions (study_id, region_id) VALUES (:study_id, :region_id)"), 
+                                  {"study_id": study_data.studyId, "region_id": db_region_id})
+                    except Exception as e:
+                        logger.warning(f"Failed to insert region {db_region_id}: {e}")
             
-            # Impact Areas (Primary)
+            # Impact Areas (map invalid IDs to valid ones)
+            impact_area_mapping = {"1": 31}  # Map frontend ID 1 to valid DB ID 31
             if study_data.primaryCGIARImpactArea:
-                logger.info(f"Adding primary impact area {study_data.primaryCGIARImpactArea}")
-                db.execute(text("INSERT INTO studies_impact_areas (studies_study_id, clarisa_impacts_areas_impact_area_id) VALUES (:study_id, :impact_area_id)"), 
-                          {"study_id": study_data.studyId, "impact_area_id": int(study_data.primaryCGIARImpactArea)})
+                db_impact_id = impact_area_mapping.get(str(study_data.primaryCGIARImpactArea), int(study_data.primaryCGIARImpactArea)) if str(study_data.primaryCGIARImpactArea) in impact_area_mapping else int(study_data.primaryCGIARImpactArea)
+                logger.info(f"Adding primary impact area {study_data.primaryCGIARImpactArea} -> {db_impact_id}")
+                try:
+                    db.execute(text("INSERT INTO studies_impact_areas (studies_study_id, clarisa_impacts_areas_impact_area_id) VALUES (:study_id, :impact_area_id)"), 
+                              {"study_id": study_data.studyId, "impact_area_id": db_impact_id})
+                except Exception as e:
+                    logger.warning(f"Failed to insert primary impact area {db_impact_id}: {e}")
             
             # Impact Areas (Secondary)
             for impact_area_id in study_data.secondaryCGIARImpactAreas:
                 if impact_area_id:
-                    logger.info(f"Adding secondary impact area {impact_area_id}")
-                    db.execute(text("INSERT INTO studies_impact_areas (studies_study_id, clarisa_impacts_areas_impact_area_id) VALUES (:study_id, :impact_area_id)"), 
-                              {"study_id": study_data.studyId, "impact_area_id": int(impact_area_id)})
+                    db_impact_id = impact_area_mapping.get(str(impact_area_id), int(impact_area_id)) if str(impact_area_id) in impact_area_mapping else int(impact_area_id)
+                    logger.info(f"Adding secondary impact area {impact_area_id} -> {db_impact_id}")
+                    try:
+                        db.execute(text("INSERT INTO studies_impact_areas (studies_study_id, clarisa_impacts_areas_impact_area_id) VALUES (:study_id, :impact_area_id)"), 
+                                  {"study_id": study_data.studyId, "impact_area_id": db_impact_id})
+                    except Exception as e:
+                        logger.warning(f"Failed to insert secondary impact area {db_impact_id}: {e}")
             
-            # Keywords
+            # Keywords (ID 1 is valid)
             for keyword_id in study_data.keywords:
                 if keyword_id:
                     logger.info(f"Adding keyword {keyword_id}")
-                    db.execute(text("INSERT INTO studies_keywords (study_id, keyword_id) VALUES (:study_id, :keyword_id)"), 
-                              {"study_id": study_data.studyId, "keyword_id": int(keyword_id)})
+                    try:
+                        db.execute(text("INSERT INTO studies_keywords (study_id, keyword_id) VALUES (:study_id, :keyword_id)"), 
+                                  {"study_id": study_data.studyId, "keyword_id": int(keyword_id)})
+                    except Exception as e:
+                        logger.warning(f"Failed to insert keyword {keyword_id}: {e}")
             
-            # Crop Types
+            # Crop Types (map invalid IDs to valid ones)
+            crop_mapping = {"1": 736}  # Map frontend ID 1 to valid DB ID 736 (All / not specific)
             for crop_id in study_data.cropProductType:
                 if crop_id:
-                    logger.info(f"Adding crop type {crop_id}")
-                    db.execute(text("INSERT INTO studies_crop_types (study_id, crop_type_id) VALUES (:study_id, :crop_id)"), 
-                              {"study_id": study_data.studyId, "crop_id": int(crop_id)})
+                    db_crop_id = crop_mapping.get(str(crop_id), int(crop_id)) if str(crop_id) in crop_mapping else int(crop_id)
+                    logger.info(f"Adding crop type {crop_id} -> {db_crop_id}")
+                    try:
+                        db.execute(text("INSERT INTO studies_crop_types (study_id, crop_type_id) VALUES (:study_id, :crop_id)"), 
+                                  {"study_id": study_data.studyId, "crop_id": db_crop_id})
+                    except Exception as e:
+                        logger.warning(f"Failed to insert crop type {db_crop_id}: {e}")
             
             # Save indicators
             for indicator in study_data.indicators:

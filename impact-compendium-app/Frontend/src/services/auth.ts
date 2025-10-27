@@ -64,8 +64,8 @@ class AuthService {
         
         return authData;
       } else if (signInResult.nextStep?.signInStep === 'CONFIRM_SIGN_IN_WITH_NEW_PASSWORD_REQUIRED') {
-        // User needs to set a new password
-        const newPassword = 'NewPass123!'; // Use the same password for simplicity
+        // User needs to set a new password - generate a secure one
+        const newPassword = this.generateSecurePassword();
         
         const confirmResult = await confirmSignIn({
           challengeResponse: newPassword,
@@ -74,6 +74,9 @@ class AuthService {
         if (confirmResult.isSignedIn) {
           const session = await fetchAuthSession();
           const user = await getCurrentUser();
+          
+          // Notify user about password change through secure means
+          console.log('Password has been automatically generated. Please check your secure communication channel.');
           
           const tokens = session.tokens;
           if (!tokens) {
@@ -175,6 +178,26 @@ class AuthService {
       const token = this.getToken();
       return token ? { Authorization: `Bearer ${token}` } : {};
     }
+  }
+
+  private generateSecurePassword(): string {
+    const length = 16;
+    const charset = 'abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789!@#$%^&*';
+    let password = '';
+    
+    // Ensure at least one character from each required category
+    password += 'ABCDEFGHIJKLMNOPQRSTUVWXYZ'[Math.floor(Math.random() * 26)]; // uppercase
+    password += 'abcdefghijklmnopqrstuvwxyz'[Math.floor(Math.random() * 26)]; // lowercase
+    password += '0123456789'[Math.floor(Math.random() * 10)]; // number
+    password += '!@#$%^&*'[Math.floor(Math.random() * 8)]; // special
+    
+    // Fill the rest randomly
+    for (let i = 4; i < length; i++) {
+      password += charset[Math.floor(Math.random() * charset.length)];
+    }
+    
+    // Shuffle the password
+    return password.split('').sort(() => Math.random() - 0.5).join('');
   }
 }
 

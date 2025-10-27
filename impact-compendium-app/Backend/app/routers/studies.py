@@ -100,13 +100,18 @@ class StudyCompleteRequest(BaseModel):
 def try_database_query(db: Optional[Session], query_func):
     """Try to execute a database query, return None if it fails"""
     if not db:
+        logger.warning("No database session provided")
         return None
     try:
         # Test connection first
         db.execute(text("SELECT 1"))
-        return query_func(db)
+        logger.info("Database connection test successful")
+        result = query_func(db)
+        logger.info(f"Query function returned: {type(result)}")
+        return result
     except Exception as e:
-        logger.warning(f"Database query failed: {e}")
+        logger.error(f"Database query failed: {e}")
+        logger.error(f"Exception type: {type(e)}")
         return None
 
 def get_study_related_data(session, study_id):
@@ -367,17 +372,21 @@ async def get_study_detail(
         raise HTTPException(status_code=400, detail="Invalid study ID format")
     
     def db_query(session):
+        logger.info(f"Searching for study {numeric_id} in database")
         query = text("""
             SELECT study_id, title, year, summary, is_active, created_at, category_id, doi, 
-                   study_intervention_types_intervention_type_id, period_start, period_end, intervention_details
+                   period_start, period_end, intervention_details, last_updated_date
             FROM studies 
-            WHERE study_id = :study_id AND is_active = 1
+            WHERE study_id = :study_id
         """)
         
         result = session.execute(query, {"study_id": numeric_id})
         study = result.fetchone()
         
+        logger.info(f"Query result for study {numeric_id}: {study}")
+        
         if not study:
+            logger.warning(f"No study found with ID {numeric_id}")
             return None
         
         # Get all related data
@@ -416,7 +425,7 @@ async def get_study_detail(
         # Get category name
         category_query = text("""
             SELECT sc.study_category_id, sc.name
-            FROM studies_categories sc
+            FROM categories sc
             WHERE sc.study_category_id = :category_id AND sc.is_active = 1
             LIMIT 1
         """)
@@ -427,24 +436,22 @@ async def get_study_detail(
             "id": study[6] or 1,
             "name": category_row[1] if category_row else "Research"
         }
-        # Get intervention type from studies table column
-        if study[8]:  # study_intervention_types_intervention_type_id
-            intervention_type_query = text("""
-                SELECT it.intervention_type_id, it.name
-                FROM intervention_types it
-                WHERE it.intervention_type_id = :intervention_type_id AND it.is_active = 1
-                LIMIT 1
-            """)
-            intervention_type_result = session.execute(intervention_type_query, {"intervention_type_id": study[8]})
-            intervention_type_row = intervention_type_result.fetchone()
-            
-            if intervention_type_row:
-                intervention_info = {
-                    "id": intervention_type_row[0],
-                    "name": intervention_type_row[1]
-                }
-            else:
-                intervention_info = None
+        # Get intervention type from junction table
+        intervention_type_query = text("""
+            SELECT it.intervention_type_id, it.name
+            FROM studies_intervention_types sit
+            JOIN intervention_types it ON sit.intervention_type_id = it.intervention_type_id
+            WHERE sit.study_id = :study_id AND sit.is_active = 1
+            LIMIT 1
+        """)
+        intervention_type_result = session.execute(intervention_type_query, {"study_id": numeric_id})
+        intervention_type_row = intervention_type_result.fetchone()
+        
+        if intervention_type_row:
+            intervention_info = {
+                "id": intervention_type_row[0],
+                "name": intervention_type_row[1]
+            }
         else:
             intervention_info = None
         
@@ -462,8 +469,8 @@ async def get_study_detail(
             "summary": study[3],
             "year": study[2],
             "period": {
-                "start": int(str(study[9])[:4]) if study[9] and str(study[9]) != '0000-00-00' else (study[2] - 1 if study[2] else None), 
-                "end": int(str(study[10])[:4]) if study[10] and str(study[10]) != '0000-00-00' else study[2]
+                "start": int(str(study[8])[:4]) if study[8] and str(study[8]) != '0000-00-00' else (study[2] - 1 if study[2] else None), 
+                "end": int(str(study[9])[:4]) if study[9] and str(study[9]) != '0000-00-00' else study[2]
             } if study[2] else None,
             "category": category_info,
             "doi": study[7],
@@ -471,9 +478,9 @@ async def get_study_detail(
                 "id": intervention_info["id"] if intervention_info else None,
                 "name": intervention_info["name"] if intervention_info else None,
                 "type": intervention_info["id"] if intervention_info else None,  # Keep for backward compatibility
-                "detailsShort": study[11] or "Study intervention details"
+                "detailsShort": study[10] or "Study intervention details"
             },
-            "intervention_details": study[11] or "Detailed intervention information for this study",
+            "intervention_details": study[10] or "Detailed intervention information for this study",
             "pdf_filename": None,
             "countries": related_data["countries"],
             "crops": crop_types or [{"id": 17, "name": "None"}],
@@ -484,12 +491,15 @@ async def get_study_detail(
             "keywords": keywords or [{"id": 1, "name": "Not Available"}],
             "indicators": indicators,
             "created_at": study[5].isoformat() if study[5] else None,
-            "last_updated_date": study[5].isoformat() if study[5] else None
+            "last_updated_date": study[11].isoformat() if study[11] else None
         }
     
     # Try database first
     try:
-        db_result = try_database_query(db, db_query)
+        if not db:
+            raise HTTPException(status_code=404, detail="Database connection not available")
+            
+        db_result = db_query(db)
         
         if db_result is None:
             raise HTTPException(status_code=404, detail="Study not found")
@@ -502,7 +512,8 @@ async def get_study_detail(
     except HTTPException:
         raise
     except Exception as e:
-        logger.error(f"Database error: {e}")
+        logger.error(f"Database error in get_study_detail: {e}")
+        raise HTTPException(status_code=500, detail=f"Database error: {str(e)}")
     
     # Fallback for mock data
     return {
@@ -573,22 +584,22 @@ async def create_study(
             VALUES (:study_id, :title, :summary, :year, :doi, :category_id, 1, NOW(), :created_by)
         """)
         
-        # Map category to valid database IDs (31-35)
-        # Handle both frontend IDs (1-5) and direct database IDs (31-35)
+        # Map category to valid database IDs (116-120)
+        # Handle both frontend IDs (1-5) and direct database IDs (116-120)
         category_mapping = {
-            "1": 31,  # Impact Study
-            "2": 32,  # Impact/Outcome story  
-            "3": 33,  # Other
-            "4": 34,  # Outcome Study
-            "5": 35,  # Synthesis Study
+            "1": 116,  # Impact Study
+            "2": 117,  # Impact/Outcome story  
+            "3": 118,  # Other
+            "4": 119,  # Outcome Study
+            "5": 120,  # Synthesis Study
             # Also handle direct database IDs
-            "31": 31, # Impact Study
-            "32": 32, # Impact/Outcome story
-            "33": 33, # Other
-            "34": 34, # Outcome Study
-            "35": 35  # Synthesis Study
+            "116": 116, # Impact Study
+            "117": 117, # Impact/Outcome story
+            "118": 118, # Other
+            "119": 119, # Outcome Study
+            "120": 120  # Synthesis Study
         }
-        db_category_id = category_mapping.get(str(study_data.category), 31)
+        db_category_id = category_mapping.get(str(study_data.category), 116)
         
         session.execute(insert_query, {
             "study_id": study_data.studyId,
@@ -673,22 +684,22 @@ async def update_study(
                 update_fields.append("doi = :doi")
                 params["doi"] = study_data.doi
             if study_data.category is not None:
-                # Map category to valid database IDs (31-35)
-                # Handle both frontend IDs (1-5) and direct database IDs (31-35)
+                # Map category to valid database IDs (116-120)
+                # Handle both frontend IDs (1-5) and direct database IDs (116-120)
                 category_mapping = {
-                    "1": 31,  # Impact Study
-                    "2": 32,  # Impact/Outcome story  
-                    "3": 33,  # Other
-                    "4": 34,  # Outcome Study
-                    "5": 35,  # Synthesis Study
+                    "1": 116,  # Impact Study
+                    "2": 117,  # Impact/Outcome story  
+                    "3": 118,  # Other
+                    "4": 119,  # Outcome Study
+                    "5": 120,  # Synthesis Study
                     # Also handle direct database IDs
-                    "31": 31, # Impact Study
-                    "32": 32, # Impact/Outcome story
-                    "33": 33, # Other
-                    "34": 34, # Outcome Study
-                    "35": 35  # Synthesis Study
+                    "116": 116, # Impact Study
+                    "117": 117, # Impact/Outcome story
+                    "118": 118, # Other
+                    "119": 119, # Outcome Study
+                    "120": 120  # Synthesis Study
                 }
-                db_category_id = category_mapping.get(str(study_data.category), 31)
+                db_category_id = category_mapping.get(str(study_data.category), 116)
                 update_fields.append("category_id = :category_id")
                 params["category_id"] = db_category_id
             if study_data.periodStart is not None:
@@ -706,7 +717,7 @@ async def update_study(
                 try:
                     # Create/update junction table record first
                     junction_insert = text("""
-                        INSERT INTO studies_internvetion_types (study_intervention_type_id, study_id, intervention_type_id, details, is_active, created_at)
+                        INSERT INTO studies_intervention_types (study_intervention_type_id, study_id, intervention_type_id, details, is_active, created_at)
                         VALUES (:intervention_type_id, :study_id, :intervention_type_id, :details, 1, NOW())
                         ON DUPLICATE KEY UPDATE
                             intervention_type_id = VALUES(intervention_type_id),
@@ -808,23 +819,23 @@ async def update_complete_study(
                 WHERE study_id = :study_id
             """)
             
-            # Map category to valid database IDs (31-35)
-            # Handle both frontend IDs (1-5) and direct database IDs (31-35)
+            # Map category to valid database IDs (116-120)
+            # Handle both frontend IDs (1-5) and direct database IDs (116-120)
             category_mapping = {
-                "1": 31,  # Impact Study
-                "2": 32,  # Impact/Outcome story  
-                "3": 33,  # Other
-                "4": 34,  # Outcome Study
-                "5": 35,  # Synthesis Study
+                "1": 116,  # Impact Study
+                "2": 117,  # Impact/Outcome story  
+                "3": 118,  # Other
+                "4": 119,  # Outcome Study
+                "5": 120,  # Synthesis Study
                 # Also handle direct database IDs
-                "31": 31, # Impact Study
-                "32": 32, # Impact/Outcome story
-                "33": 33, # Other
-                "34": 34, # Outcome Study
-                "35": 35  # Synthesis Study
+                "116": 116, # Impact Study
+                "117": 117, # Impact/Outcome story
+                "118": 118, # Other
+                "119": 119, # Outcome Study
+                "120": 120  # Synthesis Study
             }
             
-            db_category_id = category_mapping.get(str(study_data.category), 31)  # Default to Impact Study
+            db_category_id = category_mapping.get(str(study_data.category), 116)  # Default to Impact Study
             
             db.execute(study_update, {
                 "study_id": numeric_id,
@@ -858,7 +869,7 @@ async def update_complete_study(
                 try:
                     # Update/insert junction table record
                     junction_insert = text("""
-                        INSERT INTO studies_internvetion_types (study_intervention_type_id, study_id, intervention_type_id, details, is_active, created_at)
+                        INSERT INTO studies_intervention_types (study_intervention_type_id, study_id, intervention_type_id, details, is_active, created_at)
                         VALUES (:intervention_type_id, :study_id, :intervention_type_id, :details, 1, NOW())
                         ON DUPLICATE KEY UPDATE
                             intervention_type_id = VALUES(intervention_type_id),
@@ -1029,16 +1040,14 @@ async def save_complete_study(
     # Try to save to database first
     if db:
         try:
-            # Save main study record
+            # Save main study record (without intervention type column)
             study_insert = text("""
                 INSERT INTO studies (
                     study_id, title, summary, year, doi, category_id, 
-                    period_start, period_end, study_intervention_types_intervention_type_id, 
-                    intervention_details, is_active, created_at, created_by
+                    period_start, period_end, intervention_details, is_active, created_at, created_by
                 ) VALUES (
                     :study_id, :title, :summary, :year, :doi, :category_id, 
-                    :period_start, :period_end, :intervention_type_id, 
-                    :intervention_details, 1, NOW(), :created_by
+                    :period_start, :period_end, :intervention_details, 1, NOW(), :created_by
                 )
                 ON DUPLICATE KEY UPDATE
                     title = VALUES(title),
@@ -1048,29 +1057,28 @@ async def save_complete_study(
                     category_id = VALUES(category_id),
                     period_start = VALUES(period_start),
                     period_end = VALUES(period_end),
-                    study_intervention_types_intervention_type_id = VALUES(study_intervention_types_intervention_type_id),
                     intervention_details = VALUES(intervention_details),
                     created_by = VALUES(created_by),
                     last_updated_date = NOW()
             """)
             
-            # Map category to valid database IDs (31-35)
-            # Handle both frontend IDs (1-5) and direct database IDs (31-35)
+            # Map category to valid database IDs (116-120)
+            # Handle both frontend IDs (1-5) and direct database IDs (116-120)
             category_mapping = {
-                "1": 31,  # Impact Study
-                "2": 32,  # Impact/Outcome story  
-                "3": 33,  # Other
-                "4": 34,  # Outcome Study
-                "5": 35,  # Synthesis Study
+                "1": 116,  # Impact Study
+                "2": 117,  # Impact/Outcome story  
+                "3": 118,  # Other
+                "4": 119,  # Outcome Study
+                "5": 120,  # Synthesis Study
                 # Also handle direct database IDs
-                "31": 31, # Impact Study
-                "32": 32, # Impact/Outcome story
-                "33": 33, # Other
-                "34": 34, # Outcome Study
-                "35": 35  # Synthesis Study
+                "116": 116, # Impact Study
+                "117": 117, # Impact/Outcome story
+                "118": 118, # Other
+                "119": 119, # Outcome Study
+                "120": 120  # Synthesis Study
             }
             
-            db_category_id = category_mapping.get(str(study_data.category), 31)  # Default to Impact Study
+            db_category_id = category_mapping.get(str(study_data.category), 116)  # Default to Impact Study
             
             db.execute(study_insert, {
                 "study_id": study_data.studyId,
@@ -1081,7 +1089,6 @@ async def save_complete_study(
                 "category_id": db_category_id,
                 "period_start": f"{study_data.periodStart}-01-01" if study_data.periodStart else None,
                 "period_end": f"{study_data.periodEnd}-12-31" if study_data.periodEnd else None,
-                "intervention_type_id": None,  # Will be set via junction table after study is created
                 "intervention_details": study_data.interventionDetails,
                 "created_by": current_user
             })
@@ -1091,6 +1098,7 @@ async def save_complete_study(
             
             # Clear existing relationships for this study
             logger.info(f"Clearing existing relationships for study {study_data.studyId}")
+            db.execute(text("DELETE FROM studies_intervention_types WHERE study_id = :study_id"), {"study_id": study_data.studyId})
             db.execute(text("DELETE FROM studies_contributors WHERE study_id = :study_id"), {"study_id": study_data.studyId})
             db.execute(text("DELETE FROM studies_countries WHERE study_id = :study_id"), {"study_id": study_data.studyId})
             db.execute(text("DELETE FROM studies_regions WHERE study_id = :study_id"), {"study_id": study_data.studyId})
@@ -1104,34 +1112,21 @@ async def save_complete_study(
             # Create junction table record to satisfy FK constraint, then update studies table
             if study_data.interventionType and study_data.interventionType.isdigit():
                 try:
-                    # Insert a record in the junction table with the same ID
+                    # Insert into junction table
                     junction_insert = text("""
-                        INSERT INTO studies_internvetion_types (study_intervention_type_id, study_id, intervention_type_id, details, is_active, created_at)
-                        VALUES (:intervention_type_id, :study_id, :intervention_type_id, :details, 1, NOW())
+                        INSERT INTO studies_intervention_types (study_id, intervention_type_id, is_active, created_at)
+                        VALUES (:study_id, :intervention_type_id, 1, NOW())
                         ON DUPLICATE KEY UPDATE
-                            intervention_type_id = VALUES(intervention_type_id),
-                            details = VALUES(details)
+                            intervention_type_id = VALUES(intervention_type_id)
                     """)
                     db.execute(junction_insert, {
-                        "intervention_type_id": int(study_data.interventionType),
                         "study_id": study_data.studyId,
-                        "details": study_data.interventionDetails or ""
+                        "intervention_type_id": int(study_data.interventionType)
                     })
                     
-                    # Now update the studies table with the intervention type ID
-                    update_studies = text("""
-                        UPDATE studies 
-                        SET study_intervention_types_intervention_type_id = :intervention_type_id
-                        WHERE study_id = :study_id
-                    """)
-                    db.execute(update_studies, {
-                        "intervention_type_id": int(study_data.interventionType),
-                        "study_id": study_data.studyId
-                    })
-                    
-                    logger.info(f"Updated studies table with intervention type {study_data.interventionType}")
+                    logger.info(f"Inserted intervention type {study_data.interventionType} into junction table")
                 except Exception as e:
-                    logger.warning(f"Failed to update intervention type: {e}")
+                    logger.warning(f"Failed to insert intervention type: {e}")
             
             # Save Step 2 relationships
             logger.info(f"Saving relationships for study {study_data.studyId}")
@@ -1277,17 +1272,9 @@ async def delete_study(
         
         # Delete relationships first - handle RDS foreign key constraints properly
         try:
-            # Get junction IDs for this study first
-            junction_result = db.execute(text("SELECT study_intervention_type_id FROM studies_internvetion_types WHERE study_id = :study_id"), {"study_id": study_id})
-            junction_ids = [row[0] for row in junction_result]
-            
-            # Clear ALL references to these junction IDs from ALL studies
-            for junction_id in junction_ids:
-                db.execute(text("UPDATE studies SET study_intervention_types_intervention_type_id = NULL WHERE study_intervention_types_intervention_type_id = :junction_id"), {"junction_id": junction_id})
-                logger.info(f"Cleared all references to junction ID {junction_id}")
-            
             # Delete from all relationship tables
             relationship_tables = [
+                ("studies_intervention_types", "study_id"),
                 ("studies_contributors", "study_id"),
                 ("studies_countries", "study_id"), 
                 ("studies_regions", "study_id"),
@@ -1304,14 +1291,6 @@ async def delete_study(
                         logger.info(f"Deleted {result.rowcount} records from {table_name}")
                 except Exception as e:
                     logger.warning(f"Could not delete from {table_name}: {e}")
-            
-            # Delete junction table records
-            try:
-                result = db.execute(text("DELETE FROM studies_internvetion_types WHERE study_id = :study_id"), {"study_id": study_id})
-                if result.rowcount > 0:
-                    logger.info(f"Deleted {result.rowcount} junction table records")
-            except Exception as e:
-                logger.warning(f"Could not delete from junction table: {e}")
                 
         except Exception as e:
             logger.warning(f"Error during relationship cleanup: {e}")

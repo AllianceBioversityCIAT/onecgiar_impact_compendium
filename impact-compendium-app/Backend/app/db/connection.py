@@ -87,7 +87,7 @@ class DatabaseConnection:
         except Exception as e:
             logger.warning(f"Database session error: {e}")
             session.rollback()
-            yield None
+            raise  # Re-raise the exception instead of yielding None
         finally:
             session.close()
 

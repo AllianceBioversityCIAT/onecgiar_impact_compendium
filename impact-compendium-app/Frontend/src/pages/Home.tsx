@@ -28,8 +28,8 @@ export const Home: React.FC = () => {
             {/* Brand */}
             <div className="flex items-center gap-2">
               <div className="w-12 h-12 bg-[#FFC84F] rounded-2xl flex items-center justify-center">
-                <svg className="w-7 h-7" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.33} d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2-2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />
+                <svg className="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.67} d="M3 13h4v8H3v-8zm6-6h4v14H9V7zm6-4h4v18h-4V3z" />
                 </svg>
               </div>
               <span className="text-[#FFC84F] text-base font-normal tracking-[-0.3125px]">CGIAR Impact Compendium</span>

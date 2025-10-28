@@ -9,6 +9,7 @@ from pydantic import BaseModel
 import logging
 
 from app.services.cognito_auth import cognito_auth
+from app.middleware.auth import get_current_user
 
 logger = logging.getLogger(__name__)
 router = APIRouter()
@@ -95,29 +96,21 @@ async def logout():
     }
 
 @router.get("/me", response_model=Dict[str, Any])
-async def get_current_user(credentials: HTTPAuthorizationCredentials = Depends(security)):
+async def get_current_user_info(current_user: Dict[str, Any] = Depends(get_current_user)):
     """
     Get current user information from JWT token
     """
     try:
-        # Verify the token
-        token_payload = cognito_auth.verify_token(credentials.credentials)
-        
-        # Extract user info
-        user_info = cognito_auth.get_user_info(token_payload)
-        
         return {
             "success": True,
-            "data": user_info,
+            "data": current_user,
             "token_info": {
-                "expires_at": token_payload.get("exp"),
-                "issued_at": token_payload.get("iat"),
-                "issuer": token_payload.get("iss")
+                "user_id": current_user.get("user_id"),
+                "email": current_user.get("email"),
+                "groups": current_user.get("groups", [])
             }
         }
         
-    except HTTPException:
-        raise
     except Exception as e:
         logger.error(f"Error getting current user: {e}")
         raise HTTPException(
@@ -126,30 +119,21 @@ async def get_current_user(credentials: HTTPAuthorizationCredentials = Depends(s
         )
 
 @router.get("/verify-token", response_model=Dict[str, Any])
-async def verify_token(credentials: HTTPAuthorizationCredentials = Depends(security)):
+async def verify_token(current_user: Dict[str, Any] = Depends(get_current_user)):
     """
     Verify JWT token endpoint
     """
     try:
-        token_payload = cognito_auth.verify_token(credentials.credentials)
-        
         return {
             "success": True,
             "valid": True,
             "data": {
-                "user_id": token_payload.get("sub"),
-                "email": token_payload.get("email"),
-                "expires_at": token_payload.get("exp"),
-                "token_use": token_payload.get("token_use")
+                "user_id": current_user.get("user_id"),
+                "email": current_user.get("email"),
+                "groups": current_user.get("groups", [])
             }
         }
         
-    except HTTPException as e:
-        return {
-            "success": False,
-            "valid": False,
-            "error": e.detail
-        }
     except Exception as e:
         logger.error(f"Error verifying token: {e}")
         return {
@@ -176,11 +160,3 @@ async def auth_status():
         },
         "message": "Cognito authentication service" + (" (mock mode)" if cognito_auth.mock_mode else " (production mode)")
     }
-
-# Dependency for protected routes
-async def get_current_user_dependency(credentials: HTTPAuthorizationCredentials = Depends(security)) -> Dict[str, Any]:
-    """
-    Dependency to get current user for protected routes
-    """
-    token_payload = cognito_auth.verify_token(credentials.credentials)
-    return cognito_auth.get_user_info(token_payload)

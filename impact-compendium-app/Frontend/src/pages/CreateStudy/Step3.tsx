@@ -174,13 +174,18 @@ export const CreateStudyStep3: React.FC = () => {
       console.log('Complete study data being sent:', JSON.stringify(completeStudyData, null, 2));
       console.log('========================');
 
+      // Get auth headers
+      const authHeaders = await authService.getAuthHeaders();
+      console.log('Auth headers:', authHeaders);
+      console.log('Current user:', currentUser);
+
       // Call the complete save endpoint
       const response = await fetch(`${import.meta.env.VITE_API_BASE_URL}/api/studies/complete`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
           'X-User-Email': currentUser?.email || 'unknown@example.com',
-          ...authService.getAuthHeaders()
+          ...authHeaders
         },
         body: JSON.stringify(completeStudyData),
       });

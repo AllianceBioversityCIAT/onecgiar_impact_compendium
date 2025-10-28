@@ -123,7 +123,12 @@ export const HeaderBar: React.FC<HeaderBarProps> = ({
               Studies
             </button>
             <button
-              className="flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-normal tracking-[-0.15px] text-[#777777] hover:text-[#333333] transition-colors"
+              onClick={() => navigate('/settings')}
+              className={`flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-normal tracking-[-0.15px] transition-colors ${
+                isActive('/settings')
+                  ? 'bg-[#FFF9E6] border-b-2 border-[#FFC84F] text-[#B96A28]' 
+                  : 'text-[#777777] hover:text-[#333333]'
+              }`}
             >
               <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.33} d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z" />
@@ -195,7 +200,13 @@ export const HeaderBar: React.FC<HeaderBarProps> = ({
                 <button className="w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-50">
                   Profile
                 </button>
-                <button className="w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-50">
+                <button 
+                  onClick={() => {
+                    setShowUserMenu(false);
+                    navigate('/settings');
+                  }}
+                  className="w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-50"
+                >
                   Settings
                 </button>
                 <hr className="my-1" />

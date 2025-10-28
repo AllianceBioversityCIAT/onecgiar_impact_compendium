@@ -8,13 +8,17 @@ from sqlalchemy.orm import Session
 from sqlalchemy import text
 
 from app.db.connection import get_db
+from app.middleware.auth import require_admin
 import logging
 
 logger = logging.getLogger(__name__)
 router = APIRouter()
 
 @router.get("/stats", response_model=Dict[str, Any])
-async def get_admin_stats(db: Session = Depends(get_db)):
+async def get_admin_stats(
+    current_user: Dict[str, Any] = Depends(require_admin),
+    db: Session = Depends(get_db)
+):
     """
     Get admin statistics
     """
@@ -60,7 +64,10 @@ async def get_admin_stats(db: Session = Depends(get_db)):
         )
 
 @router.get("/health", response_model=Dict[str, Any])
-async def admin_health_check(db: Session = Depends(get_db)):
+async def admin_health_check(
+    current_user: Dict[str, Any] = Depends(require_admin),
+    db: Session = Depends(get_db)
+):
     """
     Admin health check endpoint
     """

@@ -9,33 +9,11 @@ from sqlalchemy import text
 from pydantic import BaseModel
 
 from app.db.connection import get_db
+from app.middleware.auth import get_current_user, get_current_user_optional, require_researcher
 import logging
 
 logger = logging.getLogger(__name__)
 router = APIRouter()
-
-def get_current_user_from_request(request: Request) -> str:
-    """Extract current user from request headers or authentication"""
-    # Debug: log all headers to see what's being sent
-    logger.debug(f"Request headers: {dict(request.headers)}")
-    
-    # Check for user info in headers that frontend might send
-    user_email = request.headers.get("x-user-email", "")
-    if user_email:
-        return user_email
-        
-    # Check for user info in cookies
-    user_cookie = request.cookies.get("user_email", "")
-    if user_cookie:
-        return user_cookie
-    
-    # Check other common header names
-    user_header = request.headers.get("user-email", "")
-    if user_header:
-        return user_header
-    
-    # Fallback to system user
-    return "system"
 
 class StudyCreateRequest(BaseModel):
     studyId: int
@@ -516,13 +494,13 @@ async def search_studies(
 @router.post("/", response_model=Dict[str, Any])
 async def create_study(
     study_data: StudyCreateRequest,
-    request: Request,
+    current_user: Dict[str, Any] = Depends(require_researcher),
     db: Optional[Session] = Depends(get_db)
 ):
     """Create a new study."""
     
-    # Get current logged-in user
-    current_user = get_current_user_from_request(request)
+    # Get current logged-in user email
+    user_email = current_user.get("email", "system")
     
     def db_create(session):
         # Check if study ID already exists
@@ -561,7 +539,7 @@ async def create_study(
             "year": study_data.year,
             "doi": study_data.doi,
             "category_id": db_category_id,
-            "created_by": current_user
+            "created_by": user_email
         })
         session.commit()
         
@@ -586,13 +564,13 @@ async def create_study(
 async def update_study(
     study_id: str,
     study_data: StudyUpdateRequest,
-    request: Request,
+    current_user: Dict[str, Any] = Depends(require_researcher),
     db: Optional[Session] = Depends(get_db)
 ):
     """Update an existing study."""
     
-    # Get current logged-in user
-    current_user = get_current_user_from_request(request)
+    # Get current logged-in user email
+    user_email = current_user.get("email", "system")
     
     # Extract numeric ID
     try:
@@ -695,7 +673,7 @@ async def update_study(
             
             return {
                 "success": True,
-                "message": f"Study updated successfully by {current_user}",
+                "message": f"Study updated successfully by {user_email}",
                 "data": {"study_id": study_data.studyId or numeric_id}
             }
             
@@ -711,7 +689,7 @@ async def update_study(
 async def update_complete_study(
     study_id: str,
     study_data: StudyCompleteRequest,
-    request: Request,
+    current_user: Dict[str, Any] = Depends(require_researcher),
     db: Optional[Session] = Depends(get_db)
 ):
     """Update complete study with all steps data and relationships."""
@@ -732,8 +710,8 @@ async def update_complete_study(
     logger.info(f"Received update request for study {numeric_id}")
     logger.info(f"Study data: {study_data.dict()}")
     
-    # Get current logged-in user
-    current_user = get_current_user_from_request(request)
+    # Get current logged-in user email
+    user_email = current_user.get("email", "system")
     
     # Try to update in database
     if db:
@@ -924,7 +902,7 @@ async def update_complete_study(
             
             return {
                 "success": True,
-                "message": f"Study {numeric_id} updated successfully by {current_user}",
+                "message": f"Study {numeric_id} updated successfully by {user_email}",
                 "data": {"study_id": numeric_id}
             }
             
@@ -946,7 +924,7 @@ async def update_complete_study(
 @router.post("/complete", response_model=Dict[str, Any])
 async def save_complete_study(
     study_data: StudyCompleteRequest,
-    request: Request,
+    current_user: Dict[str, Any] = Depends(require_researcher),
     db: Optional[Session] = Depends(get_db)
 ):
     """Save complete study with all steps data and relationships."""
@@ -955,8 +933,8 @@ async def save_complete_study(
     logger.info(f"Received save request for study {study_data.studyId}")
     logger.info(f"Study data: {study_data.dict()}")
     
-    # Get current logged-in user
-    current_user = get_current_user_from_request(request)
+    # Get current logged-in user email
+    user_email = current_user.get("email", "system")
     
     # Try to save to database first
     if db:
@@ -1011,7 +989,7 @@ async def save_complete_study(
                 "period_start": f"{study_data.periodStart}-01-01" if study_data.periodStart else None,
                 "period_end": f"{study_data.periodEnd}-12-31" if study_data.periodEnd else None,
                 "intervention_details": study_data.interventionDetails,
-                "created_by": current_user
+                "created_by": user_email
             })
             
             # Log the study insert
@@ -1135,7 +1113,7 @@ async def save_complete_study(
             
             return {
                 "success": True,
-                "message": f"Study {study_data.studyId} saved successfully to database (user: {current_user})",
+                "message": f"Study {study_data.studyId} saved successfully to database (user: {user_email})",
                 "data": {"study_id": study_data.studyId}
             }
             
@@ -1156,19 +1134,19 @@ async def save_complete_study(
 @router.delete("/{study_id}", response_model=Dict[str, Any])
 async def delete_study(
     study_id: int,
-    request: Request,
+    current_user: Dict[str, Any] = Depends(require_researcher),
     db: Optional[Session] = Depends(get_db)
 ):
     """Delete a study and all its related data."""
     
-    # Get current logged-in user
-    current_user = get_current_user_from_request(request)
+    # Get current logged-in user email
+    user_email = current_user.get("email", "system")
     
     if not db:
         raise HTTPException(status_code=500, detail="Database connection not available")
     
     try:
-        logger.info(f"Deleting study {study_id} by user {current_user}")
+        logger.info(f"Deleting study {study_id} by user {user_email}")
         
         # Delete relationships first - handle RDS foreign key constraints properly
         try:
@@ -1207,7 +1185,7 @@ async def delete_study(
         
         return {
             "success": True,
-            "message": f"Study {study_id} deleted successfully by {current_user}",
+            "message": f"Study {study_id} deleted successfully by {user_email}",
             "data": {"study_id": study_id}
         }
         

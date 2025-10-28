@@ -48,9 +48,13 @@ class CognitoAuth:
             return self._mock_verify_token(token)
         
         try:
+            logger.info(f"Verifying token: {token[:50]}...")
+            
             # Get the key ID from token header
             unverified_header = jose_jwt.get_unverified_header(token)
             kid = unverified_header.get("kid")
+            
+            logger.info(f"Token kid: {kid}")
             
             if not kid:
                 raise HTTPException(
@@ -68,10 +72,13 @@ class CognitoAuth:
                     break
             
             if not key:
+                logger.error(f"Key not found for kid: {kid}")
                 raise HTTPException(
                     status_code=status.HTTP_401_UNAUTHORIZED,
                     detail="Invalid token key"
                 )
+            
+            logger.info("Decoding token...")
             
             # Verify the token
             payload = jose_jwt.decode(
@@ -81,6 +88,8 @@ class CognitoAuth:
                 audience=self.client_id,
                 issuer=self.issuer
             )
+            
+            logger.info(f"Token verified successfully. Payload: {payload}")
             
             return payload
             

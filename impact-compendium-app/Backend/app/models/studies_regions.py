@@ -5,6 +5,6 @@ from app.db.connection import Base
 studies_regions = Table(
     'studies_regions',
     Base.metadata,
-    Column('study_id', Integer, ForeignKey('studies.study_id'), primary_key=True),
+    Column('study_id', Integer, ForeignKey('studies.id'), primary_key=True),
     Column('region_id', Integer, ForeignKey('clarisa_cgiar_regions.id'), primary_key=True)
 )

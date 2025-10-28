@@ -2,6 +2,8 @@ import React, { useState, useEffect } from 'react';
 import { UserTable } from './UserTable';
 import { CreateUserModal } from './CreateUserModal';
 import { EditUserModal } from './EditUserModal';
+import { ConfirmationModal } from '../ui/ConfirmationModal';
+import { SuccessNotification } from '../ui/SuccessNotification';
 import { userService } from '../../services/userService';
 
 interface User {
@@ -20,6 +22,30 @@ export const UserManagement: React.FC = () => {
   const [error, setError] = useState<string | null>(null);
   const [showCreateModal, setShowCreateModal] = useState(false);
   const [editingUser, setEditingUser] = useState<User | null>(null);
+  const [confirmAction, setConfirmAction] = useState<{
+    isOpen: boolean;
+    title: string;
+    message: string;
+    type: 'danger' | 'warning' | 'info';
+    confirmText: string;
+    action: () => void;
+  }>({
+    isOpen: false,
+    title: '',
+    message: '',
+    type: 'warning',
+    confirmText: 'Confirm',
+    action: () => {}
+  });
+  const [successNotification, setSuccessNotification] = useState<{
+    isOpen: boolean;
+    title: string;
+    message: string;
+  }>({
+    isOpen: false,
+    title: '',
+    message: ''
+  });
 
   const loadUsers = async () => {
     try {
@@ -43,6 +69,11 @@ export const UserManagement: React.FC = () => {
       await userService.createUser(userData);
       setShowCreateModal(false);
       await loadUsers(); // Refresh the list
+      setSuccessNotification({
+        isOpen: true,
+        title: 'User Created',
+        message: `${userData.email} has been successfully created and added to the system.`
+      });
     } catch (err) {
       throw err; // Let the modal handle the error
     }
@@ -58,29 +89,52 @@ export const UserManagement: React.FC = () => {
   };
 
   const handleDeleteUser = async (username: string) => {
-    if (!confirm('Are you sure you want to delete this user? This action cannot be undone.')) {
-      return;
-    }
-
-    try {
-      await userService.deleteUser(username);
-      await loadUsers(); // Refresh the list
-    } catch (err) {
-      setError(err instanceof Error ? err.message : 'Failed to delete user');
-    }
+    const user = users.find(u => u.username === username);
+    setConfirmAction({
+      isOpen: true,
+      title: 'Delete User',
+      message: `Are you sure you want to delete ${user?.email || username}? This action cannot be undone and will permanently remove the user from the system.`,
+      type: 'danger',
+      confirmText: 'Delete User',
+      action: async () => {
+        try {
+          await userService.deleteUser(username);
+          await loadUsers();
+          setSuccessNotification({
+            isOpen: true,
+            title: 'User Deleted',
+            message: `${user?.email || username} has been successfully deleted.`
+          });
+        } catch (err) {
+          setError(err instanceof Error ? err.message : 'Failed to delete user');
+        }
+        setConfirmAction(prev => ({ ...prev, isOpen: false }));
+      }
+    });
   };
 
   const handleResetPassword = async (username: string) => {
-    if (!confirm('Are you sure you want to reset this user\'s password?')) {
-      return;
-    }
-
-    try {
-      await userService.resetPassword(username);
-      alert('Password reset successfully. The user will receive instructions via email.');
-    } catch (err) {
-      setError(err instanceof Error ? err.message : 'Failed to reset password');
-    }
+    const user = users.find(u => u.username === username);
+    setConfirmAction({
+      isOpen: true,
+      title: 'Reset Password',
+      message: `Reset password for ${user?.email || username}? The user will receive instructions via email to set a new password.`,
+      type: 'info',
+      confirmText: 'Reset Password',
+      action: async () => {
+        try {
+          await userService.resetPassword(username);
+          setSuccessNotification({
+            isOpen: true,
+            title: 'Password Reset',
+            message: `Password reset instructions have been sent to ${user?.email || username}.`
+          });
+        } catch (err) {
+          setError(err instanceof Error ? err.message : 'Failed to reset password');
+        }
+        setConfirmAction(prev => ({ ...prev, isOpen: false }));
+      }
+    });
   };
 
   const handleEditUser = (user: User) => {
@@ -128,7 +182,6 @@ export const UserManagement: React.FC = () => {
         onToggleStatus={handleToggleUserStatus}
         onDeleteUser={handleDeleteUser}
         onResetPassword={handleResetPassword}
-        onEditUser={handleEditUser}
       />
 
       {showCreateModal && (
@@ -145,6 +198,23 @@ export const UserManagement: React.FC = () => {
           onSubmit={handleUpdateUser}
         />
       )}
+
+      <ConfirmationModal
+        isOpen={confirmAction.isOpen}
+        title={confirmAction.title}
+        message={confirmAction.message}
+        type={confirmAction.type}
+        confirmText={confirmAction.confirmText}
+        onConfirm={confirmAction.action}
+        onCancel={() => setConfirmAction(prev => ({ ...prev, isOpen: false }))}
+      />
+
+      <SuccessNotification
+        isOpen={successNotification.isOpen}
+        title={successNotification.title}
+        message={successNotification.message}
+        onClose={() => setSuccessNotification(prev => ({ ...prev, isOpen: false }))}
+      />
     </div>
   );
 };

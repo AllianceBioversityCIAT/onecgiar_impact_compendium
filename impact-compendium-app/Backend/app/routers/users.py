@@ -49,7 +49,15 @@ async def create_user(request: CreateUserRequest):
         )
         return result
     except Exception as e:
-        raise HTTPException(status_code=400, detail=str(e))
+        error_message = str(e)
+        if "User account already exists" in error_message:
+            raise HTTPException(status_code=400, detail=f"A user with email {request.email} already exists")
+        elif "temporarily unavailable" in error_message:
+            raise HTTPException(status_code=400, detail=error_message)
+        elif "InvalidParameterException" in error_message:
+            raise HTTPException(status_code=400, detail="Invalid user data provided")
+        else:
+            raise HTTPException(status_code=400, detail=str(e))
 
 @router.put("/users/{username}/status")
 async def update_user_status(username: str, request: UpdateUserStatusRequest):

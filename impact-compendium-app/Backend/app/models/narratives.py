@@ -6,7 +6,7 @@ class Narrative(Base):
     __tablename__ = "narratives"
 
     id = Column(Integer, primary_key=True, index=True)
-    study_id = Column(Integer, ForeignKey("studies.study_id"), nullable=False)
+    study_id = Column(Integer, ForeignKey("studies.id"), nullable=False)
     title = Column(String(500))
     content = Column(Text)
 

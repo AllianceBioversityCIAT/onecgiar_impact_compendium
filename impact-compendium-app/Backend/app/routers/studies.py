@@ -3,7 +3,7 @@ Studies router with aligned structure between list and detail endpoints
 """
 
 from typing import List, Dict, Any, Optional, Union
-from fastapi import APIRouter, Depends, HTTPException, Query, status, Request
+from fastapi import APIRouter, Depends, HTTPException, Query, Request
 from sqlalchemy.orm import Session
 from sqlalchemy import text
 from pydantic import BaseModel
@@ -19,9 +19,6 @@ def get_current_user_from_request(request: Request) -> str:
     # Try to get from Authorization header
     auth_header = request.headers.get("authorization", "")
     if auth_header:
-        # In production, this would decode the JWT token to get the actual user
-        # For now, check if we can extract user info from headers
-        
         # Check for user info in other headers that frontend might send
         user_email = request.headers.get("x-user-email", "")
         if user_email:
@@ -31,15 +28,6 @@ def get_current_user_from_request(request: Request) -> str:
         user_cookie = request.cookies.get("user_email", "")
         if user_cookie:
             return user_cookie
-    
-    # Fallback - in production this would decode the JWT token
-    return "system"
-    """Extract current user from request headers or authentication"""
-    # Try to get from Authorization header
-    auth_header = request.headers.get("authorization", "")
-    if auth_header:
-        # For now, return a test user - in production this would decode JWT
-        return "testing@example.com"
     
     # Fallback to system user
     return "system"
@@ -100,18 +88,13 @@ class StudyCompleteRequest(BaseModel):
 def try_database_query(db: Optional[Session], query_func):
     """Try to execute a database query, return None if it fails"""
     if not db:
-        logger.warning("No database session provided")
         return None
     try:
         # Test connection first
         db.execute(text("SELECT 1"))
-        logger.info("Database connection test successful")
-        result = query_func(db)
-        logger.info(f"Query function returned: {type(result)}")
-        return result
+        return query_func(db)
     except Exception as e:
-        logger.error(f"Database query failed: {e}")
-        logger.error(f"Exception type: {type(e)}")
+        logger.warning(f"Database query failed: {e}")
         return None
 
 def get_study_related_data(session, study_id):
@@ -372,7 +355,6 @@ async def get_study_detail(
         raise HTTPException(status_code=400, detail="Invalid study ID format")
     
     def db_query(session):
-        logger.info(f"Searching for study {numeric_id} in database")
         query = text("""
             SELECT study_id, title, year, summary, is_active, created_at, category_id, doi, 
                    period_start, period_end, intervention_details, last_updated_date
@@ -383,7 +365,6 @@ async def get_study_detail(
         result = session.execute(query, {"study_id": numeric_id})
         study = result.fetchone()
         
-        logger.info(f"Query result for study {numeric_id}: {study}")
         
         if not study:
             logger.warning(f"No study found with ID {numeric_id}")
@@ -483,12 +464,12 @@ async def get_study_detail(
             "intervention_details": study[10] or "Detailed intervention information for this study",
             "pdf_filename": None,
             "countries": related_data["countries"],
-            "crops": crop_types or [{"id": 17, "name": "None"}],
+            "crops": crop_types,
             "impact_areas": related_data["impact_areas"],
             "initiatives": related_data["initiatives"],
             "centers": related_data["centers"],
             "regions": related_data["regions"],
-            "keywords": keywords or [{"id": 1, "name": "Not Available"}],
+            "keywords": keywords,
             "indicators": indicators,
             "created_at": study[5].isoformat() if study[5] else None,
             "last_updated_date": study[11].isoformat() if study[11] else None
@@ -515,39 +496,6 @@ async def get_study_detail(
         logger.error(f"Database error in get_study_detail: {e}")
         raise HTTPException(status_code=500, detail=f"Database error: {str(e)}")
     
-    # Fallback for mock data
-    return {
-        "success": True,
-        "data": {
-            "study_id": numeric_id,
-            "title": f"Mock Study {numeric_id}",
-            "summary": "This is a mock study with detailed information for testing purposes.",
-            "year": 2024,
-            "period": {"start": 2023, "end": 2024},
-            "category": {"id": 1, "name": "Research"},
-            "doi": None,
-            "intervention": {"type": 79, "detailsShort": "Study intervention details"},
-            "intervention_details": "Mock intervention details for comprehensive testing",
-            "pdf_filename": None,
-            "countries": [{"id": 1, "name": "Multiple"}],
-            "crops": [{"id": 17, "name": "None"}],
-            "impact_areas": [{"id": 1, "name": "Nutrition, Health and Food Security"}],
-            "initiatives": [],
-            "centers": [],
-            "regions": [{"id": 1, "name": "Global"}],
-            "keywords": [{"id": 1, "name": "Not Available"}],
-            "indicators": [
-                {"indicator_measure": "Mock Impact Score", "unit_measure": "%", "result_reported": "85%"}
-            ],
-            "narratives": [
-                {"section_key": "background", "content": "Mock background narrative"},
-                {"section_key": "methodology", "content": "Mock methodology narrative"},
-                {"section_key": "results", "content": "Mock results narrative"}
-            ],
-            "created_at": "2024-01-01T00:00:00",
-            "last_updated_date": "2024-01-01T00:00:00"
-        }
-    }
 
 @router.get("/search/", response_model=Dict[str, Any])
 async def search_studies(
@@ -628,12 +576,6 @@ async def create_study(
             logger.error(f"Database error creating study: {e}")
             raise HTTPException(status_code=500, detail="Failed to create study")
     
-    # Mock response for testing
-    return {
-        "success": True,
-        "message": "Study created successfully (mock)",
-        "data": {"study_id": study_data.studyId}
-    }
 
 @router.put("/{study_id}", response_model=Dict[str, Any])
 async def update_study(
@@ -759,12 +701,6 @@ async def update_study(
             db.rollback()
             raise HTTPException(status_code=500, detail="Failed to update study")
     
-    # Mock response if no database
-    return {
-        "success": True,
-        "message": f"Study updated successfully (mock - user: {current_user})",
-        "data": {"study_id": study_data.studyId or numeric_id}
-    }
     
 @router.put("/{study_id}/complete", response_model=Dict[str, Any])
 async def update_complete_study(
@@ -853,7 +789,6 @@ async def update_complete_study(
             logger.info(f"Updated study with ID: {numeric_id}")
             
             # Clear existing relationships for this study (same as create function)
-            logger.info(f"Clearing existing relationships for study {numeric_id}")
             db.execute(text("DELETE FROM studies_contributors WHERE study_id = :study_id"), {"study_id": numeric_id})
             db.execute(text("DELETE FROM studies_countries WHERE study_id = :study_id"), {"study_id": numeric_id})
             db.execute(text("DELETE FROM studies_regions WHERE study_id = :study_id"), {"study_id": numeric_id})
@@ -902,40 +837,33 @@ async def update_complete_study(
             # Contributing Initiatives and Centers
             for initiative_id in study_data.contributingInitiatives:
                 if initiative_id:
-                    logger.info(f"Adding initiative {initiative_id}")
                     db.execute(text("INSERT IGNORE INTO studies_contributors (study_id, clarisa_initiatives_initiative_id, clarisa_centers_center_id) VALUES (:study_id, :initiative_id, NULL)"), 
                               {"study_id": numeric_id, "initiative_id": int(initiative_id)})
             
             for center_id in study_data.contributingCenters:
                 if center_id:
-                    logger.info(f"Adding center {center_id}")
                     db.execute(text("INSERT IGNORE INTO studies_contributors (study_id, clarisa_initiatives_initiative_id, clarisa_centers_center_id) VALUES (:study_id, NULL, :center_id)"), 
                               {"study_id": numeric_id, "center_id": int(center_id)})
             
             # Countries
             for country_id in study_data.countries:
                 if country_id:
-                    logger.info(f"Adding country {country_id}")
                     db.execute(text("INSERT INTO studies_countries (study_id, country_id) VALUES (:study_id, :country_id)"), 
                               {"study_id": numeric_id, "country_id": int(country_id)})
             
             # Regions (with mapping)
-            region_mapping = {"1": 55}  # Map frontend ID 1 to valid DB ID 55
             for region_id in study_data.regions:
                 if region_id:
-                    db_region_id = region_mapping.get(str(region_id), int(region_id)) if str(region_id) in region_mapping else int(region_id)
-                    logger.info(f"Adding region {region_id} -> {db_region_id}")
+                    db_region_id = int(region_id)
                     try:
                         db.execute(text("INSERT INTO studies_regions (study_id, region_id) VALUES (:study_id, :region_id)"), 
                                   {"study_id": numeric_id, "region_id": db_region_id})
                     except Exception as e:
                         logger.warning(f"Failed to insert region {db_region_id}: {e}")
             
-            # Impact Areas (with mapping)
-            impact_area_mapping = {"1": 31}  # Map frontend ID 1 to valid DB ID 31
+            # Impact Areas
             if study_data.primaryCGIARImpactArea:
-                db_impact_id = impact_area_mapping.get(str(study_data.primaryCGIARImpactArea), int(study_data.primaryCGIARImpactArea)) if str(study_data.primaryCGIARImpactArea) in impact_area_mapping else int(study_data.primaryCGIARImpactArea)
-                logger.info(f"Adding primary impact area {study_data.primaryCGIARImpactArea} -> {db_impact_id}")
+                db_impact_id = int(study_data.primaryCGIARImpactArea)
                 try:
                     db.execute(text("INSERT INTO studies_impact_areas (studies_study_id, clarisa_impacts_areas_impact_area_id) VALUES (:study_id, :impact_area_id)"), 
                               {"study_id": numeric_id, "impact_area_id": db_impact_id})
@@ -945,8 +873,7 @@ async def update_complete_study(
             # Secondary Impact Areas
             for impact_area_id in study_data.secondaryCGIARImpactAreas:
                 if impact_area_id:
-                    db_impact_id = impact_area_mapping.get(str(impact_area_id), int(impact_area_id)) if str(impact_area_id) in impact_area_mapping else int(impact_area_id)
-                    logger.info(f"Adding secondary impact area {impact_area_id} -> {db_impact_id}")
+                    db_impact_id = int(impact_area_id)
                     try:
                         db.execute(text("INSERT INTO studies_impact_areas (studies_study_id, clarisa_impacts_areas_impact_area_id) VALUES (:study_id, :impact_area_id)"), 
                                   {"study_id": numeric_id, "impact_area_id": db_impact_id})
@@ -956,7 +883,6 @@ async def update_complete_study(
             # Keywords
             for keyword_id in study_data.keywords:
                 if keyword_id:
-                    logger.info(f"Adding keyword {keyword_id}")
                     try:
                         db.execute(text("INSERT INTO studies_keywords (study_id, keyword_id) VALUES (:study_id, :keyword_id)"), 
                                   {"study_id": numeric_id, "keyword_id": int(keyword_id)})
@@ -964,11 +890,9 @@ async def update_complete_study(
                         logger.warning(f"Failed to insert keyword {keyword_id}: {e}")
             
             # Crop Types (with mapping)
-            crop_mapping = {"1": 736}  # Map frontend ID 1 to valid DB ID 736
             for crop_id in study_data.cropProductType:
                 if crop_id:
-                    db_crop_id = crop_mapping.get(str(crop_id), int(crop_id)) if str(crop_id) in crop_mapping else int(crop_id)
-                    logger.info(f"Adding crop type {crop_id} -> {db_crop_id}")
+                    db_crop_id = int(crop_id)
                     try:
                         db.execute(text("INSERT INTO studies_crop_types (study_id, crop_type_id) VALUES (:study_id, :crop_id)"), 
                                   {"study_id": numeric_id, "crop_id": db_crop_id})
@@ -991,9 +915,7 @@ async def update_complete_study(
                     "result_reported": indicator.get("resultReported", "")
                 })
             
-            logger.info(f"Committing transaction for study {numeric_id}")
             db.commit()
-            logger.info(f"Successfully committed study update {numeric_id}")
             
             return {
                 "success": True,
@@ -1015,12 +937,6 @@ async def update_complete_study(
             
             raise HTTPException(status_code=500, detail=f"Database error: {str(e)}")
     
-    # Mock response if database fails
-    return {
-        "success": True,
-        "message": f"Study updated successfully (mock - user: {current_user})",
-        "data": {"study_id": numeric_id}
-    }
 
 @router.post("/complete", response_model=Dict[str, Any])
 async def save_complete_study(
@@ -1094,10 +1010,8 @@ async def save_complete_study(
             })
             
             # Log the study insert
-            logger.info(f"Inserting study with ID: {study_data.studyId}")
             
             # Clear existing relationships for this study
-            logger.info(f"Clearing existing relationships for study {study_data.studyId}")
             db.execute(text("DELETE FROM studies_intervention_types WHERE study_id = :study_id"), {"study_id": study_data.studyId})
             db.execute(text("DELETE FROM studies_contributors WHERE study_id = :study_id"), {"study_id": study_data.studyId})
             db.execute(text("DELETE FROM studies_countries WHERE study_id = :study_id"), {"study_id": study_data.studyId})
@@ -1134,40 +1048,33 @@ async def save_complete_study(
             # Contributing Initiatives and Centers (use INSERT IGNORE to avoid duplicates)
             for initiative_id in study_data.contributingInitiatives:
                 if initiative_id:
-                    logger.info(f"Adding initiative {initiative_id}")
                     db.execute(text("INSERT IGNORE INTO studies_contributors (study_id, clarisa_initiatives_initiative_id, clarisa_centers_center_id) VALUES (:study_id, :initiative_id, NULL)"), 
                               {"study_id": study_data.studyId, "initiative_id": int(initiative_id)})
             
             for center_id in study_data.contributingCenters:
                 if center_id:
-                    logger.info(f"Adding center {center_id}")
                     db.execute(text("INSERT IGNORE INTO studies_contributors (study_id, clarisa_initiatives_initiative_id, clarisa_centers_center_id) VALUES (:study_id, NULL, :center_id)"), 
                               {"study_id": study_data.studyId, "center_id": int(center_id)})
             
             # Countries (ID 1 is valid)
             for country_id in study_data.countries:
                 if country_id:
-                    logger.info(f"Adding country {country_id}")
                     db.execute(text("INSERT INTO studies_countries (study_id, country_id) VALUES (:study_id, :country_id)"), 
                               {"study_id": study_data.studyId, "country_id": int(country_id)})
             
             # Regions (map invalid IDs to valid ones)
-            region_mapping = {"1": 55}  # Map frontend ID 1 to valid DB ID 55
             for region_id in study_data.regions:
                 if region_id:
-                    db_region_id = region_mapping.get(str(region_id), int(region_id)) if str(region_id) in region_mapping else int(region_id)
-                    logger.info(f"Adding region {region_id} -> {db_region_id}")
+                    db_region_id = int(region_id)
                     try:
                         db.execute(text("INSERT INTO studies_regions (study_id, region_id) VALUES (:study_id, :region_id)"), 
                                   {"study_id": study_data.studyId, "region_id": db_region_id})
                     except Exception as e:
                         logger.warning(f"Failed to insert region {db_region_id}: {e}")
             
-            # Impact Areas (map invalid IDs to valid ones)
-            impact_area_mapping = {"1": 31}  # Map frontend ID 1 to valid DB ID 31
+            # Impact Areas
             if study_data.primaryCGIARImpactArea:
-                db_impact_id = impact_area_mapping.get(str(study_data.primaryCGIARImpactArea), int(study_data.primaryCGIARImpactArea)) if str(study_data.primaryCGIARImpactArea) in impact_area_mapping else int(study_data.primaryCGIARImpactArea)
-                logger.info(f"Adding primary impact area {study_data.primaryCGIARImpactArea} -> {db_impact_id}")
+                db_impact_id = int(study_data.primaryCGIARImpactArea)
                 try:
                     db.execute(text("INSERT INTO studies_impact_areas (studies_study_id, clarisa_impacts_areas_impact_area_id) VALUES (:study_id, :impact_area_id)"), 
                               {"study_id": study_data.studyId, "impact_area_id": db_impact_id})
@@ -1177,8 +1084,7 @@ async def save_complete_study(
             # Impact Areas (Secondary)
             for impact_area_id in study_data.secondaryCGIARImpactAreas:
                 if impact_area_id:
-                    db_impact_id = impact_area_mapping.get(str(impact_area_id), int(impact_area_id)) if str(impact_area_id) in impact_area_mapping else int(impact_area_id)
-                    logger.info(f"Adding secondary impact area {impact_area_id} -> {db_impact_id}")
+                    db_impact_id = int(impact_area_id)
                     try:
                         db.execute(text("INSERT INTO studies_impact_areas (studies_study_id, clarisa_impacts_areas_impact_area_id) VALUES (:study_id, :impact_area_id)"), 
                                   {"study_id": study_data.studyId, "impact_area_id": db_impact_id})
@@ -1188,7 +1094,6 @@ async def save_complete_study(
             # Keywords (ID 1 is valid)
             for keyword_id in study_data.keywords:
                 if keyword_id:
-                    logger.info(f"Adding keyword {keyword_id}")
                     try:
                         db.execute(text("INSERT INTO studies_keywords (study_id, keyword_id) VALUES (:study_id, :keyword_id)"), 
                                   {"study_id": study_data.studyId, "keyword_id": int(keyword_id)})
@@ -1196,11 +1101,9 @@ async def save_complete_study(
                         logger.warning(f"Failed to insert keyword {keyword_id}: {e}")
             
             # Crop Types (map invalid IDs to valid ones)
-            crop_mapping = {"1": 736}  # Map frontend ID 1 to valid DB ID 736 (All / not specific)
             for crop_id in study_data.cropProductType:
                 if crop_id:
-                    db_crop_id = crop_mapping.get(str(crop_id), int(crop_id)) if str(crop_id) in crop_mapping else int(crop_id)
-                    logger.info(f"Adding crop type {crop_id} -> {db_crop_id}")
+                    db_crop_id = int(crop_id)
                     try:
                         db.execute(text("INSERT INTO studies_crop_types (study_id, crop_type_id) VALUES (:study_id, :crop_id)"), 
                                   {"study_id": study_data.studyId, "crop_id": db_crop_id})
@@ -1223,9 +1126,7 @@ async def save_complete_study(
                     "result_reported": indicator.get("resultReported", "")
                 })
             
-            logger.info(f"Committing transaction for study {study_data.studyId}")
             db.commit()
-            logger.info(f"Successfully committed study {study_data.studyId}")
             
             return {
                 "success": True,
@@ -1246,12 +1147,6 @@ async def save_complete_study(
             # Return error instead of falling back to mock
             raise HTTPException(status_code=500, detail=f"Database error: {str(e)}")
     
-    # Mock response if database fails
-    return {
-        "success": True,
-        "message": f"Study saved successfully (mock - user: {current_user})",
-        "data": {"study_id": study_data.studyId}
-    }
 
 @router.delete("/{study_id}", response_model=Dict[str, Any])
 async def delete_study(

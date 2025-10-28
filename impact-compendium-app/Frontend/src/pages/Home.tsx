@@ -141,76 +141,28 @@ export const Home: React.FC = () => {
                 </svg>
               </div>
               <div className="flex flex-col gap-4">
-                <h3 className="text-[#333333] text-xl leading-[30px] tracking-[-0.45px] font-normal">View Analytics</h3>
+                <h3 className="text-[#333333] text-xl leading-[30px] tracking-[-0.45px] font-normal">CGIAR Results Dashboard</h3>
                 <p className="text-[#777777] text-sm leading-[22px] tracking-[-0.15px] font-normal">
-                  Track insights and metrics across your research portfolio with comprehensive analytics dashboard.
+                  Explore comprehensive impact data and insights from CGIAR's global research initiatives and outcomes.
                 </p>
-                <button className="flex items-center gap-2 text-[#D19F2A] text-sm leading-[21px] tracking-[-0.15px] font-normal">
-                  See Insights
+                <a 
+                  href="https://www.cgiar.org/food-security-impact/results-dashboard/" 
+                  target="_blank" 
+                  rel="noopener noreferrer"
+                  className="flex items-center gap-2 text-[#D19F2A] text-sm leading-[21px] tracking-[-0.15px] font-normal hover:underline"
+                >
+                  View Dashboard
                   <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.33} d="M9 5l7 7-7 7" />
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="1.33" d="M9 5l7 7-7 7"></path>
                   </svg>
-                </button>
+                </a>
               </div>
-            </div>
-          </div>
-        </div>
-
-        {/* Data Overview Section */}
-        <div className="w-full flex flex-col gap-6">
-          <div className="flex flex-col gap-1">
-            <h2 className="text-[#333333] text-2xl leading-9 tracking-[0.07px] font-normal">Data Overview</h2>
-            <p className="text-[#777777] text-[15px] leading-[22px] tracking-[-0.23px] font-normal">
-              Insights with real-time data updates
-            </p>
-          </div>
-
-          {/* Stats Cards */}
-          <div className="flex gap-6">
-            <div className="w-[372px] h-[143px] bg-white rounded-2xl shadow-[0px_2px_12px_rgba(0,0,0,0.06)] p-6 flex flex-col justify-between">
-              <div className="flex justify-between items-center">
-                <span className="text-[#777777] text-sm leading-[21px] tracking-[-0.15px] font-normal">Total Studies</span>
-                <svg className="w-5 h-5 text-[#FFC84F]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.67} d="M9 17H7a2 2 0 01-2-2V5a2 2 0 012-2h6l2 2h6a2 2 0 012 2v11a2 2 0 01-2 2h-5m-6 0a2 2 0 002 2h4a2 2 0 002-2m-6 0a2 2 0 012-2h4a2 2 0 012 2m-6 0h6" />
-                </svg>
-              </div>
-              <span className="text-[#333333] text-[28px] leading-[42px] tracking-[0.38px] font-normal">15</span>
-            </div>
-
-            <div className="w-[372px] h-[143px] bg-white rounded-2xl shadow-[0px_2px_12px_rgba(0,0,0,0.06)] p-6 flex flex-col justify-between">
-              <div className="flex justify-between items-center">
-                <span className="text-[#777777] text-sm leading-[21px] tracking-[-0.15px] font-normal">Impact Studies</span>
-                <svg className="w-5 h-5 text-[#F07E28]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.67} d="M13 7h8m0 0v8m0-8l-8 8-4-4-6 6" />
-                </svg>
-              </div>
-              <span className="text-[#333333] text-[28px] leading-[42px] tracking-[0.38px] font-normal">5</span>
-            </div>
-
-            <div className="w-[372px] h-[143px] bg-white rounded-2xl shadow-[0px_2px_12px_rgba(0,0,0,0.06)] p-6 flex flex-col justify-between">
-              <div className="flex justify-between items-center">
-                <span className="text-[#777777] text-sm leading-[21px] tracking-[-0.15px] font-normal">Recent (2024-25)</span>
-                <svg className="w-5 h-5 text-[#D19F2A]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.67} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
-                </svg>
-              </div>
-              <span className="text-[#333333] text-[28px] leading-[42px] tracking-[0.38px] font-normal">0</span>
-            </div>
-
-            <div className="w-[372px] h-[143px] bg-white rounded-2xl shadow-[0px_2px_12px_rgba(0,0,0,0.06)] p-6 flex flex-col justify-between">
-              <div className="flex justify-between items-center">
-                <span className="text-[#777777] text-sm leading-[21px] tracking-[-0.15px] font-normal">Regions</span>
-                <svg className="w-5 h-5 text-[#B96A28]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.67} d="M3.055 11H5a2 2 0 012 2v1a2 2 0 002 2 2 2 0 012 2v2.945M8 3.935V5.5A2.5 2.5 0 0010.5 8h.5a2 2 0 012 2 2 2 0 104 0 2 2 0 012-2h1.064M15 20.488V18a2 2 0 012-2h3.064M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
-                </svg>
-              </div>
-              <span className="text-[#333333] text-[28px] leading-[42px] tracking-[0.38px] font-normal">27</span>
             </div>
           </div>
         </div>
         
-        </div>
       </div>
+    </div>
     </AppLayout>
   );
 };

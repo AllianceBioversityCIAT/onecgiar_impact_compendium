@@ -251,13 +251,6 @@ app.include_router(
     tags=["Authentication"]
 )
 
-# User management (admin only)
-app.include_router(
-    users.router,
-    prefix="/api/users",
-    tags=["User Management"]
-)
-
 # Core studies CRUD operations
 app.include_router(
     studies.router, 

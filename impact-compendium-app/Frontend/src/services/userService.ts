@@ -48,7 +48,7 @@ class UserService {
 
     if (!response.ok) {
       const error = await response.json();
-      throw new Error(error.detail || 'Failed to create user');
+      throw new Error(error.error || error.detail || 'Failed to create user');
     }
 
     return response.json();

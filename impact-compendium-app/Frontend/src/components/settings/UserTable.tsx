@@ -16,7 +16,6 @@ interface UserTableProps {
   onToggleStatus: (username: string, enabled: boolean) => void;
   onDeleteUser: (username: string) => void;
   onResetPassword: (username: string) => void;
-  onEditUser: (user: User) => void;
 }
 
 export const UserTable: React.FC<UserTableProps> = ({
@@ -24,8 +23,7 @@ export const UserTable: React.FC<UserTableProps> = ({
   loading,
   onToggleStatus,
   onDeleteUser,
-  onResetPassword,
-  onEditUser
+  onResetPassword
 }) => {
   const formatDate = (dateString: string) => {
     if (!dateString) return 'N/A';
@@ -111,12 +109,6 @@ export const UserTable: React.FC<UserTableProps> = ({
               </td>
               <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
                 <div className="flex justify-end space-x-2">
-                  <button
-                    onClick={() => onEditUser(user)}
-                    className="px-3 py-1 text-xs font-medium bg-gray-100 text-gray-700 rounded hover:bg-gray-200"
-                  >
-                    Edit
-                  </button>
                   <button
                     onClick={() => onToggleStatus(user.username, !user.enabled)}
                     className={`px-3 py-1 text-xs font-medium rounded ${

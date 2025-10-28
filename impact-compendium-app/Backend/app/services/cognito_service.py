@@ -62,15 +62,19 @@ class CognitoUserService:
     async def create_user(self, email: str, temporary_password: str, send_email: bool = True) -> Dict[str, Any]:
         """Create a new user"""
         try:
+            # Generate a unique username since email aliases are configured
+            import uuid
+            username = f"user_{uuid.uuid4().hex[:8]}"
+            
             response = self.client.admin_create_user(
                 UserPoolId=self.user_pool_id,
-                Username=email,
+                Username=username,
                 UserAttributes=[
                     {'Name': 'email', 'Value': email},
                     {'Name': 'email_verified', 'Value': 'true'}
                 ],
                 TemporaryPassword=temporary_password,
-                MessageAction='SUPPRESS' if not send_email else 'SEND'
+                MessageAction='SUPPRESS' if not send_email else 'RESEND'
             )
             
             return {
@@ -78,7 +82,13 @@ class CognitoUserService:
                 'status': response['User']['UserStatus']
             }
         except ClientError as e:
-            raise Exception(f"Failed to create user: {e}")
+            error_code = e.response['Error']['Code']
+            if error_code == 'UserNotFoundException':
+                raise Exception(f"Unable to create user with email {email}. The email may have been recently deleted and is temporarily unavailable. Please try again in a few minutes or use a different email.")
+            elif error_code == 'UsernameExistsException':
+                raise Exception(f"A user with email {email} already exists")
+            else:
+                raise Exception(f"Failed to create user: {e}")
 
     async def update_user_status(self, username: str, enabled: bool) -> bool:
         """Enable or disable a user"""

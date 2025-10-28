@@ -32,7 +32,7 @@ from dotenv import load_dotenv
 load_dotenv()
 
 # Import application routers
-from app.routers import auth, studies, indicators, admin, reports
+from app.routers import auth, studies, indicators, admin, reports, users
 from app.routers import clarisa, reference, study_relations
 from app.db.connection import db_connection
 from app.utils.logging import setup_logging
@@ -249,6 +249,13 @@ app.include_router(
     auth.router, 
     prefix="/api/auth", 
     tags=["Authentication"]
+)
+
+# User management (Cognito)
+app.include_router(
+    users.router, 
+    prefix="/api", 
+    tags=["User Management"]
 )
 
 # Core studies CRUD operations

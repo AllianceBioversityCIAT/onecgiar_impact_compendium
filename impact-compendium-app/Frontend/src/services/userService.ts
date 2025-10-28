@@ -1,0 +1,95 @@
+interface User {
+  username: string;
+  email: string;
+  status: string;
+  enabled: boolean;
+  created_date: string;
+  last_modified_date: string;
+  mfa_enabled: boolean;
+}
+
+interface CreateUserRequest {
+  email: string;
+  temporaryPassword: string;
+  sendEmail: boolean;
+}
+
+class UserService {
+  private baseURL = import.meta.env.VITE_API_BASE_URL || "http://localhost:8000";
+
+  async listUsers(): Promise<User[]> {
+    const response = await fetch(`${this.baseURL}/api/users`);
+    if (!response.ok) {
+      throw new Error('Failed to fetch users');
+    }
+    return response.json();
+  }
+
+  async getUser(username: string): Promise<User> {
+    const response = await fetch(`${this.baseURL}/api/users/${username}`);
+    if (!response.ok) {
+      throw new Error('Failed to fetch user');
+    }
+    return response.json();
+  }
+
+  async createUser(userData: CreateUserRequest): Promise<{ username: string; status: string }> {
+    const response = await fetch(`${this.baseURL}/api/users`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        email: userData.email,
+        temporary_password: userData.temporaryPassword,
+        send_email: userData.sendEmail
+      })
+    });
+
+    if (!response.ok) {
+      const error = await response.json();
+      throw new Error(error.detail || 'Failed to create user');
+    }
+
+    return response.json();
+  }
+
+  async updateUserStatus(username: string, enabled: boolean): Promise<void> {
+    const response = await fetch(`${this.baseURL}/api/users/${username}/status`, {
+      method: 'PUT',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({ enabled })
+    });
+
+    if (!response.ok) {
+      const error = await response.json();
+      throw new Error(error.detail || 'Failed to update user status');
+    }
+  }
+
+  async deleteUser(username: string): Promise<void> {
+    const response = await fetch(`${this.baseURL}/api/users/${username}`, {
+      method: 'DELETE'
+    });
+
+    if (!response.ok) {
+      const error = await response.json();
+      throw new Error(error.detail || 'Failed to delete user');
+    }
+  }
+
+  async resetPassword(username: string): Promise<void> {
+    const response = await fetch(`${this.baseURL}/api/users/${username}/reset-password`, {
+      method: 'POST'
+    });
+
+    if (!response.ok) {
+      const error = await response.json();
+      throw new Error(error.detail || 'Failed to reset password');
+    }
+  }
+}
+
+export const userService = new UserService();

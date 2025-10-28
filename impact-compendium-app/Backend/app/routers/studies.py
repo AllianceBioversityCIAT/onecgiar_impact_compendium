@@ -934,7 +934,7 @@ async def save_complete_study(
     logger.info(f"Study data: {study_data.dict()}")
     
     # Get current logged-in user email
-    user_email = current_user.get("email", "system")
+    user_email = current_user.get("email") or current_user.get("username", "system")
     
     # Try to save to database first
     if db:

@@ -132,6 +132,7 @@ class CognitoAuth:
         """Extract user information from token payload"""
         return {
             "user_id": token_payload.get("sub"),
+            "username": token_payload.get("username"),
             "email": token_payload.get("email"),
             "name": token_payload.get("name", token_payload.get("email")),
             "groups": token_payload.get("cognito:groups", []),

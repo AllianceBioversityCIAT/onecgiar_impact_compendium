@@ -312,16 +312,10 @@ export const Dashboard: React.FC = () => {
     
     setDeleting(true);
     try {
-      const response = await fetch(`${import.meta.env.VITE_API_BASE_URL || 'http://localhost:8000'}/api/studies/${studyToDelete.id}`, {
-        method: 'DELETE'
-      });
+      await studyAPI.delete(studyToDelete.id.toString());
       
-      if (response.ok) {
-        // Refresh the studies list
-        fetchStudies(searchParams);
-      } else {
-        alert('Failed to delete study');
-      }
+      // Refresh the studies list
+      fetchStudies(searchParams);
     } catch (error) {
       console.error('Error deleting study:', error);
       alert('Error deleting study');

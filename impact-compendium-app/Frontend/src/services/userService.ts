@@ -1,3 +1,5 @@
+import { authService } from './auth';
+
 interface User {
   username: string;
   email: string;
@@ -18,7 +20,8 @@ class UserService {
   private baseURL = import.meta.env.VITE_API_BASE_URL || "http://localhost:8000";
 
   async listUsers(): Promise<User[]> {
-    const response = await fetch(`${this.baseURL}/api/users`);
+    const headers = await authService.getAuthHeaders();
+    const response = await fetch(`${this.baseURL}/api/users`, { headers });
     if (!response.ok) {
       throw new Error('Failed to fetch users');
     }

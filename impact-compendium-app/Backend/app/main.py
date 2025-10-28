@@ -279,6 +279,13 @@ app.include_router(
     tags=["Reports"]
 )
 
+# User management
+app.include_router(
+    users.router, 
+    prefix="/api/users", 
+    tags=["User Management"]
+)
+
 # CLARISA reference data integration
 app.include_router(
     clarisa.router, 

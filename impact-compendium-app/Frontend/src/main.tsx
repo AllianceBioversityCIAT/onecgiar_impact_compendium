@@ -45,6 +45,7 @@ import { Login } from './pages/Login';
 import { Home } from './pages/Home';
 import { Dashboard } from './pages/Dashboard';
 import { Studies } from './pages/Studies';
+import { Settings } from './pages/Settings';
 import { CreateStudyStep1 } from './pages/CreateStudy/Step1';
 import { CreateStudyStep2 } from './pages/CreateStudy/Step2';
 import { CreateStudyStep3 } from './pages/CreateStudy/Step3';
@@ -84,6 +85,12 @@ function App(): JSX.Element {
         <Route path="/studies" element={
           <ProtectedRoute>
             <Studies />
+          </ProtectedRoute>
+        } />
+        
+        <Route path="/settings" element={
+          <ProtectedRoute>
+            <Settings />
           </ProtectedRoute>
         } />
         

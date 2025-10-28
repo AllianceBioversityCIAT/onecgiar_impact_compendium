@@ -22,6 +22,7 @@ class Study(Base):
     pdf_filename = Column(String(255))
     category_id = Column(Integer, ForeignKey("study_categories.id"))
     status = Column(String(50), default="draft")
+    created_by = Column(String(255))
     created_at = Column(DateTime, server_default=func.now())
     updated_at = Column(DateTime, server_default=func.now(), onupdate=func.now())
     is_active = Column(Boolean, default=True)
@@ -31,4 +32,3 @@ class Study(Base):
     indicators = relationship("StudyIndicator", back_populates="study")
     keywords = relationship("StudyKeyword", back_populates="study")
     narratives = relationship("Narrative", back_populates="study")
-    crops = relationship("CropType", secondary="studies_crop_types", back_populates="studies")

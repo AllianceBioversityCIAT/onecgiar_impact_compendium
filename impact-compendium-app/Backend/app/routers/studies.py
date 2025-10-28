@@ -16,18 +16,23 @@ router = APIRouter()
 
 def get_current_user_from_request(request: Request) -> str:
     """Extract current user from request headers or authentication"""
-    # Try to get from Authorization header
-    auth_header = request.headers.get("authorization", "")
-    if auth_header:
-        # Check for user info in other headers that frontend might send
-        user_email = request.headers.get("x-user-email", "")
-        if user_email:
-            return user_email
-            
-        # Check for user info in cookies
-        user_cookie = request.cookies.get("user_email", "")
-        if user_cookie:
-            return user_cookie
+    # Debug: log all headers to see what's being sent
+    logger.debug(f"Request headers: {dict(request.headers)}")
+    
+    # Check for user info in headers that frontend might send
+    user_email = request.headers.get("x-user-email", "")
+    if user_email:
+        return user_email
+        
+    # Check for user info in cookies
+    user_cookie = request.cookies.get("user_email", "")
+    if user_cookie:
+        return user_cookie
+    
+    # Check other common header names
+    user_header = request.headers.get("user-email", "")
+    if user_header:
+        return user_header
     
     # Fallback to system user
     return "system"

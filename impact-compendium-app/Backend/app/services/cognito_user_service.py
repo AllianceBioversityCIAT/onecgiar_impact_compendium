@@ -5,11 +5,17 @@ AWS Cognito User Pool management service
 import os
 import boto3
 import uuid
+import json
+import random
+import string
+import subprocess
 from typing import Dict, Any, List
 from botocore.exceptions import ClientError
 import logging
+from app.utils.email_utils import extract_username_from_email, generate_readable_username
 
 logger = logging.getLogger(__name__)
+logger.info("🔄 CognitoUserService module loading...")
 
 class CognitoUserService:
     def __init__(self):
@@ -21,7 +27,30 @@ class CognitoUserService:
             self.mock_mode = True
         else:
             self.mock_mode = False
-            self.client = boto3.client('cognito-idp', region_name=self.region)
+            # Force AWS profile in environment
+            os.environ['AWS_PROFILE'] = 'IBD-DEV'
+            os.environ['AWS_DEFAULT_REGION'] = self.region
+            
+            # Create session with explicit profile
+            import boto3
+            session = boto3.Session(profile_name='IBD-DEV', region_name=self.region)
+            self.client = session.client('cognito-idp')
+            
+            logger.info(f"🔧 Initialized Cognito client with explicit IBD-DEV profile, region: {self.region}")
+            
+            # Test AWS credentials immediately
+            try:
+                response = self.client.describe_user_pool(UserPoolId=self.user_pool_id)
+                logger.info(f"✅ AWS credentials test PASSED - User Pool: {response['UserPool']['Name']}")
+            except Exception as e:
+                logger.error(f"❌ AWS credentials test FAILED: {e}")
+                # Try to get caller identity for debugging
+                try:
+                    sts_client = session.client('sts')
+                    identity = sts_client.get_caller_identity()
+                    logger.error(f"🔍 Current AWS identity: {identity}")
+                except Exception as sts_error:
+                    logger.error(f"🔍 Cannot get AWS identity: {sts_error}")
 
     def list_users(self) -> List[Dict[str, Any]]:
         """List all users in the User Pool"""
@@ -37,14 +66,26 @@ class CognitoUserService:
                     'username': user['Username'],
                     'status': user['UserStatus'],
                     'enabled': user['Enabled'],
-                    'created': user['UserCreateDate'].isoformat() if 'UserCreateDate' in user else None,
-                    'modified': user['UserLastModifiedDate'].isoformat() if 'UserLastModifiedDate' in user else None,
-                    'attributes': {}
+                    'created_date': user['UserCreateDate'].isoformat() if 'UserCreateDate' in user else None,
+                    'last_modified_date': user['UserLastModifiedDate'].isoformat() if 'UserLastModifiedDate' in user else None,
+                    'mfa_enabled': user.get('MFAOptions', []) != [],
+                    'email': None  # Will be populated from attributes
                 }
                 
                 # Extract user attributes
                 for attr in user.get('Attributes', []):
-                    user_data['attributes'][attr['Name']] = attr['Value']
+                    if attr['Name'] == 'email':
+                        user_data['email'] = attr['Value']
+                
+                # Get user groups
+                try:
+                    groups_response = self.client.admin_list_groups_for_user(
+                        UserPoolId=self.user_pool_id,
+                        Username=user['Username']
+                    )
+                    user_data['groups'] = [group['GroupName'] for group in groups_response.get('Groups', [])]
+                except ClientError:
+                    user_data['groups'] = []
                 
                 users.append(user_data)
             
@@ -54,39 +95,7 @@ class CognitoUserService:
             logger.error(f"Error listing users: {e}")
             raise e
 
-    def create_user(self, email: str, name: str, role: str = "researcher") -> Dict[str, Any]:
-        """Create a new user in the User Pool"""
-        if self.mock_mode:
-            return self._mock_create_user(email, name, role)
-        
-        try:
-            # Generate unique username since we use email aliases
-            username = f"user_{uuid.uuid4().hex[:8]}"
-            
-            response = self.client.admin_create_user(
-                UserPoolId=self.user_pool_id,
-                Username=username,
-                UserAttributes=[
-                    {'Name': 'email', 'Value': email},
-                    {'Name': 'name', 'Value': name},
-                    {'Name': 'custom:role', 'Value': role},
-                    {'Name': 'email_verified', 'Value': 'true'}
-                ],
-                MessageAction='RESEND',
-                DesiredDeliveryMediums=['EMAIL']
-            )
-            
-            return {
-                'username': username,
-                'email': email,
-                'name': name,
-                'role': role,
-                'status': 'FORCE_CHANGE_PASSWORD'
-            }
-            
-        except ClientError as e:
-            logger.error(f"Error creating user: {e}")
-            raise e
+
 
     def update_user(self, username: str, name: str, role: str) -> Dict[str, Any]:
         """Update user attributes"""
@@ -183,38 +192,27 @@ class CognitoUserService:
         return [
             {
                 'username': 'user_12345678',
+                'email': 'admin@example.com',
                 'status': 'CONFIRMED',
                 'enabled': True,
-                'created': '2024-01-01T00:00:00Z',
-                'modified': '2024-01-01T00:00:00Z',
-                'attributes': {
-                    'email': 'admin@example.com',
-                    'name': 'Admin User',
-                    'custom:role': 'admin'
-                }
+                'created_date': '2024-01-01T00:00:00Z',
+                'last_modified_date': '2024-01-01T00:00:00Z',
+                'mfa_enabled': False,
+                'groups': ['admin']
             },
             {
                 'username': 'user_87654321',
+                'email': 'researcher@example.com',
                 'status': 'CONFIRMED',
                 'enabled': True,
-                'created': '2024-01-02T00:00:00Z',
-                'modified': '2024-01-02T00:00:00Z',
-                'attributes': {
-                    'email': 'researcher@example.com',
-                    'name': 'Researcher User',
-                    'custom:role': 'researcher'
-                }
+                'created_date': '2024-01-02T00:00:00Z',
+                'last_modified_date': '2024-01-02T00:00:00Z',
+                'mfa_enabled': True,
+                'groups': ['researchers']
             }
         ]
 
-    def _mock_create_user(self, email: str, name: str, role: str) -> Dict[str, Any]:
-        return {
-            'username': f'user_{uuid.uuid4().hex[:8]}',
-            'email': email,
-            'name': name,
-            'role': role,
-            'status': 'FORCE_CHANGE_PASSWORD'
-        }
+
 
     def _mock_update_user(self, username: str, name: str, role: str) -> Dict[str, Any]:
         return {
@@ -240,16 +238,16 @@ class CognitoUserService:
     def _mock_list_groups(self) -> List[Dict[str, Any]]:
         return [
             {
-                'group_name': 'admin',
-                'description': 'Administrators group',
-                'created': '2024-01-01T00:00:00Z',
-                'modified': '2024-01-01T00:00:00Z'
+                'GroupName': 'admin',
+                'Description': 'Administrators group',
+                'CreationDate': '2024-01-01T00:00:00Z',
+                'LastModifiedDate': '2024-01-01T00:00:00Z'
             },
             {
-                'group_name': 'researchers',
-                'description': 'Researchers group',
-                'created': '2024-01-01T00:00:00Z',
-                'modified': '2024-01-01T00:00:00Z'
+                'GroupName': 'researchers',
+                'Description': 'Researchers group',
+                'CreationDate': '2024-01-01T00:00:00Z',
+                'LastModifiedDate': '2024-01-01T00:00:00Z'
             }
         ]
 
@@ -273,6 +271,8 @@ class CognitoUserService:
             'group_name': group_name,
             'removed': True
         }
+
+    def list_groups(self) -> List[Dict[str, Any]]:
         """List all groups in the User Pool"""
         if self.mock_mode:
             return self._mock_list_groups()
@@ -283,16 +283,124 @@ class CognitoUserService:
             
             for group in response.get('Groups', []):
                 groups.append({
-                    'group_name': group['GroupName'],
-                    'description': group.get('Description', ''),
-                    'created': group['CreationDate'].isoformat() if 'CreationDate' in group else None,
-                    'modified': group['LastModifiedDate'].isoformat() if 'LastModifiedDate' in group else None
+                    'GroupName': group['GroupName'],
+                    'Description': group.get('Description', ''),
+                    'CreationDate': group['CreationDate'].isoformat() if 'CreationDate' in group else None,
+                    'LastModifiedDate': group['LastModifiedDate'].isoformat() if 'LastModifiedDate' in group else None
                 })
             
             return groups
             
         except ClientError as e:
             logger.error(f"Error listing groups: {e}")
+            raise e
+
+    def create_user(self, email: str, temporary_password: str, send_email: bool = True) -> Dict[str, Any]:
+        """Create a new user in the User Pool using AWS CLI"""
+        if self.mock_mode:
+            return self._mock_create_user(email, temporary_password, send_email)
+        
+        try:
+            # Generate readable username from email
+            base_username = generate_readable_username(email)
+            username = base_username
+            
+            logger.info(f"Creating user via AWS CLI: {username}, email: {email}")
+            
+            cmd = [
+                'aws', 'cognito-idp', 'admin-create-user',
+                '--user-pool-id', self.user_pool_id,
+                '--username', username,
+                '--user-attributes', f'Name=email,Value={email}', f'Name=name,Value={base_username}', 'Name=email_verified,Value=true',
+                '--temporary-password', temporary_password,
+                '--message-action', 'RESEND' if send_email else 'SUPPRESS',
+                '--profile', 'IBD-DEV',
+                '--region', 'us-east-1'
+            ]
+            
+            if send_email:
+                cmd.extend(['--desired-delivery-mediums', 'EMAIL'])
+            
+            result = subprocess.run(cmd, capture_output=True, text=True, check=True)
+            response = json.loads(result.stdout)
+            
+            logger.info(f"User created successfully via CLI: {username}")
+            return {
+                'username': response['User']['Username'],
+                'email': email,
+                'status': response['User']['UserStatus'],
+                'created': response['User']['UserCreateDate']
+            }
+            
+        except subprocess.CalledProcessError as e:
+            logger.error(f"AWS CLI error creating user: {e.stderr}")
+            raise Exception(f"Failed to create user: {e.stderr}")
+        except Exception as e:
+            logger.error(f"Error creating user: {str(e)}")
+            raise Exception(f"Failed to create user: {str(e)}")
+
+    def create_group(self, group_name: str, description: str) -> Dict[str, Any]:
+        """Create a new group in the User Pool"""
+        if self.mock_mode:
+            return self._mock_create_group(group_name, description)
+        
+        try:
+            response = self.client.create_group(
+                GroupName=group_name,
+                UserPoolId=self.user_pool_id,
+                Description=description
+            )
+            return {
+                'GroupName': response['Group']['GroupName'],
+                'Description': response['Group'].get('Description', ''),
+                'CreationDate': response['Group']['CreationDate'].isoformat()
+            }
+        except ClientError as e:
+            logger.error(f"Error creating group: {e}")
+            raise e
+
+    def delete_group(self, group_name: str) -> None:
+        """Delete a group from the User Pool"""
+        if self.mock_mode:
+            return self._mock_delete_group(group_name)
+        
+        try:
+            self.client.delete_group(
+                GroupName=group_name,
+                UserPoolId=self.user_pool_id
+            )
+        except ClientError as e:
+            logger.error(f"Error deleting group: {e}")
+            raise e
+
+    def add_user_to_group(self, username: str, group_name: str) -> None:
+        """Add a user to a group"""
+        if self.mock_mode:
+            return self._mock_add_user_to_group(username, group_name)
+        
+        try:
+            self.client.admin_add_user_to_group(
+                UserPoolId=self.user_pool_id,
+                Username=username,
+                GroupName=group_name
+            )
+        except ClientError as e:
+            logger.error(f"Error adding user to group: {e}")
+            raise e
+
+    def remove_user_from_group(self, username: str, group_name: str) -> None:
+        """Remove a user from a group"""
+        if self.mock_mode:
+            return self._mock_remove_user_from_group(username, group_name)
+        
+        try:
+            self.client.admin_remove_user_from_group(
+                UserPoolId=self.user_pool_id,
+                Username=username,
+                GroupName=group_name
+            )
+        except ClientError as e:
+            logger.error(f"Error removing user from group: {e}")
             raise e
 
     def create_group(self, group_name: str, description: str = "") -> Dict[str, Any]:
@@ -360,3 +468,87 @@ class CognitoUserService:
         except ClientError as e:
             logger.error(f"Error removing user from group: {e}")
             raise e
+
+    def _mock_create_group(self, group_name: str, description: str) -> Dict[str, Any]:
+        return {
+            'GroupName': group_name,
+            'Description': description,
+            'CreationDate': '2024-01-01T00:00:00Z'
+        }
+
+    def _mock_delete_group(self, group_name: str) -> None:
+        pass
+
+    def _mock_add_user_to_group(self, username: str, group_name: str) -> None:
+        pass
+
+    def _mock_remove_user_from_group(self, username: str, group_name: str) -> None:
+        pass
+
+    def reset_user_password(self, username: str) -> None:
+        """Reset user password (force password change)"""
+        if self.mock_mode:
+            return self._mock_reset_user_password(username)
+        
+        try:
+            self.client.admin_reset_user_password(
+                UserPoolId=self.user_pool_id,
+                Username=username
+            )
+        except ClientError as e:
+            logger.error(f"Error resetting user password: {e}")
+            raise e
+
+    def update_user_status(self, username: str, enabled: bool) -> None:
+        """Enable or disable a user"""
+        if self.mock_mode:
+            return self._mock_update_user_status(username, enabled)
+        
+        try:
+            if enabled:
+                self.client.admin_enable_user(
+                    UserPoolId=self.user_pool_id,
+                    Username=username
+                )
+            else:
+                self.client.admin_disable_user(
+                    UserPoolId=self.user_pool_id,
+                    Username=username
+                )
+        except ClientError as e:
+            logger.error(f"Error updating user status: {e}")
+            raise e
+
+    def delete_user(self, username: str) -> None:
+        """Delete a user from the User Pool"""
+        if self.mock_mode:
+            return self._mock_delete_user(username)
+        
+        try:
+            self.client.admin_delete_user(
+                UserPoolId=self.user_pool_id,
+                Username=username
+            )
+        except ClientError as e:
+            logger.error(f"Error deleting user: {e}")
+            raise e
+
+    def _mock_delete_user(self, username: str) -> None:
+        pass
+
+    def _mock_update_user_status(self, username: str, enabled: bool) -> None:
+        pass
+
+    def _mock_reset_user_password(self, username: str) -> None:
+        pass
+
+    def _mock_create_user(self, email: str, temporary_password: str, send_email: bool) -> Dict[str, Any]:
+        import random
+        import string
+        username = email.split('@')[0] + '_' + ''.join(random.choices(string.ascii_lowercase + string.digits, k=8))
+        return {
+            'username': username,
+            'email': email,
+            'status': 'FORCE_CHANGE_PASSWORD',
+            'created': '2024-01-01T00:00:00Z'
+        }

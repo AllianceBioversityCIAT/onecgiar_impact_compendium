@@ -21,7 +21,7 @@ class UserService {
 
   async listUsers(): Promise<User[]> {
     const headers = await authService.getAuthHeaders();
-    const response = await fetch(`${this.baseURL}/api/users`, { headers });
+    const response = await fetch(`${this.baseURL}/api/users/`, { headers });
     if (!response.ok) {
       throw new Error('Failed to fetch users');
     }
@@ -37,30 +37,53 @@ class UserService {
   }
 
   async createUser(userData: CreateUserRequest): Promise<{ username: string; status: string }> {
-    const response = await fetch(`${this.baseURL}/api/users`, {
+    console.log('🚀 Creating user with userData:', userData);
+    const headers = await authService.getAuthHeaders();
+    console.log('📋 Request headers:', headers);
+    
+    const requestBody = {
+      email: userData.email,
+      temporary_password: userData.temporaryPassword,
+      send_email: userData.sendEmail
+    };
+    console.log('📦 Request body being sent:', requestBody);
+    console.log('📦 Request body JSON:', JSON.stringify(requestBody, null, 2));
+    
+    const response = await fetch(`${this.baseURL}/api/users/`, {
       method: 'POST',
       headers: {
+        ...headers,
         'Content-Type': 'application/json',
       },
-      body: JSON.stringify({
-        email: userData.email,
-        temporary_password: userData.temporaryPassword,
-        send_email: userData.sendEmail
-      })
+      body: JSON.stringify(requestBody)
     });
 
+    console.log('📡 Response status:', response.status, response.statusText);
+    console.log('📡 Response headers:', Object.fromEntries(response.headers.entries()));
+
     if (!response.ok) {
-      const error = await response.json();
+      let error;
+      try {
+        error = await response.json();
+        console.error('❌ API Error Response:', error);
+      } catch (parseError) {
+        console.error('❌ Failed to parse error response:', parseError);
+        error = { error: `HTTP ${response.status}: ${response.statusText}` };
+      }
       throw new Error(error.error || error.detail || 'Failed to create user');
     }
 
-    return response.json();
+    const result = await response.json();
+    console.log('✅ User created successfully:', result);
+    return result;
   }
 
   async updateUserStatus(username: string, enabled: boolean): Promise<void> {
+    const headers = await authService.getAuthHeaders();
     const response = await fetch(`${this.baseURL}/api/users/${username}/status`, {
       method: 'PUT',
       headers: {
+        ...headers,
         'Content-Type': 'application/json',
       },
       body: JSON.stringify({ enabled })
@@ -73,8 +96,10 @@ class UserService {
   }
 
   async deleteUser(username: string): Promise<void> {
+    const headers = await authService.getAuthHeaders();
     const response = await fetch(`${this.baseURL}/api/users/${username}`, {
-      method: 'DELETE'
+      method: 'DELETE',
+      headers
     });
 
     if (!response.ok) {
@@ -84,8 +109,10 @@ class UserService {
   }
 
   async resetPassword(username: string): Promise<void> {
+    const headers = await authService.getAuthHeaders();
     const response = await fetch(`${this.baseURL}/api/users/${username}/reset-password`, {
-      method: 'POST'
+      method: 'POST',
+      headers
     });
 
     if (!response.ok) {

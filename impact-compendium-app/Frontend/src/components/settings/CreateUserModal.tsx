@@ -26,6 +26,8 @@ export const CreateUserModal: React.FC<CreateUserModalProps> = ({ onClose, onSub
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     
+    console.log('🚀 Form submitted with data:', formData);
+    
     if (!formData.email || !formData.temporaryPassword) {
       setError('Email and temporary password are required');
       return;
@@ -34,8 +36,11 @@ export const CreateUserModal: React.FC<CreateUserModalProps> = ({ onClose, onSub
     try {
       setLoading(true);
       setError(null);
+      console.log('📤 Calling onSubmit with:', formData);
       await onSubmit(formData);
+      console.log('✅ User created successfully');
     } catch (err) {
+      console.error('❌ Error creating user:', err);
       setError(err instanceof Error ? err.message : 'Failed to create user');
     } finally {
       setLoading(false);

@@ -28,6 +28,10 @@ from mangum import Mangum
 import logging
 from dotenv import load_dotenv
 
+# Set AWS profile BEFORE any other imports
+os.environ['AWS_PROFILE'] = 'IBD-DEV'
+os.environ['AWS_DEFAULT_REGION'] = 'us-east-1'
+
 # Load environment variables from .env file
 load_dotenv()
 

@@ -1,11 +1,13 @@
 import React, { useState } from 'react';
-import { confirmSignIn } from 'aws-amplify/auth';
+import { useNavigate } from 'react-router-dom';
+import { authService } from '../services/auth';
 
 interface PasswordChangeProps {
   onBack: () => void;
 }
 
 export const PasswordChange: React.FC<PasswordChangeProps> = ({ onBack }) => {
+  const navigate = useNavigate();
   const [newPassword, setNewPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
   const [isLoading, setIsLoading] = useState(false);
@@ -35,9 +37,11 @@ export const PasswordChange: React.FC<PasswordChangeProps> = ({ onBack }) => {
 
     setIsLoading(true);
     try {
-      await confirmSignIn({ challengeResponse: newPassword });
-      setSuccess('Password changed successfully! You can now login.');
-      setTimeout(() => onBack(), 2000);
+      await authService.confirmNewPassword(newPassword);
+      setSuccess('Password changed successfully! Redirecting to dashboard...');
+      setTimeout(() => {
+        navigate('/');
+      }, 2000);
     } catch (error: any) {
       setError(error.message || 'Failed to change password');
     } finally {

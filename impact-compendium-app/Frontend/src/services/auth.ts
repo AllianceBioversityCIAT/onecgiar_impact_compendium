@@ -18,6 +18,7 @@ interface AuthResponse {
 class AuthService {
   private tokenKey = 'ic_access_token';
   private userKey = 'ic_user';
+  private pendingSignInKey = 'ic_pending_signin';
   private baseURL = import.meta.env.VITE_API_BASE_URL || "http://localhost:8000";
 
   async login(credentials: LoginCredentials): Promise<AuthResponse> {
@@ -64,42 +65,14 @@ class AuthService {
         
         return authData;
       } else if (signInResult.nextStep?.signInStep === 'CONFIRM_SIGN_IN_WITH_NEW_PASSWORD_REQUIRED') {
-        // User needs to set a new password - generate a secure one
-        const newPassword = this.generateSecurePassword();
+        // Store pending sign-in info for password change
+        localStorage.setItem(this.pendingSignInKey, JSON.stringify({
+          email: credentials.email,
+          username: username
+        }));
         
-        const confirmResult = await confirmSignIn({
-          challengeResponse: newPassword,
-        });
-        
-        if (confirmResult.isSignedIn) {
-          const session = await fetchAuthSession();
-          const user = await getCurrentUser();
-          
-          // Notify user about password change through secure means
-          console.log('Password has been automatically generated. Please check your secure communication channel.');
-          
-          const tokens = session.tokens;
-          if (!tokens) {
-            throw new Error('No tokens received from Cognito');
-          }
-
-          const authData = {
-            access_token: tokens.accessToken.toString(),
-            id_token: tokens.idToken?.toString() || '',
-            refresh_token: tokens.refreshToken?.toString() || '',
-            user: {
-              email: user.signInDetails?.loginId || credentials.email,
-              sub: user.userId,
-            },
-          };
-
-          localStorage.setItem(this.tokenKey, authData.access_token);
-          localStorage.setItem(this.userKey, JSON.stringify(authData.user));
-          
-          return authData;
-        } else {
-          throw new Error('Password change was not completed');
-        }
+        // User needs to set a new password - throw specific error to trigger password change UI
+        throw new Error('NEW_PASSWORD_REQUIRED');
       } else {
         throw new Error('Sign in was not completed');
       }
@@ -180,24 +153,56 @@ class AuthService {
     }
   }
 
-  private generateSecurePassword(): string {
-    const length = 16;
-    const charset = 'abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789!@#$%^&*';
-    let password = '';
-    
-    // Ensure at least one character from each required category
-    password += 'ABCDEFGHIJKLMNOPQRSTUVWXYZ'[Math.floor(Math.random() * 26)]; // uppercase
-    password += 'abcdefghijklmnopqrstuvwxyz'[Math.floor(Math.random() * 26)]; // lowercase
-    password += '0123456789'[Math.floor(Math.random() * 10)]; // number
-    password += '!@#$%^&*'[Math.floor(Math.random() * 8)]; // special
-    
-    // Fill the rest randomly
-    for (let i = 4; i < length; i++) {
-      password += charset[Math.floor(Math.random() * charset.length)];
+  async confirmNewPassword(newPassword: string): Promise<AuthResponse> {
+    try {
+      const confirmResult = await confirmSignIn({
+        challengeResponse: newPassword,
+      });
+      
+      if (confirmResult.isSignedIn) {
+        const session = await fetchAuthSession();
+        const user = await getCurrentUser();
+        
+        const tokens = session.tokens;
+        if (!tokens) {
+          throw new Error('No tokens received from Cognito');
+        }
+
+        const pendingSignIn = localStorage.getItem(this.pendingSignInKey);
+        const email = pendingSignIn ? JSON.parse(pendingSignIn).email : user.signInDetails?.loginId;
+
+        const authData = {
+          access_token: tokens.accessToken.toString(),
+          id_token: tokens.idToken?.toString() || '',
+          refresh_token: tokens.refreshToken?.toString() || '',
+          user: {
+            email: email || '',
+            sub: user.userId,
+          },
+        };
+
+        localStorage.setItem(this.tokenKey, authData.access_token);
+        localStorage.setItem(this.userKey, JSON.stringify(authData.user));
+        localStorage.removeItem(this.pendingSignInKey);
+        
+        return authData;
+      } else {
+        throw new Error('Password change was not completed');
+      }
+    } catch (error: any) {
+      console.error('Password confirmation error:', error);
+      throw new Error(error.message || 'Failed to confirm new password');
     }
-    
-    // Shuffle the password
-    return password.split('').sort(() => Math.random() - 0.5).join('');
+  }
+
+  getPendingSignIn() {
+    const pendingStr = localStorage.getItem(this.pendingSignInKey);
+    if (!pendingStr) return null;
+    try {
+      return JSON.parse(pendingStr);
+    } catch {
+      return null;
+    }
   }
 }
 

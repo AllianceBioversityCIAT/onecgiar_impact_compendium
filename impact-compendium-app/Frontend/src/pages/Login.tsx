@@ -50,7 +50,15 @@ export const Login: React.FC = () => {
       // Redirect to main page after successful login
       navigate('/');
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Login failed');
+      const errorMessage = err instanceof Error ? err.message : 'Login failed';
+      
+      // Check if user needs to change password
+      if (errorMessage === 'NEW_PASSWORD_REQUIRED') {
+        setShowPasswordChange(true);
+        return;
+      }
+      
+      setError(errorMessage);
     } finally {
       setLoading(false);
     }

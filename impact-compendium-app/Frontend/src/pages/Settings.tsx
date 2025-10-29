@@ -1,14 +1,16 @@
 import React, { useState } from 'react';
 import { AppLayout } from '../layouts/AppLayout';
 import { UserManagement } from '../components/settings/UserManagement';
+import { GroupManagement } from '../components/settings/GroupManagement';
 
-type SettingsTab = 'users' | 'general' | 'security';
+type SettingsTab = 'users' | 'groups' | 'general' | 'security';
 
 export const Settings: React.FC = () => {
   const [activeTab, setActiveTab] = useState<SettingsTab>('users');
 
   const tabs = [
     { id: 'users' as SettingsTab, label: 'User Management', icon: '👥' },
+    { id: 'groups' as SettingsTab, label: 'Group Management', icon: '🏷️' },
     { id: 'general' as SettingsTab, label: 'General', icon: '⚙️' },
     { id: 'security' as SettingsTab, label: 'Security', icon: '🔒' }
   ];
@@ -17,6 +19,8 @@ export const Settings: React.FC = () => {
     switch (activeTab) {
       case 'users':
         return <UserManagement />;
+      case 'groups':
+        return <GroupManagement />;
       case 'general':
         return (
           <div className="p-6">

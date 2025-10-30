@@ -13,10 +13,10 @@ if [[ "$ENVIRONMENT" != "testing" && "$ENVIRONMENT" != "production" ]]; then
     exit 1
 fi
 
-echo "🚀 Deploying IGAD to $ENVIRONMENT environment..."
+echo "🚀 Deploying Impact Compendium to $ENVIRONMENT environment..."
 echo "Profile: IBD-DEV"
 echo "Region: us-east-1"
-echo "Stack: igad-$ENVIRONMENT"
+echo "Stack: impact-compendium-$ENVIRONMENT"
 
 # Navigate to Infrastructure directory
 cd "$(dirname "$0")/.."
@@ -33,7 +33,7 @@ sam deploy --config-env $ENVIRONMENT --profile IBD-DEV
 echo ""
 echo "📋 Stack Outputs:"
 aws cloudformation describe-stacks \
-    --stack-name "igad-$ENVIRONMENT" \
+    --stack-name "impact-compendium-$ENVIRONMENT" \
     --profile IBD-DEV \
     --region us-east-1 \
     --query 'Stacks[0].Outputs[*].[OutputKey,OutputValue]' \
@@ -46,7 +46,7 @@ if [[ "$ENVIRONMENT" == "production" ]]; then
     echo ""
     echo "⚠️  Production Deployment Notes:"
     echo "1. Update the database URL parameter with actual credentials:"
-    echo "   aws ssm put-parameter --name '/igad/production/database-url' --value 'mysql://user:pass@endpoint:3306/db' --overwrite --profile IBD-DEV"
+    echo "   aws ssm put-parameter --name '/impact-compendium/production/database-url' --value 'mysql://user:pass@endpoint:3306/db' --overwrite --profile IBD-DEV"
     echo "2. Configure custom domain and ACM certificate if needed"
     echo "3. Update WAF rules as required"
 fi

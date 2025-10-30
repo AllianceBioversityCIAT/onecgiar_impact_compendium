@@ -3,7 +3,7 @@ version = 0.1
 
 [default]
 [default.global.parameters]
-stack_name = "igad"
+stack_name = "impact-compendium"
 profile = "IBD-DEV"
 region = "us-east-1"
 
@@ -18,8 +18,8 @@ lint = true
 capabilities = "CAPABILITY_IAM"
 confirm_changeset = true
 resolve_s3 = true
-s3_prefix = "igad"
-parameter_overrides = "ProjectName=igad"
+s3_prefix = "impact-compendium"
+parameter_overrides = "ProjectName=impact-compendium"
 image_repositories = []
 
 [default.package.parameters]
@@ -37,22 +37,22 @@ warm_containers = "EAGER"
 # Testing Environment Configuration
 [testing]
 [testing.global.parameters]
-stack_name = "igad-testing"
+stack_name = "impact-compendium-testing"
 profile = "IBD-DEV"
 region = "us-east-1"
 
 [testing.deploy.parameters]
 template_file = "template-testing.yaml"
 capabilities = "CAPABILITY_IAM"
-confirm_changeset = true
-resolve_s3 = true
-s3_prefix = "igad-testing"
+confirm_changeset = false
+resolve_s3 = false
+disable_rollback = false
 parameter_overrides = [
     "Environment=testing",
-    "ProjectName=igad"
+    "ProjectName=impact-compendium"
 ]
 tags = [
-    "Project=igad",
+    "Project=impact-compendium",
     "Environment=testing",
     "CostCenter=research-platform",
     "Owner=cgiar-alliance",
@@ -62,7 +62,7 @@ tags = [
 # Production Environment Configuration
 [production]
 [production.global.parameters]
-stack_name = "igad-production"
+stack_name = "impact-compendium-production"
 profile = "IBD-DEV"
 region = "us-east-1"
 
@@ -71,16 +71,16 @@ template_file = "template-production.yaml"
 capabilities = "CAPABILITY_IAM"
 confirm_changeset = true
 resolve_s3 = true
-s3_prefix = "igad-production"
+s3_prefix = "impact-compendium-production"
 parameter_overrides = [
     "Environment=production",
-    "ProjectName=igad",
+    "ProjectName=impact-compendium",
     "ExistingRDSEndpoint=your-existing-rds-endpoint.amazonaws.com",
     "CustomDomainName=",
     "ACMCertificateArn="
 ]
 tags = [
-    "Project=igad",
+    "Project=impact-compendium",
     "Environment=production",
     "CostCenter=research-platform",
     "Owner=cgiar-alliance",

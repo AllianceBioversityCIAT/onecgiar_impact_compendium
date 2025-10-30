@@ -9,7 +9,7 @@ Parameters:
     Description: Environment name
   ProjectName:
     Type: String
-    Default: igad
+    Default: impact-compendium
     Description: Project name
   ExistingRDSEndpoint:
     Type: String
@@ -26,7 +26,7 @@ Parameters:
 
 Globals:
   Function:
-    Runtime: python3.11
+    Runtime: python3.9
     Architectures: [x86_64]
     MemorySize: 512
     Timeout: 60

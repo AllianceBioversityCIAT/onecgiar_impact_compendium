@@ -1,0 +1,20 @@
+# Exclude development files
+.venv/
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+.pytest_cache/
+.coverage
+.env
+.env.*
+tests/
+architecture/
+alembic/
+*.log
+.git/
+.gitignore
+README.md
+run_tests.py
+pytest.ini
+alembic.ini

@@ -1,0 +1,109 @@
+IGAD SAM Architecture Diagram
+============================
+
+TESTING ENVIRONMENT (igad-testing)
+==================================
+
+    ┌─────────────┐
+    │    Users    │
+    └─────────────┘
+           │
+           ▼
+    ┌─────────────────────────────────────────────────────────────┐
+    │                    AWS Cloud (us-east-1)                   │
+    │                                                             │
+    │  ┌─────────────────────────────────────────────────────┐    │
+    │  │              Testing Environment                    │    │
+    │  │                                                     │    │
+    │  │  ┌─────────────┐    ┌─────────────┐                │    │
+    │  │  │ CloudFront  │◄───┤ S3 Bucket   │                │    │
+    │  │  │ (Default    │    │ (Frontend)  │                │    │
+    │  │  │  SSL)       │    │             │                │    │
+    │  │  └─────────────┘    └─────────────┘                │    │
+    │  │         ▲                                           │    │
+    │  │         │                                           │    │
+    │  │  ┌─────────────┐    ┌─────────────┐                │    │
+    │  │  │ HTTP API    │◄───┤ Lambda      │                │    │
+    │  │  │ Gateway     │    │ (FastAPI)   │                │    │
+    │  │  └─────────────┘    └─────────────┘                │    │
+    │  │                            │                       │    │
+    │  │                            ▼                       │    │
+    │  │  ┌─────────────┐    ┌─────────────┐                │    │
+    │  │  │ Cognito     │    │ RDS MySQL   │                │    │
+    │  │  │ User Pool   │    │(db.t3.micro)│                │    │
+    │  │  └─────────────┘    └─────────────┘                │    │
+    │  │                            ▲                       │    │
+    │  │                            │                       │    │
+    │  │                    ┌─────────────┐                 │    │
+    │  │                    │ SSM/Secrets │                 │    │
+    │  │                    │ Parameters  │                 │    │
+    │  │                    └─────────────┘                 │    │
+    │  └─────────────────────────────────────────────────────┘    │
+    └─────────────────────────────────────────────────────────────┘
+
+PRODUCTION ENVIRONMENT (igad-production)
+=======================================
+
+    ┌─────────────┐
+    │    Users    │
+    └─────────────┘
+           │
+           ▼
+    ┌─────────────────────────────────────────────────────────────┐
+    │                    AWS Cloud (us-east-1)                   │
+    │                                                             │
+    │  ┌─────────────────────────────────────────────────────┐    │
+    │  │             Production Environment                  │    │
+    │  │                                                     │    │
+    │  │  ┌─────────────┐    ┌─────────────┐                │    │
+    │  │  │ CloudFront  │◄───┤ S3 Bucket   │                │    │
+    │  │  │ (ACM SSL +  │    │ (Frontend)  │                │    │
+    │  │  │  WAF)       │    │ Versioned   │                │    │
+    │  │  └─────────────┘    └─────────────┘                │    │
+    │  │         ▲                                           │    │
+    │  │         │                                           │    │
+    │  │  ┌─────────────┐    ┌─────────────┐                │    │
+    │  │  │ HTTP API    │◄───┤ Lambda      │                │    │
+    │  │  │ Gateway     │    │ (FastAPI)   │                │    │
+    │  │  └─────────────┘    └─────────────┘                │    │
+    │  │                            │                       │    │
+    │  │                            ▼                       │    │
+    │  │  ┌─────────────┐    ┌─────────────┐                │    │
+    │  │  │ Cognito     │    │ Existing    │                │    │
+    │  │  │ User Pool   │    │ RDS MySQL   │                │    │
+    │  │  └─────────────┘    │ (External)  │                │    │
+    │  │                     └─────────────┘                │    │
+    │  │                            ▲                       │    │
+    │  │                            │                       │    │
+    │  │                    ┌─────────────┐                 │    │
+    │  │                    │ SSM/Secrets │                 │    │
+    │  │                    │ Parameters  │                 │    │
+    │  │                    └─────────────┘                 │    │
+    │  └─────────────────────────────────────────────────────┘    │
+    └─────────────────────────────────────────────────────────────┘
+
+COST TAGGING STRATEGY
+====================
+
+All resources tagged with:
+- Project: igad
+- Environment: testing|production
+- Component: frontend|backend|database|auth
+- CostCenter: research-platform
+- Owner: cgiar-alliance
+- CreatedBy: sam-deployment
+
+DEPLOYMENT COMMANDS
+==================
+
+Build:    sam build --profile IBD-DEV
+Testing:  sam deploy --config-env testing --profile IBD-DEV
+Prod:     sam deploy --config-env production --profile IBD-DEV
+Delete:   sam delete --stack-name igad-{env} --profile IBD-DEV
+
+BUDGET LIMITS
+=============
+
+Testing:    $25/month
+Production: $70/month
+Total:      $95/month

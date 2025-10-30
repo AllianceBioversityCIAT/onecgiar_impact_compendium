@@ -1,242 +1,88 @@
-# SAM Configuration for Impact Compendium Application
-# This file contains environment-specific deployment parameters
-
+# SAM Configuration for IGAD Impact Compendium
 version = 0.1
 
 [default]
-[default.global]
 [default.global.parameters]
-stack_name = "impact-compendium-dev"
-resolve_s3 = true
+stack_name = "igad"
+profile = "IBD-DEV"
 region = "us-east-1"
-confirm_changeset = true
-capabilities = "CAPABILITY_IAM"
-parameter_overrides = [
-    "Environment=dev",
-    "ProjectName=impact-compendium",
-    "DBInstanceClass=db.t3.micro",
-    "DBAllocatedStorage=20",
-    "EnableMultiAZ=false"
-]
-image_repositories = []
 
-[default.build]
 [default.build.parameters]
 cached = true
 parallel = true
 
-[default.validate]
 [default.validate.parameters]
 lint = true
 
-[default.deploy]
 [default.deploy.parameters]
 capabilities = "CAPABILITY_IAM"
 confirm_changeset = true
-fail_on_empty_changeset = false
-stack_name = "impact-compendium-dev"
 resolve_s3 = true
-region = "us-east-1"
+s3_prefix = "igad"
+parameter_overrides = "ProjectName=igad"
 image_repositories = []
-parameter_overrides = [
-    "Environment=dev",
-    "ProjectName=impact-compendium",
-    "DBInstanceClass=db.t3.micro",
-    "DBAllocatedStorage=20",
-    "EnableMultiAZ=false"
-]
 
-[default.package]
 [default.package.parameters]
 resolve_s3 = true
 
-[default.sync]
 [default.sync.parameters]
 watch = true
 
-[default.local_start_api]
 [default.local_start_api.parameters]
 warm_containers = "EAGER"
 
-[default.local_start_lambda]
 [default.local_start_lambda.parameters]
 warm_containers = "EAGER"
 
-# ============================================================================
-# DEVELOPMENT ENVIRONMENT
-# ============================================================================
-
-[dev]
-[dev.global]
-[dev.global.parameters]
-stack_name = "impact-compendium-dev"
-s3_bucket = "impact-compendium-sam-artifacts-dev"
-s3_prefix = "dev"
+# Testing Environment Configuration
+[testing]
+[testing.global.parameters]
+stack_name = "igad-testing"
+profile = "IBD-DEV"
 region = "us-east-1"
-confirm_changeset = true
-capabilities = "CAPABILITY_IAM"
-parameter_overrides = [
-    "Environment=dev",
-    "ProjectName=impact-compendium",
-    "DBInstanceClass=db.t3.micro",
-    "DBAllocatedStorage=20",
-    "EnableMultiAZ=false"
-]
 
-[dev.build]
-[dev.build.parameters]
-cached = true
-parallel = true
-
-[dev.deploy]
-[dev.deploy.parameters]
+[testing.deploy.parameters]
+template_file = "template-testing.yaml"
 capabilities = "CAPABILITY_IAM"
 confirm_changeset = true
-fail_on_empty_changeset = false
-stack_name = "impact-compendium-dev"
-s3_bucket = "impact-compendium-sam-artifacts-dev"
-s3_prefix = "dev"
-region = "us-east-1"
+resolve_s3 = true
+s3_prefix = "igad-testing"
 parameter_overrides = [
-    "Environment=dev",
-    "ProjectName=impact-compendium",
-    "DBInstanceClass=db.t3.micro",
-    "DBAllocatedStorage=20",
-    "EnableMultiAZ=false"
+    "Environment=testing",
+    "ProjectName=igad"
 ]
 tags = [
-    "Environment=dev",
-    "Project=impact-compendium",
-    "Owner=cgiar-alliance",
+    "Project=igad",
+    "Environment=testing",
     "CostCenter=research-platform",
-    "BudgetCategory=infrastructure",
+    "Owner=cgiar-alliance",
     "CreatedBy=sam-deployment"
 ]
 
-# ============================================================================
-# STAGING ENVIRONMENT
-# ============================================================================
-
-[staging]
-[staging.global]
-[staging.global.parameters]
-stack_name = "impact-compendium-staging"
-s3_bucket = "impact-compendium-sam-artifacts-staging"
-s3_prefix = "staging"
+# Production Environment Configuration
+[production]
+[production.global.parameters]
+stack_name = "igad-production"
+profile = "IBD-DEV"
 region = "us-east-1"
-confirm_changeset = true
-capabilities = "CAPABILITY_IAM"
-parameter_overrides = [
-    "Environment=staging",
-    "ProjectName=impact-compendium",
-    "DBInstanceClass=db.t3.small",
-    "DBAllocatedStorage=30",
-    "EnableMultiAZ=false"
-]
 
-[staging.build]
-[staging.build.parameters]
-cached = true
-parallel = true
-
-[staging.deploy]
-[staging.deploy.parameters]
+[production.deploy.parameters]
+template_file = "template-production.yaml"
 capabilities = "CAPABILITY_IAM"
 confirm_changeset = true
-fail_on_empty_changeset = false
-stack_name = "impact-compendium-staging"
-s3_bucket = "impact-compendium-sam-artifacts-staging"
-s3_prefix = "staging"
-region = "us-east-1"
+resolve_s3 = true
+s3_prefix = "igad-production"
 parameter_overrides = [
-    "Environment=staging",
-    "ProjectName=impact-compendium",
-    "DBInstanceClass=db.t3.small",
-    "DBAllocatedStorage=30",
-    "EnableMultiAZ=false"
+    "Environment=production",
+    "ProjectName=igad",
+    "ExistingRDSEndpoint=your-existing-rds-endpoint.amazonaws.com",
+    "CustomDomainName=",
+    "ACMCertificateArn="
 ]
 tags = [
-    "Environment=staging",
-    "Project=impact-compendium",
-    "Owner=cgiar-alliance",
+    "Project=igad",
+    "Environment=production",
     "CostCenter=research-platform",
-    "BudgetCategory=infrastructure",
+    "Owner=cgiar-alliance",
     "CreatedBy=sam-deployment"
 ]
-
-# ============================================================================
-# PRODUCTION ENVIRONMENT
-# ============================================================================
-
-[prod]
-[prod.global]
-[prod.global.parameters]
-stack_name = "impact-compendium-prod"
-s3_bucket = "impact-compendium-sam-artifacts-prod"
-s3_prefix = "prod"
-region = "us-east-1"
-confirm_changeset = true
-capabilities = "CAPABILITY_IAM"
-parameter_overrides = [
-    "Environment=prod",
-    "ProjectName=impact-compendium",
-    "DBInstanceClass=db.t3.small",
-    "DBAllocatedStorage=50",
-    "EnableMultiAZ=true"
-]
-
-[prod.build]
-[prod.build.parameters]
-cached = true
-parallel = true
-
-[prod.deploy]
-[prod.deploy.parameters]
-capabilities = "CAPABILITY_IAM"
-confirm_changeset = true
-fail_on_empty_changeset = false
-stack_name = "impact-compendium-prod"
-s3_bucket = "impact-compendium-sam-artifacts-prod"
-s3_prefix = "prod"
-region = "us-east-1"
-parameter_overrides = [
-    "Environment=prod",
-    "ProjectName=impact-compendium",
-    "DBInstanceClass=db.t3.small",
-    "DBAllocatedStorage=50",
-    "EnableMultiAZ=true"
-]
-tags = [
-    "Environment=prod",
-    "Project=impact-compendium",
-    "Owner=cgiar-alliance",
-    "CostCenter=research-platform",
-    "BudgetCategory=infrastructure",
-    "CreatedBy=sam-deployment"
-]
-
-# ============================================================================
-# DEPLOYMENT COMMANDS
-# ============================================================================
-
-# Development deployment:
-# sam deploy --config-env dev
-
-# Staging deployment:
-# sam deploy --config-env staging
-
-# Production deployment:
-# sam deploy --config-env prod
-
-# Build and deploy in one command:
-# sam build && sam deploy --config-env dev
-
-# Deploy with parameter overrides:
-# sam deploy --config-env dev --parameter-overrides "DBInstanceClass=db.t3.small"
-
-# Validate template:
-# sam validate --config-env dev
-
-# Local testing:
-# sam local start-api --config-env dev
-# sam local invoke StudiesFunction --config-env dev

@@ -9,12 +9,12 @@ Parameters:
     Description: Environment name
   ProjectName:
     Type: String
-    Default: igad
+    Default: impact-compendium
     Description: Project name
 
 Globals:
   Function:
-    Runtime: python3.11
+    Runtime: python3.9
     Architectures: [x86_64]
     MemorySize: 256
     Timeout: 30
@@ -52,11 +52,14 @@ Resources:
       FunctionName: !Sub "${ProjectName}-backend-${Environment}"
       CodeUri: ../Backend/
       Handler: main.handler
+      ReservedConcurrentExecutions: 10
       Environment:
         Variables:
           DATABASE_URL: !Sub "{{resolve:ssm:/${ProjectName}/${Environment}/database-url}}"
           COGNITO_USER_POOL_ID: !Ref IgadUserPool
           COGNITO_CLIENT_ID: !Ref IgadUserPoolClient
+          AWS_LAMBDA_EXEC_WRAPPER: /opt/bootstrap
+          PYTHONPATH: /var/task:/opt/python
       Events:
         ApiEvent:
           Type: HttpApi

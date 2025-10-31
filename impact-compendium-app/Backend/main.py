@@ -8,12 +8,8 @@ from mangum import Mangum
 os.environ.setdefault('AWS_PROFILE', 'IBD-DEV')
 os.environ.setdefault('AWS_DEFAULT_REGION', 'us-east-1')
 
-# Import Lambda-optimized app
-try:
-    from lambda_app import app
-except ImportError:
-    # Fallback to regular app
-    from app.main import app
+# Import the full FastAPI app
+from app.main import app
 
 # Create Lambda handler with optimized settings
 handler = Mangum(

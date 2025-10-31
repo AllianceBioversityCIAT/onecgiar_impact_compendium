@@ -34,6 +34,7 @@ env/
 ENV/
 env.bak/
 venv.bak/
+.venv/
 
 # IDE
 .vscode/
@@ -68,11 +69,33 @@ htmlcov/
 alembic/versions/*.py
 !alembic/versions/__init__.py
 
-# Deployment
-deployment/
+# Deployment and Build Artifacts
+deployment/packages/
+deployment/*.zip
 *.zip
 lambda-*.zip
+lambda_simple/
+lambda_deploy/
+
+# AWS SAM
+.aws-sam/
 
 # Python packages (if accidentally installed in root)
 *-*.dist-info/
 site-packages/
+
+# Large documentation files
+architecture/jwt/
+architecture/cognito_integration/
+tests/*README.md
+tests/*SUMMARY.md
+
+# Temporary files
+*.tmp
+*.temp
+*.bak
+
+# Config files that can be regenerated
+pytest.ini
+alembic.ini
+run_tests.py

@@ -27,16 +27,26 @@ class CognitoUserService:
             self.mock_mode = True
         else:
             self.mock_mode = False
-            # Force AWS profile in environment
-            os.environ['AWS_PROFILE'] = 'IBD-DEV'
-            os.environ['AWS_DEFAULT_REGION'] = self.region
-            
-            # Create session with explicit profile
+            # In Lambda, use default credentials (IAM role)
+            # In local development, can use profile if available
             import boto3
-            session = boto3.Session(profile_name='IBD-DEV', region_name=self.region)
-            self.client = session.client('cognito-idp')
             
-            logger.info(f"🔧 Initialized Cognito client with explicit IBD-DEV profile, region: {self.region}")
+            if os.environ.get('AWS_EXECUTION_ENV'):
+                # Running in Lambda - use default credentials
+                self.client = boto3.client('cognito-idp', region_name=self.region)
+                logger.info(f"🔧 Initialized Cognito client for Lambda with region: {self.region}")
+            else:
+                # Running locally - try to use profile
+                try:
+                    os.environ['AWS_PROFILE'] = 'IBD-DEV'
+                    os.environ['AWS_DEFAULT_REGION'] = self.region
+                    session = boto3.Session(profile_name='IBD-DEV', region_name=self.region)
+                    self.client = session.client('cognito-idp')
+                    logger.info(f"🔧 Initialized Cognito client with IBD-DEV profile, region: {self.region}")
+                except Exception:
+                    # Fallback to default credentials
+                    self.client = boto3.client('cognito-idp', region_name=self.region)
+                    logger.info(f"🔧 Initialized Cognito client with default credentials, region: {self.region}")
             
             # Test AWS credentials immediately
             try:

@@ -53,7 +53,7 @@ class AuthService {
         const authData = {
           access_token: tokens.accessToken.toString(),
           id_token: tokens.idToken?.toString() || '',
-          refresh_token: tokens.refreshToken?.toString() || '',
+          refresh_token: (tokens as any).refreshToken?.toString() || '',
           user: {
             email: user.signInDetails?.loginId || credentials.email,
             sub: user.userId,
@@ -142,7 +142,7 @@ class AuthService {
     }
   }
 
-  async getAuthHeaders() {
+  async getAuthHeaders(): Promise<Record<string, string>> {
     try {
       const session = await fetchAuthSession();
       const token = session.tokens?.accessToken?.toString();
@@ -174,7 +174,7 @@ class AuthService {
         const authData = {
           access_token: tokens.accessToken.toString(),
           id_token: tokens.idToken?.toString() || '',
-          refresh_token: tokens.refreshToken?.toString() || '',
+          refresh_token: (tokens as any).refreshToken?.toString() || '',
           user: {
             email: email || '',
             sub: user.userId,

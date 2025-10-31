@@ -269,7 +269,7 @@ export const Dashboard: React.FC = () => {
     XLSX.writeFile(workbook, fileName);
   };
 
-  const handleRowExpand = (row: Study) => {
+  const handleRowExpand = (row: any) => {
     const newExpanded = new Set(expandedRows);
     if (newExpanded.has(row.id)) {
       newExpanded.delete(row.id);
@@ -375,7 +375,7 @@ export const Dashboard: React.FC = () => {
           <Button
             onClick={handleDownloadExcel}
             disabled={studies.length === 0}
-            variant="outline"
+            variant="secondary"
             className="flex items-center gap-2 !bg-green-600 hover:!bg-green-700 !text-white !border-green-600 hover:!border-green-700"
           >
             <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -415,7 +415,7 @@ export const Dashboard: React.FC = () => {
             {/* Table */}
             <Table
               columns={columns}
-              data={studies}
+              data={studies as any[]}
               onRowExpand={handleRowExpand}
               expandedRows={expandedRows}
               expandRender={(row) => (
@@ -423,19 +423,19 @@ export const Dashboard: React.FC = () => {
                   <div className="space-y-2">
                     <h4 className="font-medium text-gray-900">Summary</h4>
                     <p className="text-gray-700 text-sm leading-relaxed">
-                      {row.summary || 'No summary available'}
+                      {(row as any).summary || 'No summary available'}
                     </p>
                   </div>
                 </div>
               )}
-              onTitleClick={handleTitleClick}
+              onTitleClick={(row) => handleTitleClick(row as any)}
               sort={searchParams.sort ? {
                 field: searchParams.sort.split(':')[0],
                 dir: searchParams.sort.split(':')[1] as 'asc' | 'desc'
               } : undefined}
               onSortChange={handleSortChange}
-              onEdit={handleEditStudy}
-              onDelete={handleDeleteStudy}
+              onEdit={(row) => handleEditStudy(row as any)}
+              onDelete={(row) => handleDeleteStudy(row as any)}
             />
 
             {/* Pagination */}

@@ -5,22 +5,11 @@ const awsConfig = {
     Cognito: {
       userPoolId: import.meta.env.VITE_COGNITO_USER_POOL_ID,
       userPoolClientId: import.meta.env.VITE_COGNITO_CLIENT_ID,
-      loginWith: {
-        email: true,
-        username: false,
-      },
-      signUpVerificationMethod: 'code',
-      userAttributes: {
-        email: {
-          required: true,
-        },
-      },
-      allowGuestAccess: false,
     },
   },
   region: import.meta.env.VITE_AWS_REGION,
 };
 
-Amplify.configure(awsConfig);
+Amplify.configure(awsConfig as any);
 
 export default awsConfig;

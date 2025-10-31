@@ -60,7 +60,10 @@ export const CreateStudyStep1: React.FC = () => {
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [loading, setLoading] = useState(true);
   const [validatingStudyId, setValidatingStudyId] = useState(false);
-  const [options, setOptions] = useState({
+  const [options, setOptions] = useState<{
+    categories: Array<{ value: string; label: string }>;
+    interventionTypes: Array<{ value: string; label: string }>;
+  }>({
     categories: [],
     interventionTypes: []
   });
@@ -133,17 +136,18 @@ export const CreateStudyStep1: React.FC = () => {
   // Set form data when both study data and options are available (only once)
   useEffect(() => {
     if (studyData && options.interventionTypes.length > 0 && !formDataInitialized) {
+      const data = studyData as any;
       setFormData({
-        studyId: studyData.id || studyData.study_id || '',
-        title: studyData.title || '',
-        summary: studyData.summary || '',
-        year: studyData.year?.toString() || '2025',
-        doi: studyData.doi || studyData.link_or_doi || '',
-        category: studyData.category?.id?.toString() || '',
-        periodStart: studyData.period?.start?.toString() || '',
-        periodEnd: studyData.period?.end?.toString() || '',
-        interventionType: (studyData.intervention?.id || studyData.intervention?.type || '').toString(),
-        interventionDetails: studyData.intervention?.detailsShort || studyData.intervention_details || ''
+        studyId: data.id || data.study_id || '',
+        title: data.title || '',
+        summary: data.summary || '',
+        year: data.year?.toString() || '2025',
+        doi: data.doi || data.link_or_doi || '',
+        category: data.category?.id?.toString() || '',
+        periodStart: data.period?.start?.toString() || '',
+        periodEnd: data.period?.end?.toString() || '',
+        interventionType: (data.intervention?.id || data.intervention?.type || '').toString(),
+        interventionDetails: data.intervention?.detailsShort || data.intervention_details || ''
       });
       
       setFormDataInitialized(true);
@@ -173,15 +177,15 @@ export const CreateStudyStep1: React.FC = () => {
   };
 
   const handleInputChange = (field: string, value: string) => {
-    setFormData(prev => ({ ...prev, [field]: value }));
+    setFormData((prev: any) => ({ ...prev, [field]: value }));
     if (errors[field]) {
-      setErrors(prev => ({ ...prev, [field]: '' }));
+      setErrors((prev: Record<string, string>) => ({ ...prev, [field]: '' }));
     }
     
     // Validate Study ID on change with debounce
     if (field === 'studyId' && value) {
-      clearTimeout(window.studyIdTimeout);
-      window.studyIdTimeout = setTimeout(() => validateStudyId(value), 500);
+      clearTimeout((window as any).studyIdTimeout);
+      (window as any).studyIdTimeout = setTimeout(() => validateStudyId(value), 500);
     }
   };
 
@@ -411,7 +415,7 @@ export const CreateStudyStep1: React.FC = () => {
                   value={formData.interventionType}
                   onChange={(value) => {
                     console.log('Intervention type changed to:', value);
-                    setFormData(prev => ({ ...prev, interventionType: value }));
+                    setFormData((prev: any) => ({ ...prev, interventionType: value }));
                   }}
                   placeholder="Search intervention types..."
                 />

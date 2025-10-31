@@ -75,6 +75,7 @@ coverage.xml
 *.sqlite3
 database.url
 db_credentials.json
+specs/data/dump-TEST-impact_compendium-202510301721.sql
 
 # IDE
 .vscode/

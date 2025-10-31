@@ -38,8 +38,8 @@ class UserService {
 
   async createUser(userData: CreateUserRequest): Promise<{ username: string; status: string }> {
     console.log('🚀 Creating user with userData:', userData);
-    const headers = await authService.getAuthHeaders();
-    console.log('📋 Request headers:', headers);
+    const authHeaders = await authService.getAuthHeaders();
+    console.log('📋 Request headers:', authHeaders);
     
     const requestBody = {
       email: userData.email,
@@ -49,12 +49,14 @@ class UserService {
     console.log('📦 Request body being sent:', requestBody);
     console.log('📦 Request body JSON:', JSON.stringify(requestBody, null, 2));
     
+    const headers: Record<string, string> = {
+      'Content-Type': 'application/json',
+      ...authHeaders
+    };
+    
     const response = await fetch(`${this.baseURL}/api/users/`, {
       method: 'POST',
-      headers: {
-        ...headers,
-        'Content-Type': 'application/json',
-      },
+      headers,
       body: JSON.stringify(requestBody)
     });
 
@@ -79,13 +81,15 @@ class UserService {
   }
 
   async updateUserStatus(username: string, enabled: boolean): Promise<void> {
-    const headers = await authService.getAuthHeaders();
+    const authHeaders = await authService.getAuthHeaders();
+    const headers: Record<string, string> = {
+      'Content-Type': 'application/json',
+      ...authHeaders
+    };
+    
     const response = await fetch(`${this.baseURL}/api/users/${username}/status`, {
       method: 'PUT',
-      headers: {
-        ...headers,
-        'Content-Type': 'application/json',
-      },
+      headers,
       body: JSON.stringify({ enabled })
     });
 
@@ -96,10 +100,10 @@ class UserService {
   }
 
   async deleteUser(username: string): Promise<void> {
-    const headers = await authService.getAuthHeaders();
+    const authHeaders = await authService.getAuthHeaders();
     const response = await fetch(`${this.baseURL}/api/users/${username}`, {
       method: 'DELETE',
-      headers
+      headers: authHeaders
     });
 
     if (!response.ok) {
@@ -109,10 +113,10 @@ class UserService {
   }
 
   async resetPassword(username: string): Promise<void> {
-    const headers = await authService.getAuthHeaders();
+    const authHeaders = await authService.getAuthHeaders();
     const response = await fetch(`${this.baseURL}/api/users/${username}/reset-password`, {
       method: 'POST',
-      headers
+      headers: authHeaders
     });
 
     if (!response.ok) {

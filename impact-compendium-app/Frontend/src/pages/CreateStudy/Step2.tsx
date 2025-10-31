@@ -47,7 +47,15 @@ export const CreateStudyStep2: React.FC = () => {
     regions: false
   });
 
-  const [options, setOptions] = useState({
+  const [options, setOptions] = useState<{
+    cropTypes: Array<{ value: string; label: string }>;
+    keywords: Array<{ value: string; label: string }>;
+    initiatives: Array<{ value: string; label: string }>;
+    centers: Array<{ value: string; label: string }>;
+    impactAreas: Array<{ value: string; label: string }>;
+    countries: Array<{ value: string; label: string }>;
+    regions: Array<{ value: string; label: string }>;
+  }>({
     cropTypes: [],
     keywords: [],
     initiatives: [],
@@ -200,7 +208,7 @@ export const CreateStudyStep2: React.FC = () => {
   }, [options, loadingStates, loadReferenceDataItem]);
 
   const handleInputChange = useCallback((field: string, value: string | string[]) => {
-    setFormData(prev => {
+    setFormData((prev: any) => {
       const newData = { ...prev, [field]: value };
       
       // If primary impact area changed, clear secondary if it matches
@@ -234,7 +242,7 @@ export const CreateStudyStep2: React.FC = () => {
   };
 
   const handleMultiSelectChange = (field: string, values: string[]) => {
-    setFormData(prev => ({ ...prev, [field]: values }));
+    setFormData((prev: any) => ({ ...prev, [field]: values }));
   };
 
   const handleNext = () => {

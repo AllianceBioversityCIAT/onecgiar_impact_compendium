@@ -39,7 +39,7 @@ export const FormFooter: React.FC<FormFooterProps> = ({
           <div className="flex items-center space-x-3">
             {showBack && onBack && (
               <Button 
-                variant="outline" 
+                variant="secondary" 
                 className="flex items-center space-x-2" 
                 onClick={onBack}
                 disabled={isLoading}

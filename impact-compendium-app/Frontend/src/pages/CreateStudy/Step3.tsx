@@ -178,13 +178,14 @@ export const CreateStudyStep3: React.FC = () => {
       const authHeaders = await authService.getAuthHeaders();
       console.log('Auth headers:', authHeaders);
       console.log('Current user:', currentUser);
+      const userEmail = (currentUser as any)?.email || 'unknown@example.com';
 
       // Call the complete save endpoint
       const response = await fetch(`${import.meta.env.VITE_API_BASE_URL}/api/studies/complete`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          'X-User-Email': currentUser?.email || 'unknown@example.com',
+          'X-User-Email': userEmail,
           ...authHeaders
         },
         body: JSON.stringify(completeStudyData),
@@ -217,12 +218,12 @@ export const CreateStudyStep3: React.FC = () => {
       
       // Clear localStorage after successful save
       
-    } catch (error) {
+    } catch (error: any) {
       console.error('Failed to save study:', error);
-      console.error('Error details:', error.message, error.stack);
+      console.error('Error details:', error?.message, error?.stack);
       
       // Show user-friendly error notification
-      const errorMessage = error.message || 'An unexpected error occurred while saving your study.';
+      const errorMessage = error?.message || 'An unexpected error occurred while saving your study.';
       showNotification('error', `Save failed: ${errorMessage} Please check your data and try again.`);
     } finally {
       setIsSubmitting(false);

@@ -4,10 +4,6 @@ Lambda Handler for Impact Compendium
 import os
 from mangum import Mangum
 
-# Set AWS environment before imports
-os.environ.setdefault('AWS_PROFILE', 'IBD-DEV')
-os.environ.setdefault('AWS_DEFAULT_REGION', 'us-east-1')
-
 # Import the full FastAPI app
 from app.main import app
 

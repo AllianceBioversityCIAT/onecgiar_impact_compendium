@@ -5,12 +5,11 @@
 
 ENVIRONMENT=${1:-testing}
 SOURCE_DIR=${2:-"../Frontend/dist"}
-STACK_NAME="impact-compendium-$ENVIRONMENT"
+PROJECT_NAME="impact-compendium"
 
 echo "🚀 Deploying frontend to S3 + CloudFront"
 echo "Environment: $ENVIRONMENT"
 echo "Source: $SOURCE_DIR"
-echo "Stack: $STACK_NAME"
 
 # Production confirmation
 if [ "$ENVIRONMENT" = "production" ]; then
@@ -21,16 +20,12 @@ if [ "$ENVIRONMENT" = "production" ]; then
     fi
 fi
 
-# Get bucket name from CloudFormation stack
-BUCKET_NAME=$(aws cloudformation describe-stacks \
-    --stack-name "$STACK_NAME" \
-    --profile IBD-DEV \
-    --region us-east-1 \
-    --query 'Stacks[0].Outputs[?OutputKey==`S3BucketName`].OutputValue' \
-    --output text)
+# Find bucket name by pattern (includes account ID)
+BUCKET_NAME=$(aws s3 ls --profile IBD-DEV | grep "$PROJECT_NAME-frontend-$ENVIRONMENT" | awk '{print $3}')
 
 if [ -z "$BUCKET_NAME" ]; then
-    echo "❌ Could not find S3 bucket name from stack: $STACK_NAME"
+    echo "❌ Could not find S3 bucket for environment: $ENVIRONMENT"
+    echo "Expected pattern: $PROJECT_NAME-frontend-$ENVIRONMENT-*"
     exit 1
 fi
 
@@ -43,29 +38,30 @@ if [ ! -d "$SOURCE_DIR" ]; then
 fi
 
 # Deploy built frontend
+echo "📦 Uploading files to S3..."
 aws s3 sync "$SOURCE_DIR" s3://$BUCKET_NAME --delete --profile IBD-DEV --region us-east-1
 
-# Get CloudFront distribution ID from stack outputs
-CLOUDFRONT_URL=$(aws cloudformation describe-stacks \
-    --stack-name "$STACK_NAME" \
-    --profile IBD-DEV \
-    --region us-east-1 \
-    --query 'Stacks[0].Outputs[?OutputKey==`CloudFrontUrl`].OutputValue' \
+# Find CloudFront distribution for this bucket
+echo "🔍 Finding CloudFront distribution..."
+DISTRIBUTION_ID=$(aws cloudfront list-distributions --profile IBD-DEV --region us-east-1 \
+    --query "DistributionList.Items[?Origins.Items[0].DomainName=='$BUCKET_NAME.s3.us-east-1.amazonaws.com'].Id" \
     --output text)
 
-if [ -n "$CLOUDFRONT_URL" ]; then
-    # Extract distribution ID from URL
-    DISTRIBUTION_ID=$(echo "$CLOUDFRONT_URL" | sed 's|https://||' | sed 's|\.cloudfront\.net||')
-    
-    echo "🔄 Invalidating CloudFront cache..."
+if [ -n "$DISTRIBUTION_ID" ] && [ "$DISTRIBUTION_ID" != "None" ]; then
+    echo "🔄 Invalidating CloudFront cache (Distribution: $DISTRIBUTION_ID)..."
     aws cloudfront create-invalidation \
         --distribution-id "$DISTRIBUTION_ID" \
         --paths "/*" \
         --profile IBD-DEV \
         --region us-east-1
     
+    # Get CloudFront URL
+    CLOUDFRONT_URL=$(aws cloudfront get-distribution --id "$DISTRIBUTION_ID" --profile IBD-DEV --region us-east-1 \
+        --query 'Distribution.DomainName' --output text)
+    
     echo "✅ Frontend deployed successfully!"
-    echo "🌐 URL: $CLOUDFRONT_URL"
+    echo "🌐 URL: https://$CLOUDFRONT_URL"
 else
-    echo "⚠️  Could not find CloudFront distribution URL"
+    echo "⚠️  Could not find CloudFront distribution for bucket: $BUCKET_NAME"
+    echo "✅ Files uploaded to S3 successfully!"
 fi

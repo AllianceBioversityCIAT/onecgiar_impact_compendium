@@ -13,7 +13,7 @@ Parameters:
     Default: impact-compendium-sam-deploy-1761858516
   LambdaCodeKey:
     Type: String
-    Default: lambda-with-deps.zip
+    Default: lambda-complete.zip
 
 Resources:
   # VPC
@@ -267,6 +267,8 @@ Resources:
   # RDS MySQL Instance
   ImpactDatabase:
     Type: AWS::RDS::DBInstance
+    DeletionPolicy: Snapshot
+    UpdateReplacePolicy: Snapshot
     Properties:
       DBInstanceIdentifier: !Sub "${ProjectName}-db-${Environment}"
       DBInstanceClass: db.t3.micro
@@ -448,6 +450,8 @@ Resources:
   # S3 Bucket for Frontend
   FrontendBucket:
     Type: AWS::S3::Bucket
+    DeletionPolicy: Retain
+    UpdateReplacePolicy: Retain
     Properties:
       BucketName: !Sub "${ProjectName}-frontend-${Environment}-${AWS::AccountId}"
       WebsiteConfiguration:

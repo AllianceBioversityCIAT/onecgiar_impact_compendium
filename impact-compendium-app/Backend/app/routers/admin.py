@@ -29,7 +29,7 @@ async def get_admin_stats(
         studies_count = studies_result.scalar()
         
         # Get categories count
-        categories_query = text("SELECT COUNT(*) FROM studies_categories WHERE is_active = 1")
+        categories_query = text("SELECT COUNT(*) FROM categories WHERE is_active = 1")
         categories_result = db.execute(categories_query)
         categories_count = categories_result.scalar()
         

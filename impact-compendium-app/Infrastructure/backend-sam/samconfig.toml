@@ -1,0 +1,70 @@
+# SAM Configuration for Impact Compendium Backend
+
+version = 0.1
+
+[default]
+[default.global.parameters]
+stack_name = "impact-compendium-backend"
+profile = "IBD-DEV"
+
+[default.build.parameters]
+cached = true
+parallel = true
+
+[default.validate.parameters]
+lint = true
+
+[default.deploy.parameters]
+capabilities = "CAPABILITY_IAM"
+confirm_changeset = false
+resolve_s3 = true
+region = "us-east-1"
+profile = "IBD-DEV"
+parameter_overrides = [
+    "Environment=testing",
+    "ProjectName=impact-compendium"
+]
+
+[default.package.parameters]
+resolve_s3 = true
+
+[default.sync.parameters]
+watch = true
+
+[default.local_start_api.parameters]
+warm_containers = "EAGER"
+
+[default.local_start_lambda.parameters]
+warm_containers = "EAGER"
+
+# Testing Environment Configuration
+[testing]
+[testing.deploy.parameters]
+stack_name = "impact-compendium-backend-testing"
+capabilities = "CAPABILITY_IAM"
+confirm_changeset = false
+resolve_s3 = true
+region = "us-east-1"
+profile = "IBD-DEV"
+parameter_overrides = [
+    "Environment=testing",
+    "ProjectName=impact-compendium"
+]
+
+# Production Environment Configuration  
+[production]
+[production.deploy.parameters]
+stack_name = "impact-compendium-backend-prod"
+capabilities = "CAPABILITY_IAM"
+confirm_changeset = true
+resolve_s3 = true
+region = "us-east-1"
+profile = "IBD-DEV"
+parameter_overrides = [
+    "Environment=prod",
+    "ProjectName=impact-compendium",
+    "VpcId=vpc-05c6a7862fd875623",
+    "SecurityGroupId=sg-065091b3c3dee0244",
+    "SubnetId1=subnet-093ac733fb9254274",
+    "SubnetId2=subnet-066e86ea668685ccd"
+]

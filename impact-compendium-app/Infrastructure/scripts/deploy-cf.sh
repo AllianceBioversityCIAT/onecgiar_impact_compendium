@@ -5,7 +5,13 @@
 
 ENVIRONMENT=${1:-testing}
 STACK_NAME=${2:-impact-compendium-$ENVIRONMENT}
-TEMPLATE="cloudformation-complete.yaml"
+
+# Select template based on environment
+if [ "$ENVIRONMENT" = "production" ]; then
+    TEMPLATE="cloudformation-production-environment.yaml"
+else
+    TEMPLATE="cloudformation-testing-environment.yaml"
+fi
 
 echo "🚀 Deploying CloudFormation stack: $STACK_NAME"
 echo "Environment: $ENVIRONMENT"
@@ -25,6 +31,12 @@ fi
 # Navigate to Infrastructure directory
 cd "$(dirname "$0")/.."
 
+# Check if template exists
+if [ ! -f "$TEMPLATE" ]; then
+    echo "❌ Template file not found: $TEMPLATE"
+    exit 1
+fi
+
 # Deploy stack
 aws cloudformation create-stack \
     --stack-name "$STACK_NAME" \
@@ -33,7 +45,6 @@ aws cloudformation create-stack \
     --parameters \
         ParameterKey=Environment,ParameterValue=$ENVIRONMENT \
         ParameterKey=ProjectName,ParameterValue=impact-compendium \
-        ParameterKey=LambdaCodeKey,ParameterValue=lambda-complete.zip \
     --profile IBD-DEV \
     --region us-east-1 \
     --tags \

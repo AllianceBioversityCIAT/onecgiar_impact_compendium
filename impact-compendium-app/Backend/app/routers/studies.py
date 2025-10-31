@@ -328,6 +328,10 @@ async def get_study_detail(
 ):
     """Get detailed study information."""
     
+    # Skip if this is the complete endpoint
+    if study_id == "complete":
+        raise HTTPException(status_code=404, detail="Not found")
+    
     # Extract numeric ID from ICD-001 format
     try:
         if study_id.startswith("ICD-"):

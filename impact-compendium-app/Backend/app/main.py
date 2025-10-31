@@ -28,9 +28,14 @@ from mangum import Mangum
 import logging
 from dotenv import load_dotenv
 
-# Set AWS profile BEFORE any other imports
-os.environ['AWS_PROFILE'] = 'IBD-DEV'
-os.environ['AWS_DEFAULT_REGION'] = 'us-east-1'
+# Set AWS region for Lambda environment
+if 'AWS_LAMBDA_FUNCTION_NAME' in os.environ:
+    # Running in Lambda - use IAM role, don't set profile
+    os.environ['AWS_DEFAULT_REGION'] = 'us-east-1'
+else:
+    # Running locally - use profile
+    os.environ['AWS_PROFILE'] = 'IBD-DEV'
+    os.environ['AWS_DEFAULT_REGION'] = 'us-east-1'
 
 # Load environment variables from .env file
 load_dotenv()
@@ -88,6 +93,7 @@ app = FastAPI(
     redoc_url="/redoc",
     openapi_url="/openapi.json",
     lifespan=lifespan,
+    redirect_slashes=False,
     contact={
         "name": "CGIAR Alliance Bioversity & CIAT",
         "email": "support@cgiar.org",
@@ -95,13 +101,7 @@ app = FastAPI(
     license_info={
         "name": "MIT",
         "url": "https://opensource.org/licenses/MIT",
-    },
-    servers=[
-        {
-            "url": "/",
-            "description": "Current server"
-        }
-    ]
+    }
 )
 
 # Configure CORS middleware for cross-origin requests

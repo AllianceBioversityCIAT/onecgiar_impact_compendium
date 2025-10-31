@@ -1,0 +1,158 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Transform: AWS::Serverless-2016-10-31
+Description: Impact Compendium Backend API - SAM Deployment
+
+Parameters:
+  Environment:
+    Type: String
+    Default: testing
+    AllowedValues: [testing, prod]
+    Description: Environment name
+  
+  ProjectName:
+    Type: String
+    Default: impact-compendium
+    Description: Project name for resource naming
+
+  VpcId:
+    Type: String
+    Description: VPC ID from existing infrastructure
+    Default: vpc-0123456789abcdef0
+  
+  SecurityGroupId:
+    Type: String
+    Description: Security Group ID for Lambda
+    Default: sg-0123456789abcdef0
+  
+  SubnetId1:
+    Type: String
+    Description: Private Subnet 1 ID
+    Default: subnet-0123456789abcdef0
+  
+  SubnetId2:
+    Type: String
+    Description: Private Subnet 2 ID
+    Default: subnet-0123456789abcdef1
+
+Globals:
+  Function:
+    Timeout: 60
+    MemorySize: 512
+    Runtime: python3.9
+    Architectures:
+      - x86_64
+    Environment:
+      Variables:
+        ENVIRONMENT: !Ref Environment
+
+Resources:
+  ImpactCompendiumApi:
+    Type: AWS::Serverless::Api
+    Properties:
+      StageName: !Ref Environment
+      Name: !Sub "${ProjectName}-backend-api-${Environment}"
+      Description: Impact Compendium FastAPI Backend
+      Cors:
+        AllowMethods: "'GET,POST,PUT,DELETE,OPTIONS'"
+        AllowHeaders: "'Content-Type,X-Amz-Date,Authorization,X-Api-Key,X-Amz-Security-Token,Accept,Origin,Referer,X-User-Email'"
+        AllowOrigin: "'*'"
+        MaxAge: "'600'"
+      GatewayResponses:
+        DEFAULT_4XX:
+          ResponseParameters:
+            Headers:
+              Access-Control-Allow-Origin: "'*'"
+              Access-Control-Allow-Headers: "'Content-Type,X-Amz-Date,Authorization,X-Api-Key,X-Amz-Security-Token,Accept,Origin,Referer'"
+        DEFAULT_5XX:
+          ResponseParameters:
+            Headers:
+              Access-Control-Allow-Origin: "'*'"
+              Access-Control-Allow-Headers: "'Content-Type,X-Amz-Date,Authorization,X-Api-Key,X-Amz-Security-Token,Accept,Origin,Referer'"
+
+  ImpactCompendiumFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      FunctionName: !Sub "${ProjectName}-backend-api-${Environment}"
+      CodeUri: ../../Backend/
+      Handler: main.handler
+      Description: Impact Compendium FastAPI Backend
+      VpcConfig:
+        SecurityGroupIds:
+          - !Ref SecurityGroupId
+        SubnetIds:
+          - !Ref SubnetId1
+          - !Ref SubnetId2
+      Environment:
+        Variables:
+          STAGE: !Ref Environment
+          DB_HOST:
+            Fn::ImportValue: !Sub "${ProjectName}-${Environment}-db-endpoint"
+          DB_NAME: impact_compendium
+          DB_USER: admin
+          DB_PASSWORD: !Sub "{{resolve:secretsmanager:${ProjectName}/${Environment}/db-password:SecretString:password}}"
+          DB_PORT: "3306"
+          COGNITO_USER_POOL_ID:
+            Fn::ImportValue: !Sub "${ProjectName}-${Environment}-cognito-pool-id"
+          COGNITO_CLIENT_ID:
+            Fn::ImportValue: !Sub "${ProjectName}-${Environment}-cognito-client-id"
+          COGNITO_REGION: !Ref AWS::Region
+      Policies:
+        - VPCAccessPolicy: {}
+        - Version: '2012-10-17'
+          Statement:
+            - Effect: Allow
+              Action:
+                - cognito-idp:*
+              Resource: 
+                - !Sub 
+                  - "arn:aws:cognito-idp:${AWS::Region}:${AWS::AccountId}:userpool/${UserPoolId}"
+                  - UserPoolId:
+                      Fn::ImportValue: !Sub "${ProjectName}-${Environment}-cognito-pool-id"
+            - Effect: Allow
+              Action:
+                - secretsmanager:GetSecretValue
+              Resource: !Sub "arn:aws:secretsmanager:${AWS::Region}:${AWS::AccountId}:secret:${ProjectName}/${Environment}/db-password*"
+            - Effect: Allow
+              Action:
+                - logs:CreateLogGroup
+                - logs:CreateLogStream
+                - logs:PutLogEvents
+              Resource: "*"
+      Events:
+        ApiEvent:
+          Type: Api
+          Properties:
+            RestApiId: !Ref ImpactCompendiumApi
+            Path: /{proxy+}
+            Method: ANY
+        RootApiEvent:
+          Type: Api
+          Properties:
+            RestApiId: !Ref ImpactCompendiumApi
+            Path: /
+            Method: ANY
+
+Outputs:
+  ImpactCompendiumApiUrl:
+    Description: API Gateway endpoint URL for Impact Compendium Backend
+    Value: !Sub "https://${ImpactCompendiumApi}.execute-api.${AWS::Region}.amazonaws.com/${Environment}/"
+    Export:
+      Name: !Sub "${ProjectName}-backend-${Environment}-api-url"
+  
+  ImpactCompendiumFunctionArn:
+    Description: Impact Compendium Lambda Function ARN
+    Value: !GetAtt ImpactCompendiumFunction.Arn
+    Export:
+      Name: !Sub "${ProjectName}-backend-${Environment}-function-arn"
+
+  ImpactCompendiumFunctionName:
+    Description: Impact Compendium Lambda Function Name
+    Value: !Ref ImpactCompendiumFunction
+    Export:
+      Name: !Sub "${ProjectName}-backend-${Environment}-function-name"
+
+  SwaggerUIUrl:
+    Description: Swagger UI Documentation URL
+    Value: !Sub "https://${ImpactCompendiumApi}.execute-api.${AWS::Region}.amazonaws.com/${Environment}/docs"
+    Export:
+      Name: !Sub "${ProjectName}-backend-${Environment}-docs-url"

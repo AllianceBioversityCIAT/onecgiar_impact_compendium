@@ -33,6 +33,7 @@ execution_log.txt
 .env.test
 .env.production
 .env.staging
+.env.production.prod
 
 # AWS SAM
 .aws-sam/

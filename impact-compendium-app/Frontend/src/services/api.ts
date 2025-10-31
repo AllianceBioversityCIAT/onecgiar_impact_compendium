@@ -288,7 +288,7 @@ export const studyAPI = {
    */
   getAll: (params?: Record<string, any>) => {
     const queryString = params ? `?${new URLSearchParams(params).toString()}` : '';
-    return apiGet(`/studies${queryString}`);
+    return apiGet(`/studies/${queryString}`);
   },
   
   /**

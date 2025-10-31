@@ -1,40 +1,37 @@
 # Impact Compendium Infrastructure
 
-**Deployment Method:** Pure CloudFormation  
+**Deployment Method:** CloudFormation  
 **Profile:** IBD-DEV  
 **Region:** us-east-1
 
-## Quick Start
+## Quick Deployment
 
-### Deploy Testing Environment
+### Testing Environment
 ```bash
-./scripts/deploy-cf.sh
+./scripts/deploy-cf.sh testing
+./scripts/deploy-frontend.sh testing
 ```
 
-### Delete Testing Environment
+### Production Environment
 ```bash
-./scripts/delete-cf.sh impact-compendium-testing
+./scripts/deploy-cf.sh production
+./scripts/deploy-frontend.sh production
 ```
 
 ## Files
 
+### Essential Files
 - `cloudformation-complete.yaml` - Complete infrastructure template
-- `scripts/deploy-cf.sh` - Deployment script
-- `scripts/delete-cf.sh` - Cleanup script
+- `DEPLOYMENT.md` - Detailed deployment guide
+
+### Scripts
+- `deploy-cf.sh` - Deploy infrastructure (testing/production)
+- `deploy-frontend.sh` - Deploy frontend (testing/production)
+- `delete-cf.sh` - Delete CloudFormation stack
+- `troubleshoot.sh` - Troubleshooting utilities
 
 ## Current Deployment
 
 **Stack:** `impact-compendium-testing`  
-**Status:** ✅ DEPLOYED  
-**Database:** ✅ RESTORED (22 tables)
-
-### Endpoints
-- **API:** `https://plquqwcug2.execute-api.us-east-1.amazonaws.com/testing`
-- **Database:** `impact-compendium-db-testing.caillnmrvhaw.us-east-1.rds.amazonaws.com`
-
-### Resources
-- Lambda Function: `impact-compendium-backend-testing`
-- S3 Bucket: `impact-compendium-frontend-testing-569113802249`
-- RDS MySQL: `impact-compendium-db-testing`
-- Cognito User Pool: Auto-generated
-- CloudFront Distribution: Auto-generated
+**Frontend:** https://dt3m7tyug8c1q.cloudfront.net  
+**API:** https://c554ivnf2j.execute-api.us-east-1.amazonaws.com/testing

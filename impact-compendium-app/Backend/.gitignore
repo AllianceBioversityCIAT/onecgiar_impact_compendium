@@ -67,3 +67,12 @@ htmlcov/
 # Alembic
 alembic/versions/*.py
 !alembic/versions/__init__.py
+
+# Deployment
+deployment/
+*.zip
+lambda-*.zip
+
+# Python packages (if accidentally installed in root)
+*-*.dist-info/
+site-packages/

@@ -1,5 +1,5 @@
 AWSTemplateFormatVersion: '2010-09-09'
-Description: Impact Compendium - Complete Testing Environment
+Description: Impact Compendium - Complete Environment Infrastructure
 
 Parameters:
   Environment:
@@ -327,8 +327,9 @@ Resources:
       UserPoolId: !Ref ImpactUserPool
       GenerateSecret: false
       ExplicitAuthFlows:
-        - ADMIN_NO_SRP_AUTH
-        - USER_PASSWORD_AUTH
+        - ALLOW_ADMIN_USER_PASSWORD_AUTH
+        - ALLOW_USER_PASSWORD_AUTH
+        - ALLOW_REFRESH_TOKEN_AUTH
 
   # IAM Role for Lambda
   LambdaExecutionRole:

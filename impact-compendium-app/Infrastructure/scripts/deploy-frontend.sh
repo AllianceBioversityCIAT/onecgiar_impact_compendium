@@ -1,42 +1,71 @@
 #!/bin/bash
 
 # Deploy Frontend to S3 + CloudFront
-# Usage: ./scripts/deploy-frontend.sh [source-directory]
+# Usage: ./scripts/deploy-frontend.sh [environment] [source-directory]
 
-SOURCE_DIR=${1:-"../Frontend/build"}
-BUCKET_NAME="impact-compendium-frontend-testing-569113802249"
+ENVIRONMENT=${1:-testing}
+SOURCE_DIR=${2:-"../Frontend/dist"}
+STACK_NAME="impact-compendium-$ENVIRONMENT"
 
 echo "🚀 Deploying frontend to S3 + CloudFront"
+echo "Environment: $ENVIRONMENT"
 echo "Source: $SOURCE_DIR"
+echo "Stack: $STACK_NAME"
+
+# Production confirmation
+if [ "$ENVIRONMENT" = "production" ]; then
+    read -p "⚠️  Are you sure you want to deploy to PRODUCTION? (yes/no): " confirm
+    if [ "$confirm" != "yes" ]; then
+        echo "❌ Deployment cancelled"
+        exit 1
+    fi
+fi
+
+# Get bucket name from CloudFormation stack
+BUCKET_NAME=$(aws cloudformation describe-stacks \
+    --stack-name "$STACK_NAME" \
+    --profile IBD-DEV \
+    --region us-east-1 \
+    --query 'Stacks[0].Outputs[?OutputKey==`S3BucketName`].OutputValue' \
+    --output text)
+
+if [ -z "$BUCKET_NAME" ]; then
+    echo "❌ Could not find S3 bucket name from stack: $STACK_NAME"
+    exit 1
+fi
+
 echo "Bucket: $BUCKET_NAME"
 
 if [ ! -d "$SOURCE_DIR" ]; then
     echo "❌ Source directory not found: $SOURCE_DIR"
-    echo "Building basic index.html instead..."
-    
-    # Create basic index if source doesn't exist
-    cat > /tmp/index.html << 'EOF'
-<!DOCTYPE html>
-<html><head><title>Impact Compendium</title></head>
-<body><h1>Impact Compendium - Testing Environment</h1>
-<p>API: <a href="https://plquqwcug2.execute-api.us-east-1.amazonaws.com/testing">https://plquqwcug2.execute-api.us-east-1.amazonaws.com/testing</a></p>
-</body></html>
-EOF
-    
-    aws s3 cp /tmp/index.html s3://$BUCKET_NAME/index.html --profile IBD-DEV --region us-east-1
-else
-    # Deploy built frontend
-    aws s3 sync "$SOURCE_DIR" s3://$BUCKET_NAME --delete --profile IBD-DEV --region us-east-1
+    echo "Please build the frontend first: cd Frontend && npm run build"
+    exit 1
 fi
 
-# Get CloudFront distribution ID
-DISTRIBUTION_ID=$(aws cloudformation describe-stacks --stack-name impact-compendium-testing --profile IBD-DEV --region us-east-1 --query 'Stacks[0].Outputs[?OutputKey==`CloudFrontUrl`].OutputValue' --output text | sed 's|https://||' | sed 's|\.cloudfront\.net||')
+# Deploy built frontend
+aws s3 sync "$SOURCE_DIR" s3://$BUCKET_NAME --delete --profile IBD-DEV --region us-east-1
 
-if [ -n "$DISTRIBUTION_ID" ]; then
+# Get CloudFront distribution ID from stack outputs
+CLOUDFRONT_URL=$(aws cloudformation describe-stacks \
+    --stack-name "$STACK_NAME" \
+    --profile IBD-DEV \
+    --region us-east-1 \
+    --query 'Stacks[0].Outputs[?OutputKey==`CloudFrontUrl`].OutputValue' \
+    --output text)
+
+if [ -n "$CLOUDFRONT_URL" ]; then
+    # Extract distribution ID from URL
+    DISTRIBUTION_ID=$(echo "$CLOUDFRONT_URL" | sed 's|https://||' | sed 's|\.cloudfront\.net||')
+    
     echo "🔄 Invalidating CloudFront cache..."
-    aws cloudfront create-invalidation --distribution-id "$DISTRIBUTION_ID" --paths "/*" --profile IBD-DEV --region us-east-1
+    aws cloudfront create-invalidation \
+        --distribution-id "$DISTRIBUTION_ID" \
+        --paths "/*" \
+        --profile IBD-DEV \
+        --region us-east-1
+    
     echo "✅ Frontend deployed successfully!"
-    echo "🌐 URL: https://$DISTRIBUTION_ID.cloudfront.net"
+    echo "🌐 URL: $CLOUDFRONT_URL"
 else
-    echo "⚠️  Could not find CloudFront distribution ID"
+    echo "⚠️  Could not find CloudFront distribution URL"
 fi

@@ -35,7 +35,7 @@ async def get_reports_summary(db: Session = Depends(get_db)):
         category_query = text("""
             SELECT sc.name, COUNT(s.study_id) as count
             FROM studies s
-            LEFT JOIN studies_categories sc ON s.category_id = sc.study_category_id
+            LEFT JOIN categories sc ON s.category_id = sc.study_category_id
             WHERE s.is_active = 1
             GROUP BY sc.name
             ORDER BY count DESC

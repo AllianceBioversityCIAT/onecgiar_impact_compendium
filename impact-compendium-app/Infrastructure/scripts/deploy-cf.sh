@@ -1,15 +1,26 @@
 #!/bin/bash
 
 # CloudFormation Deploy Script
-# Usage: ./scripts/deploy-cf.sh [template-name] [stack-name]
+# Usage: ./scripts/deploy-cf.sh [environment] [stack-name]
 
-TEMPLATE=${1:-cloudformation-complete.yaml}
-STACK_NAME=${2:-impact-compendium-testing}
+ENVIRONMENT=${1:-testing}
+STACK_NAME=${2:-impact-compendium-$ENVIRONMENT}
+TEMPLATE="cloudformation-complete.yaml"
 
 echo "🚀 Deploying CloudFormation stack: $STACK_NAME"
+echo "Environment: $ENVIRONMENT"
 echo "Template: $TEMPLATE"
 echo "Profile: IBD-DEV"
 echo "Region: us-east-1"
+
+# Production confirmation
+if [ "$ENVIRONMENT" = "production" ]; then
+    read -p "⚠️  Are you sure you want to deploy to PRODUCTION? (yes/no): " confirm
+    if [ "$confirm" != "yes" ]; then
+        echo "❌ Deployment cancelled"
+        exit 1
+    fi
+fi
 
 # Navigate to Infrastructure directory
 cd "$(dirname "$0")/.."
@@ -20,14 +31,14 @@ aws cloudformation create-stack \
     --template-body "file://$(pwd)/$TEMPLATE" \
     --capabilities CAPABILITY_NAMED_IAM \
     --parameters \
-        ParameterKey=Environment,ParameterValue=testing \
+        ParameterKey=Environment,ParameterValue=$ENVIRONMENT \
         ParameterKey=ProjectName,ParameterValue=impact-compendium \
         ParameterKey=LambdaCodeKey,ParameterValue=lambda-complete.zip \
     --profile IBD-DEV \
     --region us-east-1 \
     --tags \
         Key=Project,Value=impact-compendium \
-        Key=Environment,Value=testing \
+        Key=Environment,Value=$ENVIRONMENT \
         Key=Owner,Value=cgiar-alliance
 
 echo "Waiting for deployment to complete..."

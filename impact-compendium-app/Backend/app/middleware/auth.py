@@ -76,8 +76,10 @@ def require_admin(current_user: Dict[str, Any] = Depends(get_current_user)) -> D
         HTTPException: If user is not admin
     """
     user_groups = current_user.get("groups", [])
+    logger.debug(f"User {current_user.get('email')} has groups: {user_groups}")
     
     if "admin" not in user_groups and "administrators" not in user_groups:
+        logger.warning(f"Access denied for user {current_user.get('email')} - missing admin group")
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
             detail="Admin access required"

@@ -4,12 +4,14 @@ import { authService } from '../services/auth';
 interface User {
   email: string;
   sub: string;
+  groups?: string[];
 }
 
 interface AuthContextType {
   user: User | null;
   isAuthenticated: boolean;
   isLoading: boolean;
+  isAdmin: boolean;
   login: (email: string, password: string) => Promise<void>;
   logout: () => Promise<void>;
   refreshUser: () => Promise<void>;
@@ -115,10 +117,13 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     };
   }, []);
 
+  const isAdmin = user?.groups?.includes('admin') || user?.groups?.includes('administrators') || false;
+
   const value: AuthContextType = {
     user,
     isAuthenticated,
     isLoading,
+    isAdmin,
     login,
     logout,
     refreshUser,

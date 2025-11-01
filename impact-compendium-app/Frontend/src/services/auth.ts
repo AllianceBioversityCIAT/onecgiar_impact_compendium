@@ -116,9 +116,21 @@ class AuthService {
   async getCurrentUser() {
     try {
       const user = await getCurrentUser();
+      const session = await fetchAuthSession();
+      
+      // Extract groups from JWT token
+      const idToken = session.tokens?.idToken;
+      let groups: string[] = [];
+      
+      if (idToken) {
+        const payload = idToken.payload;
+        groups = (payload['cognito:groups'] as string[]) || [];
+      }
+      
       return {
         email: user.signInDetails?.loginId || '',
         sub: user.userId,
+        groups,
       };
     } catch (error) {
       // Fallback to localStorage

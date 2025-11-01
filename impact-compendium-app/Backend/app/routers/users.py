@@ -20,6 +20,7 @@ from pydantic import BaseModel
 from app.middleware.auth import require_admin
 from app.services.cognito_user_service import CognitoUserService
 import logging
+import os
 
 logger = logging.getLogger(__name__)
 router = APIRouter()
@@ -56,7 +57,8 @@ class CreateUserRequest(BaseModel):
     send_email: bool = True
 
 # User endpoints
-@router.get("/")
+@router.get("/", include_in_schema=False)
+@router.get("")
 async def list_users(current_user: dict = Depends(require_admin)):
     """
     List all users from Cognito User Pool
@@ -92,44 +94,33 @@ async def create_user(
         HTTPException: 500 if user creation fails
     """
     try:
-        # TEMPORARY WORKAROUND: Use AWS CLI directly
-        import subprocess
-        import json
-        import random
-        import string
+        import boto3
         
-        # Generate username
-        username = user_data.email.split('@')[0] + '_' + ''.join(random.choices(string.ascii_lowercase + string.digits, k=8))
+        # Use email as username (required by Cognito User Pool configuration)
+        username = user_data.email
         
-        # AWS CLI command
-        cmd = [
-            'aws', 'cognito-idp', 'admin-create-user',
-            '--user-pool-id', 'us-east-1_IvjuJmtXt',
-            '--username', username,
-            '--user-attributes', 
-            f'Name=email,Value={user_data.email}',
-            f'Name=name,Value={user_data.email.split("@")[0]}',
-            'Name=email_verified,Value=true',
-            '--temporary-password', user_data.temporary_password,
-            '--message-action', 'SUPPRESS',
-            '--profile', 'IBD-DEV',
-            '--region', 'us-east-1',
-            '--output', 'json'
-        ]
+        # Use boto3 instead of AWS CLI
+        user_pool_id = os.getenv('COGNITO_USER_POOL_ID', 'us-east-1_yFLIp9zBk')
+        cognito_client = boto3.client('cognito-idp', region_name='us-east-1')
         
-        result = subprocess.run(cmd, capture_output=True, text=True, timeout=30)
+        response = cognito_client.admin_create_user(
+            UserPoolId=user_pool_id,
+            Username=username,
+            UserAttributes=[
+                {'Name': 'email', 'Value': user_data.email},
+                {'Name': 'name', 'Value': user_data.email.split('@')[0]},
+                {'Name': 'email_verified', 'Value': 'true'}
+            ],
+            TemporaryPassword=user_data.temporary_password,
+            MessageAction='SUPPRESS'
+        )
         
-        if result.returncode == 0:
-            aws_response = json.loads(result.stdout)
-            return {
-                'username': aws_response['User']['Username'],
-                'email': user_data.email,
-                'status': aws_response['User']['UserStatus'],
-                'created': aws_response['User']['UserCreateDate']
-            }
-        else:
-            logger.error(f"AWS CLI error: {result.stderr}")
-            raise HTTPException(status_code=500, detail="Failed to create user")
+        return {
+            'username': response['User']['Username'],
+            'email': user_data.email,
+            'status': response['User']['UserStatus'],
+            'created': response['User']['UserCreateDate']
+        }
             
     except Exception as e:
         logger.error(f"Failed to create user: {e}")

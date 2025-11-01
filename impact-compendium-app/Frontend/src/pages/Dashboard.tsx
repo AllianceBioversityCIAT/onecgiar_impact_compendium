@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import * as XLSX from 'xlsx';
+import { toast } from 'react-hot-toast';
 import { AppLayout } from '../layouts/AppLayout';
 import { Table } from '../components/ui/Table';
 import { Button } from '../components/ui/Button';
@@ -8,6 +9,7 @@ import { TableSkeleton } from '../components/ui/TableSkeleton';
 import { EmptyState } from '../components/ui/EmptyState';
 import { StudyDetailsPanel } from './StudyDetailsPanel';
 import { studyAPI } from '../services/api';
+import { authService } from '../services/auth';
 import { useDebouncedValue } from '../hooks/useDebouncedValue';
 import { getMockStudies } from '../mocks/studies';
 
@@ -53,6 +55,7 @@ export const Dashboard: React.FC = () => {
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
   const [studyToDelete, setStudyToDelete] = useState<Study | null>(null);
   const [deleting, setDeleting] = useState(false);
+  const [exporting, setExporting] = useState(false);
   
   // Search and filter state
   const [searchParams, setSearchParams] = useState<SearchParams>({
@@ -248,25 +251,126 @@ export const Dashboard: React.FC = () => {
     });
   };
 
-  const handleDownloadExcel = () => {
-    const exportData = studies.map(study => ({
-      'ID': study.id,
-      'Year': study.year,
-      'Period Analyzed': study.period,
-      'Title': study.title,
-      'Impact Areas': study.impact_areas,
-      'Regions': study.regions,
-      'Category': study.category,
-      'Contributing Initiatives': study.contributors,
-      'Summary': study.summary
-    }));
-
-    const worksheet = XLSX.utils.json_to_sheet(exportData);
-    const workbook = XLSX.utils.book_new();
-    XLSX.utils.book_append_sheet(workbook, worksheet, 'Studies');
+  const handleDownloadExcel = async () => {
+    if (exporting) return;
     
-    const fileName = `impact-studies-${new Date().toISOString().split('T')[0]}.xlsx`;
-    XLSX.writeFile(workbook, fileName);
+    let loadingToast: string | undefined;
+    
+    try {
+      setExporting(true);
+      
+      // Start async export
+      const authHeaders = await authService.getAuthHeaders();
+      const startResponse = await fetch(`${import.meta.env.VITE_API_BASE_URL}/api/reports/export/start?format=excel&limit=1000`, {
+        method: 'POST',
+        headers: {
+          'Accept': 'application/json',
+          ...authHeaders
+        }
+      });
+
+      if (!startResponse.ok) {
+        throw new Error(`Failed to start export: ${startResponse.statusText}`);
+      }
+
+      const { job_id } = await startResponse.json();
+      
+      // Show loading notification with progress
+      console.log('Showing loading toast...');
+      loadingToast = toast.loading('Starting full report generation...', {
+        duration: 0,
+      });
+      console.log('Loading toast ID:', loadingToast);
+
+      // Poll for completion
+      const pollInterval = setInterval(async () => {
+        try {
+          const statusResponse = await fetch(`${import.meta.env.VITE_API_BASE_URL}/api/reports/export/status/${job_id}`, {
+            headers: authHeaders
+          });
+
+          if (statusResponse.ok) {
+            const status = await statusResponse.json();
+            
+            // Update toast with progress
+            if (loadingToast) {
+              toast.dismiss(loadingToast);
+              loadingToast = toast.loading(`Generating full report... ${status.progress || 0}%`, {
+                duration: 0,
+              });
+            }
+
+            if (status.status === 'completed') {
+              clearInterval(pollInterval);
+              
+              // Download the file
+              const downloadResponse = await fetch(`${import.meta.env.VITE_API_BASE_URL}/api/reports/export/download/${job_id}`, {
+                headers: authHeaders
+              });
+
+              if (downloadResponse.ok) {
+                const blob = await downloadResponse.blob();
+                const url = window.URL.createObjectURL(blob);
+                const link = document.createElement('a');
+                link.href = url;
+                link.download = status.filename || `impact_compendium_report_${new Date().toISOString().split('T')[0]}.xlsx`;
+                document.body.appendChild(link);
+                link.click();
+                document.body.removeChild(link);
+                window.URL.revokeObjectURL(url);
+
+                // Show success message
+                if (loadingToast) toast.dismiss(loadingToast);
+                toast.success(`Full report downloaded successfully! (${status.record_count} studies)`, {
+                  duration: 5000,
+                });
+              } else {
+                throw new Error('Failed to download report');
+              }
+              
+              setExporting(false);
+            } else if (status.status === 'failed') {
+              clearInterval(pollInterval);
+              throw new Error(status.error || 'Export failed');
+            }
+          }
+        } catch (pollError) {
+          clearInterval(pollInterval);
+          throw pollError;
+        }
+      }, 2000); // Poll every 2 seconds
+
+      // Set timeout for polling (5 minutes max)
+      setTimeout(() => {
+        clearInterval(pollInterval);
+        if (exporting) {
+          setExporting(false);
+          if (loadingToast) toast.dismiss(loadingToast);
+          toast.error('Export timed out. Please try again.', { duration: 5000 });
+        }
+      }, 300000);
+
+    } catch (error) {
+      console.error('Excel export error:', error);
+      
+      // Dismiss loading toast
+      if (loadingToast) {
+        toast.dismiss(loadingToast);
+      }
+      
+      // Handle timeout specifically
+      if (error instanceof Error && error.name === 'AbortError') {
+        toast.error('Export timed out. The report is too large. Try reducing the data or contact support.', {
+          duration: 8000,
+        });
+      } else {
+        toast.error(`Failed to download Excel report: ${error instanceof Error ? error.message : 'Unknown error'}`, {
+          duration: 5000,
+        });
+      }
+    } finally {
+      setExporting(false);
+    }
   };
 
   const handleRowExpand = (row: any) => {
@@ -374,14 +478,26 @@ export const Dashboard: React.FC = () => {
           
           <Button
             onClick={handleDownloadExcel}
-            disabled={studies.length === 0}
+            disabled={studies.length === 0 || exporting}
             variant="secondary"
-            className="flex items-center gap-2 !bg-green-600 hover:!bg-green-700 !text-white !border-green-600 hover:!border-green-700"
+            className="flex items-center gap-2 !bg-green-600 hover:!bg-green-700 !text-white !border-green-600 hover:!border-green-700 disabled:!bg-gray-400 disabled:!border-gray-400"
           >
-            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
-            </svg>
-            Download Excel
+            {exporting ? (
+              <>
+                <svg className="w-4 h-4 animate-spin" fill="none" viewBox="0 0 24 24">
+                  <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                  <path className="opacity-75" fill="currentColor" d="m4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                </svg>
+                Generating Report...
+              </>
+            ) : (
+              <>
+                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                </svg>
+                Export Full Report
+              </>
+            )}
           </Button>
         </div>
 

@@ -99,6 +99,11 @@ def get_db() -> Generator[Optional[Session], None, None]:
     """FastAPI dependency for database sessions."""
     yield from db_connection.get_session()
 
+# Helper for background tasks
+def get_db_session():
+    """Get database session for background tasks."""
+    return db_connection.get_session()
+
 # Helper functions
 def create_tables():
     """Create all database tables."""

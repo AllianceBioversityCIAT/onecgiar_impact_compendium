@@ -5,10 +5,8 @@ AWS Cognito User Pool management service
 import os
 import boto3
 import uuid
-import json
 import random
 import string
-import subprocess
 from typing import Dict, Any, List
 from botocore.exceptions import ClientError
 import logging
@@ -27,26 +25,9 @@ class CognitoUserService:
             self.mock_mode = True
         else:
             self.mock_mode = False
-            # In Lambda, use default credentials (IAM role)
-            # In local development, can use profile if available
-            import boto3
-            
-            if os.environ.get('AWS_EXECUTION_ENV'):
-                # Running in Lambda - use default credentials
-                self.client = boto3.client('cognito-idp', region_name=self.region)
-                logger.info(f"🔧 Initialized Cognito client for Lambda with region: {self.region}")
-            else:
-                # Running locally - try to use profile
-                try:
-                    os.environ['AWS_PROFILE'] = 'IBD-DEV'
-                    os.environ['AWS_DEFAULT_REGION'] = self.region
-                    session = boto3.Session(profile_name='IBD-DEV', region_name=self.region)
-                    self.client = session.client('cognito-idp')
-                    logger.info(f"🔧 Initialized Cognito client with IBD-DEV profile, region: {self.region}")
-                except Exception:
-                    # Fallback to default credentials
-                    self.client = boto3.client('cognito-idp', region_name=self.region)
-                    logger.info(f"🔧 Initialized Cognito client with default credentials, region: {self.region}")
+            # Always use default credentials (IAM role in Lambda, default profile locally)
+            self.client = boto3.client('cognito-idp', region_name=self.region)
+            logger.info(f"🔧 Initialized Cognito client with default credentials, region: {self.region}")
             
             # Test AWS credentials immediately
             try:
@@ -56,7 +37,7 @@ class CognitoUserService:
                 logger.error(f"❌ AWS credentials test FAILED: {e}")
                 # Try to get caller identity for debugging
                 try:
-                    sts_client = session.client('sts')
+                    sts_client = boto3.client('sts', region_name=self.region)
                     identity = sts_client.get_caller_identity()
                     logger.error(f"🔍 Current AWS identity: {identity}")
                 except Exception as sts_error:
@@ -306,7 +287,7 @@ class CognitoUserService:
             raise e
 
     def create_user(self, email: str, temporary_password: str, send_email: bool = True) -> Dict[str, Any]:
-        """Create a new user in the User Pool using AWS CLI"""
+        """Create a new user in the User Pool"""
         if self.mock_mode:
             return self._mock_create_user(email, temporary_password, send_email)
         
@@ -315,36 +296,35 @@ class CognitoUserService:
             base_username = generate_readable_username(email)
             username = base_username
             
-            logger.info(f"Creating user via AWS CLI: {username}, email: {email}")
+            logger.info(f"Creating user: {username}, email: {email}")
             
-            cmd = [
-                'aws', 'cognito-idp', 'admin-create-user',
-                '--user-pool-id', self.user_pool_id,
-                '--username', username,
-                '--user-attributes', f'Name=email,Value={email}', f'Name=name,Value={base_username}', 'Name=email_verified,Value=true',
-                '--temporary-password', temporary_password,
-                '--message-action', 'RESEND' if send_email else 'SUPPRESS',
-                '--profile', 'IBD-DEV',
-                '--region', 'us-east-1'
+            # Use boto3 client instead of AWS CLI
+            user_attributes = [
+                {'Name': 'email', 'Value': email},
+                {'Name': 'name', 'Value': base_username},
+                {'Name': 'email_verified', 'Value': 'true'}
             ]
             
-            if send_email:
-                cmd.extend(['--desired-delivery-mediums', 'EMAIL'])
+            response = self.client.admin_create_user(
+                UserPoolId=self.user_pool_id,
+                Username=username,
+                UserAttributes=user_attributes,
+                TemporaryPassword=temporary_password,
+                MessageAction='RESEND' if send_email else 'SUPPRESS',
+                DesiredDeliveryMediums=['EMAIL'] if send_email else []
+            )
             
-            result = subprocess.run(cmd, capture_output=True, text=True, check=True)
-            response = json.loads(result.stdout)
-            
-            logger.info(f"User created successfully via CLI: {username}")
+            logger.info(f"User created successfully: {username}")
             return {
                 'username': response['User']['Username'],
                 'email': email,
                 'status': response['User']['UserStatus'],
-                'created': response['User']['UserCreateDate']
+                'created': response['User']['UserCreateDate'].isoformat()
             }
             
-        except subprocess.CalledProcessError as e:
-            logger.error(f"AWS CLI error creating user: {e.stderr}")
-            raise Exception(f"Failed to create user: {e.stderr}")
+        except ClientError as e:
+            logger.error(f"Error creating user: {e}")
+            raise Exception(f"Failed to create user: {str(e)}")
         except Exception as e:
             logger.error(f"Error creating user: {str(e)}")
             raise Exception(f"Failed to create user: {str(e)}")

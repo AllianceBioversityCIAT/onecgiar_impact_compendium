@@ -27,6 +27,7 @@
 import React from 'react';
 import ReactDOM from 'react-dom/client';
 import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
+import { Toaster } from 'react-hot-toast';
 
 // Global styles - Tailwind CSS base styles and custom design tokens
 import './styles/global.css';
@@ -65,6 +66,16 @@ import { CreateStudyStep3 } from './pages/CreateStudy/Step3';
 function App(): JSX.Element {
   return (
     <Router future={{ v7_startTransition: true, v7_relativeSplatPath: true }}>
+      <Toaster 
+        position="top-right"
+        toastOptions={{
+          duration: 4000,
+          style: {
+            background: '#363636',
+            color: '#fff',
+          },
+        }}
+      />
       <Routes>
         {/* Public Routes - No authentication required */}
         <Route path="/login" element={<Login />} />

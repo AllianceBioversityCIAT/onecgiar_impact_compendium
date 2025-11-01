@@ -197,6 +197,7 @@ coverage/
 .nyc_output/
 .coverage
 htmlcov/
+test-results/
 
 # Logs and Monitoring
 *.log.*

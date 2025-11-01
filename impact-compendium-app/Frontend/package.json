@@ -11,7 +11,18 @@
     "test": "playwright test",
     "test:ui": "playwright test --ui",
     "test:headed": "playwright test --headed",
-    "test:login": "playwright test login-functional.spec.js"
+    "test:auth": "playwright test tests/suites/authentication.spec.ts",
+    "test:dashboard": "playwright test tests/suites/dashboard.spec.ts",
+    "test:studies": "playwright test tests/suites/studies.spec.ts",
+    "test:responsive": "playwright test tests/suites/responsive.spec.ts",
+    "test:performance": "playwright test tests/suites/performance.spec.ts",
+    "test:full-suite": "playwright test tests/run-all-tests.ts",
+    "test:components": "node tests/test-all-components.cjs",
+    "test:auth-scenario": "node tests/scenarios/authentication/auth-test.cjs",
+    "test:dashboard-scenario": "node tests/scenarios/dashboard/dashboard-test.cjs",
+    "test:studies-scenario": "node tests/scenarios/studies/studies-test.cjs",
+    "test:report": "playwright show-report test-results/html-report",
+    "test:clean": "rm -rf test-results && mkdir -p test-results/screenshots"
   },
   "dependencies": {
     "@aws-amplify/ui-react": "^6.13.1",

@@ -95,7 +95,7 @@ export const HeaderBar: React.FC<HeaderBarProps> = ({
             ? 'opacity-0 transform translate-y-[-10px] pointer-events-none' 
             : 'opacity-100 transform translate-y-0'
         }`}>
-          <nav className="flex items-center gap-2">
+          <nav className="flex items-center gap-2" aria-label="Main navigation">
             <button
               onClick={() => navigate('/')}
               className={`flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-normal tracking-[-0.15px] transition-colors ${
@@ -190,6 +190,8 @@ export const HeaderBar: React.FC<HeaderBarProps> = ({
             <button
               onClick={() => setShowUserMenu(!showUserMenu)}
               className="w-10 h-10 bg-[var(--ic-color-primary)] text-black rounded-full flex items-center justify-center font-semibold hover:opacity-90 transition-opacity"
+              data-testid="user-menu-button"
+              aria-label="User menu"
             >
               {getUserInitials()}
             </button>

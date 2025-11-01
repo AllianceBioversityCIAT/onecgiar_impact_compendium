@@ -198,11 +198,20 @@ export const CreateStudyStep1: React.FC = () => {
     if (!formData.doi) {
       newErrors.doi = 'This field is required.';
     } else {
-      // Validate URL format
-      const urlPattern = /^(https?:\/\/)?([\da-z\.-]+)\.([a-z\.]{2,6})([\/\w \.-]*)*\/?$/;
-      const doiPattern = /^10\.\d{4,}\/[-._;()\/:a-zA-Z0-9]+$/;
+      // Validate URL format - support multiple patterns found in database
+      const urlPattern = /^https?:\/\/.+/; // Any valid HTTP/HTTPS URL
+      const doiPattern = /^10\.\d{4,}\/[-._;()\/:a-zA-Z0-9]+$/; // Plain DOI format
+      const doiUrlPattern = /^https:\/\/doi\.org\/10\.\d{4,}\/[-._;()\/:a-zA-Z0-9]+$/; // DOI URL
+      const cgspacePattern = /^https:\/\/cgspace\.cgiar\.org\/.+/; // CGIAR repository
+      const melPattern = /^https:\/\/mel\.cgiar\.org\/.+/; // MEL repository  
+      const handlePattern = /^https:\/\/hdl\.handle\.net\/.+/; // Handle URLs
       
-      if (!urlPattern.test(formData.doi) && !doiPattern.test(formData.doi)) {
+      if (!urlPattern.test(formData.doi) && 
+          !doiPattern.test(formData.doi) && 
+          !doiUrlPattern.test(formData.doi) &&
+          !cgspacePattern.test(formData.doi) &&
+          !melPattern.test(formData.doi) &&
+          !handlePattern.test(formData.doi)) {
         newErrors.doi = 'Please enter a valid URL or DOI format.';
       }
     }
@@ -350,7 +359,7 @@ export const CreateStudyStep1: React.FC = () => {
             <Input
               label="Link or DOI"
               required
-              placeholder="https://example.com or 10.1000/xyz123"
+              placeholder="https://doi.org/10.1000/xyz123 or https://cgspace.cgiar.org/... or 10.1000/xyz123"
               value={formData.doi}
               onChange={(e) => handleInputChange('doi', e.target.value)}
               error={errors.doi}

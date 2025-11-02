@@ -7,6 +7,7 @@ import { Input } from '../../components/ui/Input';
 import { Button } from '../../components/ui/Button';
 import { Card } from '../../components/ui/Card';
 import { SuccessModal } from '../../components/ui/SuccessModal';
+import { ConfirmationModal } from '../../components/ui/ConfirmationModal';
 import { studyAPI } from '../../services/api';
 import { authService } from '../../services/auth';
 
@@ -48,6 +49,7 @@ export const CreateStudyStep3: React.FC = () => {
     message: string;
     show: boolean;
   }>({ type: 'info', message: '', show: false });
+  const [showCloseConfirm, setShowCloseConfirm] = useState(false);
 
   // Load study data for edit mode
   React.useEffect(() => {
@@ -55,6 +57,19 @@ export const CreateStudyStep3: React.FC = () => {
       const loadStudyData = async () => {
         try {
           setMappingData(true);
+          
+          // Check if we have saved data in localStorage first
+          const savedData = localStorage.getItem('studyFormStep3');
+          if (savedData) {
+            const parsed = JSON.parse(savedData);
+            if (parsed.indicators && parsed.indicators.length > 0) {
+              setIndicators(parsed.indicators);
+              setMappingData(false);
+              return; // Use localStorage data instead of API data
+            }
+          }
+          
+          // If no localStorage data, load from API
           const numericId = id.startsWith('ICD-') ? id.replace('ICD-', '') : id;
           const response = await fetch(`${import.meta.env.VITE_API_BASE_URL}/api/studies/${numericId}`);
           
@@ -133,7 +148,7 @@ export const CreateStudyStep3: React.FC = () => {
       const step2Data = JSON.parse(localStorage.getItem('studyFormStep2') || '{}');
       
       // Get current user
-      const currentUser = authService.getCurrentUser();
+      // (currentUser will be handled in auth headers section below)
       
       // Prepare complete study data according to backend schema
       const completeStudyData = {
@@ -174,11 +189,20 @@ export const CreateStudyStep3: React.FC = () => {
       console.log('Complete study data being sent:', JSON.stringify(completeStudyData, null, 2));
       console.log('========================');
 
-      // Get auth headers
-      const authHeaders = await authService.getAuthHeaders();
-      console.log('Auth headers:', authHeaders);
-      console.log('Current user:', currentUser);
-      const userEmail = (currentUser as any)?.email || 'unknown@example.com';
+      // Get auth headers (with local development bypass)
+      const isLocalDev = import.meta.env.VITE_API_BASE_URL?.includes('localhost');
+      let authHeaders = {};
+      let userEmail = 'testuser@example.com';
+      
+      if (!isLocalDev) {
+        authHeaders = await authService.getAuthHeaders();
+        const currentUser = authService.getCurrentUser();
+        userEmail = (currentUser as any)?.email || 'unknown@example.com';
+        console.log('Auth headers:', authHeaders);
+        console.log('Current user:', currentUser);
+      } else {
+        console.log('Local development mode - bypassing authentication');
+      }
 
       // Call the complete save endpoint
       const response = await fetch(`${import.meta.env.VITE_API_BASE_URL}/api/studies/complete`, {
@@ -242,8 +266,38 @@ export const CreateStudyStep3: React.FC = () => {
     navigate(backPath);
   };
 
+  const handleSaveDraft = async () => {
+    try {
+      showNotification('info', 'Saving draft...');
+      
+      // Save to localStorage for now (simple approach)
+      localStorage.setItem('studyFormStep3', JSON.stringify({ indicators }));
+      
+      // Show success notification
+      showNotification('success', 'Draft saved locally!');
+      
+    } catch (error: any) {
+      console.error('Failed to save draft:', error);
+      showNotification('error', 'Failed to save draft. Please try again.');
+    }
+  };
+
   const handleClose = () => {
+    setShowCloseConfirm(true);
+  };
+
+  const handleConfirmClose = () => {
+    // Clear all draft data
+    localStorage.removeItem('studyFormStep1');
+    localStorage.removeItem('studyFormStep2');
+    localStorage.removeItem('studyFormStep3');
+    
+    // Navigate to dashboard
     navigate('/dashboard');
+  };
+
+  const handleCancelClose = () => {
+    setShowCloseConfirm(false);
   };
 
   const pageTitle = isEditMode ? "Edit study form" : "Create new study form";
@@ -281,6 +335,7 @@ export const CreateStudyStep3: React.FC = () => {
       title={pageTitle}
       onBack={handleGoBack}
       onNext={handleFinish}
+      onSaveDraft={handleSaveDraft}
       nextLabel={isSubmitting ? 'Saving...' : 'Save'}
       isLoading={isSubmitting}
       steps={steps}
@@ -391,6 +446,18 @@ export const CreateStudyStep3: React.FC = () => {
           ))}
         </div>
       </div>
+
+      {/* Close Confirmation Modal */}
+      <ConfirmationModal
+        isOpen={showCloseConfirm}
+        title="Discard Draft?"
+        message="Are you sure you want to close this form? All unsaved changes and draft data will be lost."
+        confirmText="Discard"
+        cancelText="Keep Editing"
+        type="warning"
+        onConfirm={handleConfirmClose}
+        onCancel={handleCancelClose}
+      />
     </FormLayout>
   );
 };

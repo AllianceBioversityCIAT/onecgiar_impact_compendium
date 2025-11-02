@@ -6,7 +6,9 @@ import { Select } from '../../components/ui/Select';
 import { MultiSelect } from '../../components/ui/MultiSelect';
 import { Button } from '../../components/ui/Button';
 import { Card } from '../../components/ui/Card';
+import { ConfirmationModal } from '../../components/ui/ConfirmationModal';
 import { getReferenceData } from '../../services/api';
+import { authService } from '../../services/auth';
 
 const steps = [
   { id: 1, label: 'Step 1', completed: true },
@@ -18,6 +20,12 @@ export const CreateStudyStep2: React.FC = () => {
   const navigate = useNavigate();
   const { id } = useParams();
   const isEditMode = !!id;
+  const [notification, setNotification] = useState<{
+    type: 'success' | 'error' | 'info';
+    message: string;
+    show: boolean;
+  }>({ type: 'info', message: '', show: false });
+  const [showCloseConfirm, setShowCloseConfirm] = useState(false);
   
   // Load saved data immediately and synchronously
   const getSavedData = () => {
@@ -258,6 +266,34 @@ export const CreateStudyStep2: React.FC = () => {
     navigate(nextPath);
   };
 
+  const handleSaveDraft = async () => {
+    if (!formData.primaryCGIARImpactArea) {
+      alert('Please select a Primary CGIAR Impact Area');
+      return;
+    }
+
+    try {
+      showNotification('info', 'Saving draft...');
+      
+      // Save to localStorage for now (simple approach)
+      localStorage.setItem('studyFormStep2', JSON.stringify(formData));
+      
+      // Show success notification
+      showNotification('success', 'Draft saved locally!');
+      
+    } catch (error: any) {
+      console.error('Failed to save draft:', error);
+      showNotification('error', 'Failed to save draft. Please try again.');
+    }
+  };
+
+  const showNotification = (type: 'success' | 'error' | 'info', message: string) => {
+    setNotification({ type, message, show: true });
+    setTimeout(() => {
+      setNotification(prev => ({ ...prev, show: false }));
+    }, 5000);
+  };
+
   const handleGoBack = () => {
     // Save current form data before going back
     localStorage.setItem('studyFormStep2', JSON.stringify(formData));
@@ -266,7 +302,21 @@ export const CreateStudyStep2: React.FC = () => {
   };
 
   const handleClose = () => {
+    setShowCloseConfirm(true);
+  };
+
+  const handleConfirmClose = () => {
+    // Clear all draft data
+    localStorage.removeItem('studyFormStep1');
+    localStorage.removeItem('studyFormStep2');
+    localStorage.removeItem('studyFormStep3');
+    
+    // Navigate to dashboard
     navigate('/dashboard');
+  };
+
+  const handleCancelClose = () => {
+    setShowCloseConfirm(false);
   };
 
   const pageTitle = isEditMode ? "Edit study form" : "Create new study form";
@@ -276,10 +326,39 @@ export const CreateStudyStep2: React.FC = () => {
       title={pageTitle}
       onBack={handleGoBack}
       onNext={handleNext}
+      onSaveDraft={handleSaveDraft}
       steps={steps}
       currentStep={2}
       onClose={handleClose}
     >
+      {/* Notification Toast */}
+      {notification.show && (
+        <div className={`fixed top-4 right-4 z-50 max-w-md p-4 rounded-lg shadow-lg transition-all duration-300 ${
+          notification.type === 'success' ? 'bg-green-500 text-white' :
+          notification.type === 'error' ? 'bg-red-500 text-white' :
+          'bg-blue-500 text-white'
+        }`}>
+          <div className="flex items-center space-x-2">
+            {notification.type === 'success' && (
+              <svg className="w-5 h-5" fill="currentColor" viewBox="0 0 20 20">
+                <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd" />
+              </svg>
+            )}
+            {notification.type === 'error' && (
+              <svg className="w-5 h-5" fill="currentColor" viewBox="0 0 20 20">
+                <path fillRule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7 4a1 1 0 11-2 0 1 1 0 012 0zm-1-9a1 1 0 00-1 1v4a1 1 0 102 0V6a1 1 0 00-1-1z" clipRule="evenodd" />
+              </svg>
+            )}
+            {notification.type === 'info' && (
+              <svg className="w-5 h-5 animate-spin" fill="currentColor" viewBox="0 0 20 20">
+                <path fillRule="evenodd" d="M4 2a1 1 0 011 1v2.101a7.002 7.002 0 0111.601 2.566 1 1 0 11-1.885.666A5.002 5.002 0 005.999 7H9a1 1 0 010 2H4a1 1 0 01-1-1V3a1 1 0 011-1zm.008 9.057a1 1 0 011.276.61A5.002 5.002 0 0014.001 13H11a1 1 0 110-2h5a1 1 0 011 1v5a1 1 0 11-2 0v-2.101a7.002 7.002 0 01-11.601-2.566 1 1 0 01.61-1.276z" clipRule="evenodd" />
+              </svg>
+            )}
+            <span className="text-sm font-medium">{notification.message}</span>
+          </div>
+        </div>
+      )}
+      
       <div className="space-y-6">
         <h1 className="text-2xl font-bold text-[var(--ic-color-text)]">{pageTitle}</h1>
 
@@ -397,6 +476,18 @@ export const CreateStudyStep2: React.FC = () => {
         </Card>
         )}
       </div>
+
+      {/* Close Confirmation Modal */}
+      <ConfirmationModal
+        isOpen={showCloseConfirm}
+        title="Discard Draft?"
+        message="Are you sure you want to close this form? All unsaved changes and draft data will be lost."
+        confirmText="Discard"
+        cancelText="Keep Editing"
+        type="warning"
+        onConfirm={handleConfirmClose}
+        onCancel={handleCancelClose}
+      />
     </FormLayout>
   );
 };

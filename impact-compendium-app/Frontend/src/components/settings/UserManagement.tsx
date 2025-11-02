@@ -66,9 +66,7 @@ export const UserManagement: React.FC = () => {
 
   const handleCreateUser = async (userData: { email: string; temporaryPassword: string; sendEmail: boolean }) => {
     try {
-      console.log('🎯 UserManagement: Starting user creation for:', userData.email);
       await userService.createUser(userData);
-      console.log('✅ UserManagement: User created successfully');
       setShowCreateModal(false);
       await loadUsers(); // Refresh the list
       setSuccessNotification({

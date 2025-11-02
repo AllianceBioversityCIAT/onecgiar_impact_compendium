@@ -37,17 +37,13 @@ class UserService {
   }
 
   async createUser(userData: CreateUserRequest): Promise<{ username: string; status: string }> {
-    console.log('🚀 Creating user with userData:', userData);
     const authHeaders = await authService.getAuthHeaders();
-    console.log('📋 Request headers:', authHeaders);
     
     const requestBody = {
       email: userData.email,
       temporary_password: userData.temporaryPassword,
       send_email: userData.sendEmail
     };
-    console.log('📦 Request body being sent:', requestBody);
-    console.log('📦 Request body JSON:', JSON.stringify(requestBody, null, 2));
     
     const headers: Record<string, string> = {
       'Content-Type': 'application/json',
@@ -60,23 +56,17 @@ class UserService {
       body: JSON.stringify(requestBody)
     });
 
-    console.log('📡 Response status:', response.status, response.statusText);
-    console.log('📡 Response headers:', Object.fromEntries(response.headers.entries()));
-
     if (!response.ok) {
       let error;
       try {
         error = await response.json();
-        console.error('❌ API Error Response:', error);
       } catch (parseError) {
-        console.error('❌ Failed to parse error response:', parseError);
         error = { error: `HTTP ${response.status}: ${response.statusText}` };
       }
       throw new Error(error.error || error.detail || 'Failed to create user');
     }
 
     const result = await response.json();
-    console.log('✅ User created successfully:', result);
     return result;
   }
 

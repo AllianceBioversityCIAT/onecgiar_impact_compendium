@@ -184,11 +184,6 @@ export const CreateStudyStep3: React.FC = () => {
         // Note: created_by is now automatically captured from logged-in user in backend
       };
 
-      // Log the complete data being sent to the API
-      console.log('=== STEP 3 SAVE DATA ===');
-      console.log('Complete study data being sent:', JSON.stringify(completeStudyData, null, 2));
-      console.log('========================');
-
       // Get auth headers (with local development bypass)
       const isLocalDev = import.meta.env.VITE_API_BASE_URL?.includes('localhost');
       let authHeaders = {};
@@ -198,10 +193,6 @@ export const CreateStudyStep3: React.FC = () => {
         authHeaders = await authService.getAuthHeaders();
         const currentUser = authService.getCurrentUser();
         userEmail = (currentUser as any)?.email || 'unknown@example.com';
-        console.log('Auth headers:', authHeaders);
-        console.log('Current user:', currentUser);
-      } else {
-        console.log('Local development mode - bypassing authentication');
       }
 
       // Call the complete save endpoint

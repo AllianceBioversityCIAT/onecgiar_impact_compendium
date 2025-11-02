@@ -40,12 +40,6 @@ export const StudyDetailsPanel: React.FC<StudyDetailsPanelProps> = ({ isOpen, on
           if (data.success && data.data) {
             const studyData = data.data;
             
-            // Debug: Log the actual data structure
-            console.log('=== STUDY DATA DEBUG ===');
-            console.log('Available fields:', Object.keys(studyData));
-            console.log('Full studyData:', studyData);
-            console.log('========================');
-            
             // Try different possible field names for contributors
             const contributingInitiatives = studyData.contributing_initiatives || 
                                            studyData.contributingInitiatives || 
@@ -54,8 +48,6 @@ export const StudyDetailsPanel: React.FC<StudyDetailsPanelProps> = ({ isOpen, on
                                        studyData.contributingCenters || 
                                        studyData.centers || [];
             const allContributors = [...contributingInitiatives, ...contributingCenters];
-            
-            console.log('Final contributors:', allContributors);
             
             setStudy({
               id: studyData.study_id || studyData.id || studyId,

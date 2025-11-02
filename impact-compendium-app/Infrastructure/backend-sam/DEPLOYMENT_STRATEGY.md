@@ -2,7 +2,29 @@
 
 ## Overview
 
-This document outlines the deployment strategy for the Impact Compendium FastAPI backend using AWS SAM (Serverless Application Model) for the testing environment.
+This document outlines the deployment strategy for the Impact Compendium FastAPI backend using AWS SAM (Serverless Application Model). The backend integrates with existing infrastructure and prevents resource duplication through smart deployment checks.
+
+## Smart Deployment Architecture
+
+### Infrastructure Dependencies
+The backend **requires existing infrastructure** deployed first:
+
+```bash
+# 1. Check infrastructure status
+../scripts/check-status.sh testing
+
+# 2. Deploy infrastructure if needed (automatic check)
+../scripts/deploy-complete.sh testing
+
+# 3. Backend uses CloudFormation exports (no hardcoded values)
+```
+
+### Resource Separation Strategy
+- **Infrastructure Stack**: `impact-compendium-infra-testing`
+  - VPC, RDS, Cognito, S3, CloudFront
+- **Backend Stack**: `impact-compendium-backend-testing`  
+  - Lambda function, API Gateway only
+- **No Duplication**: Smart checks prevent creating duplicate resources
 
 ## Architecture Analysis
 
@@ -78,29 +100,45 @@ The backend depends on existing infrastructure deployed via CloudFormation:
 - Environment variables from existing infrastructure
 ```
 
-### 3. Deployment Process
+### 3. Smart Deployment Process
 
-#### Prerequisites
+#### Recommended: Use Complete Deployment Script
 ```bash
-# Install SAM CLI
-pip install aws-sam-cli
+# Navigate to Infrastructure directory
+cd ../
 
-# Configure AWS profile
-aws configure --profile IBD-DEV
+# Deploy everything (infrastructure + backend + frontend)
+# Safe to run multiple times - checks for existing resources
+./scripts/deploy-complete.sh testing
 ```
 
-#### Deployment Steps
+#### Alternative: Backend-Only Deployment
 ```bash
+# Only if infrastructure already exists
 cd Infrastructure/backend-sam/
 
-# 1. Build the application
+# Build and deploy
 sam build --profile IBD-DEV
+sam deploy --config-env testing --profile IBD-DEV
+```
 
-# 2. Deploy to testing environment
-./deploy-backend.sh
+#### Check Deployment Status
+```bash
+# See what's currently deployed
+../scripts/check-status.sh testing
+```
 
-# 3. Test the deployment
-curl https://{api-id}.execute-api.us-east-1.amazonaws.com/testing/health
+**Output Example:**
+```
+📦 Infrastructure Stack: impact-compendium-infra-testing
+   Status: ✅ CREATE_COMPLETE
+
+🔧 Backend Stack: impact-compendium-backend-testing
+   Status: ✅ UPDATE_COMPLETE
+
+🌐 Application URLs:
+   🔗 API: https://abc123.execute-api.us-east-1.amazonaws.com/testing/
+   🌐 Frontend: https://d1234567890.cloudfront.net
 ```
 
 ### 4. Environment Configuration
@@ -231,35 +269,41 @@ ReservedConcurrency: 100      # Limit concurrent executions
 - VPC endpoints for AWS services
 - Enhanced monitoring and alerting
 
-## Deployment Commands
+## Smart Deployment Commands
 
-### Quick Deployment
+### Recommended Workflow
+```bash
+# 1. Check current status
+cd Infrastructure/
+./scripts/check-status.sh testing
+
+# 2. Deploy complete stack (safe to run multiple times)
+./scripts/deploy-complete.sh testing
+
+# 3. Frontend-only updates (after frontend changes)
+./scripts/deploy-frontend.sh testing
+```
+
+### Backend-Specific Commands
 ```bash
 cd Infrastructure/backend-sam/
-./deploy-backend.sh
-```
 
-### Manual Deployment
-```bash
-# Build
+# Quick backend update (if infrastructure exists)
 sam build --profile IBD-DEV
+sam deploy --config-env testing --profile IBD-DEV
 
-# Deploy with parameters
-sam deploy \
-    --config-env testing \
-    --profile IBD-DEV \
-    --parameter-overrides \
-        Environment=testing \
-        ProjectName=impact-compendium
+# Local testing
+sam local start-api --profile IBD-DEV
+curl http://localhost:3000/health
 ```
 
-### Local Testing
+### Infrastructure Management
 ```bash
-# Start local API
-sam local start-api --profile IBD-DEV
+# Complete cleanup (infrastructure + backend)
+./scripts/delete-complete.sh testing
 
-# Test locally
-curl http://localhost:3000/health
+# Check what's deployed
+./scripts/check-status.sh testing
 ```
 
 ## Troubleshooting

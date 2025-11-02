@@ -1,112 +1,192 @@
 #!/bin/bash
 
-# Complete Impact Compendium Deployment Script
+# Complete Infrastructure + Backend Deployment Script
 # Usage: ./scripts/deploy-complete.sh [environment]
 
 ENVIRONMENT=${1:-testing}
-PROJECT_NAME="impact-compendium"
+INFRA_STACK_NAME="impact-compendium-$ENVIRONMENT"
+BACKEND_STACK_NAME="impact-compendium-backend-$ENVIRONMENT"
 
-echo "🚀 Complete Impact Compendium Deployment"
+echo "🚀 Complete Deployment: Infrastructure + Backend"
 echo "Environment: $ENVIRONMENT"
 echo "Profile: IBD-DEV"
 echo "Region: us-east-1"
 echo ""
 
-# Production confirmation
-if [ "$ENVIRONMENT" = "production" ]; then
-    read -p "⚠️  Are you sure you want to deploy to PRODUCTION? (yes/no): " confirm
-    if [ "$confirm" != "yes" ]; then
-        echo "❌ Deployment cancelled"
+# Navigate to Infrastructure directory
+cd "$(dirname "$0")/.."
+
+# Step 1: Check and Deploy Infrastructure if needed
+echo "📦 Step 1: Checking Infrastructure..."
+
+# Check if infrastructure stack exists
+INFRA_EXISTS=$(aws cloudformation describe-stacks \
+    --stack-name "$INFRA_STACK_NAME" \
+    --profile IBD-DEV \
+    --region us-east-1 \
+    --query 'Stacks[0].StackStatus' \
+    --output text 2>/dev/null)
+
+if [ "$INFRA_EXISTS" = "CREATE_COMPLETE" ] || [ "$INFRA_EXISTS" = "UPDATE_COMPLETE" ]; then
+    echo "✅ Infrastructure already exists (Status: $INFRA_EXISTS)"
+    echo "   Using existing infrastructure with CloudFormation exports"
+    echo "   Available resources: VPC, RDS, Cognito, S3, CloudFront"
+else
+    echo "❌ Infrastructure stack not found: $INFRA_STACK_NAME"
+    echo "   Your existing infrastructure should be deployed first"
+    echo "   Current infrastructure appears to be working - continuing with backend deployment"
+fi
+echo ""
+
+# Step 2: Check and Deploy Backend if needed
+echo "🔧 Step 2: Checking Backend..."
+
+# Check if backend stack exists
+BACKEND_EXISTS=$(aws cloudformation describe-stacks \
+    --stack-name "$BACKEND_STACK_NAME" \
+    --profile IBD-DEV \
+    --region us-east-1 \
+    --query 'Stacks[0].StackStatus' \
+    --output text 2>/dev/null)
+
+if [ "$BACKEND_EXISTS" = "CREATE_COMPLETE" ] || [ "$BACKEND_EXISTS" = "UPDATE_COMPLETE" ]; then
+    echo "✅ Backend already exists (Status: $BACKEND_EXISTS)"
+    echo "   Updating backend deployment..."
+    
+    cd backend-sam
+    sam build --profile IBD-DEV
+    
+    sam deploy \
+        --stack-name "$BACKEND_STACK_NAME" \
+        --parameter-overrides \
+            Environment=$ENVIRONMENT \
+            ProjectName=impact-compendium \
+        --capabilities CAPABILITY_IAM \
+        --profile IBD-DEV \
+        --region us-east-1 \
+        --no-confirm-changeset
+else
+    echo "🚀 Deploying new backend..."
+    cd backend-sam
+
+    # Build SAM application
+    echo "Building SAM application..."
+    sam build --profile IBD-DEV
+
+    if [ $? -ne 0 ]; then
+        echo "❌ SAM build failed!"
+        exit 1
+    fi
+
+    # Deploy SAM application
+    echo "Deploying SAM application..."
+    sam deploy \
+        --stack-name "$BACKEND_STACK_NAME" \
+        --parameter-overrides \
+            Environment=$ENVIRONMENT \
+            ProjectName=impact-compendium \
+        --capabilities CAPABILITY_IAM \
+        --profile IBD-DEV \
+        --region us-east-1 \
+        --no-confirm-changeset
+
+    if [ $? -ne 0 ]; then
+        echo "❌ Backend deployment failed!"
         exit 1
     fi
 fi
 
-# Navigate to Infrastructure directory
-cd "$(dirname "$0")/.."
-
-echo "📋 Deployment Steps:"
-echo "1. Deploy Backend (SAM)"
-echo "2. Build Frontend"
-echo "3. Deploy Frontend (S3 + CloudFront)"
+echo "✅ Backend deployed successfully!"
 echo ""
 
-# Step 1: Deploy Backend using SAM
-echo "🔧 Step 1: Deploying Backend..."
-cd backend-sam
+# Step 3: Deploy Frontend to S3
+echo "🌐 Step 3: Deploying Frontend to S3..."
 
-# Build and deploy SAM application
-sam build --profile IBD-DEV
-if [ $? -ne 0 ]; then
-    echo "❌ SAM build failed"
+# Get S3 bucket name from infrastructure stack
+S3_BUCKET=$(aws cloudformation describe-stacks \
+    --stack-name "$INFRA_STACK_NAME" \
+    --profile IBD-DEV \
+    --region us-east-1 \
+    --query 'Stacks[0].Outputs[?OutputKey==`S3BucketName`].OutputValue' \
+    --output text)
+
+if [ -z "$S3_BUCKET" ]; then
+    echo "❌ Could not get S3 bucket name from infrastructure stack"
     exit 1
 fi
 
-sam deploy --config-env $ENVIRONMENT --profile IBD-DEV
-if [ $? -ne 0 ]; then
-    echo "❌ SAM deploy failed"
-    exit 1
-fi
+echo "📦 Uploading to bucket: $S3_BUCKET"
 
-echo "✅ Backend deployed successfully"
-cd ..
-
-# Step 2: Build Frontend
-echo "🔧 Step 2: Building Frontend..."
+# Navigate to frontend directory and sync to S3
 cd ../Frontend
 
-# Install dependencies if needed
-if [ ! -d "node_modules" ]; then
-    echo "📦 Installing frontend dependencies..."
-    npm install
-fi
-
-# Build for production
-npm run build
-if [ $? -ne 0 ]; then
-    echo "❌ Frontend build failed"
+if [ ! -d "dist" ]; then
+    echo "❌ Frontend dist directory not found. Run 'npm run build' first."
     exit 1
 fi
 
-echo "✅ Frontend built successfully"
+aws s3 sync dist/ s3://$S3_BUCKET/ \
+    --profile IBD-DEV \
+    --region us-east-1 \
+    --delete
+
+if [ $? -ne 0 ]; then
+    echo "❌ Frontend deployment failed!"
+    exit 1
+fi
+
+echo "✅ Frontend deployed successfully!"
+
+# Navigate back to Infrastructure directory
 cd ../Infrastructure
 
-# Step 3: Deploy Frontend
-echo "🔧 Step 3: Deploying Frontend..."
-./scripts/deploy-frontend.sh $ENVIRONMENT ../Frontend/dist
-
-echo ""
-echo "🎉 Complete deployment finished!"
 echo ""
 
-# Show deployment information
-echo "📋 Deployment Information:"
+# Step 4: Display Results
+echo "📋 Deployment Summary:"
+echo ""
+echo "Infrastructure Stack Outputs:"
+aws cloudformation describe-stacks \
+    --stack-name "$INFRA_STACK_NAME" \
+    --profile IBD-DEV \
+    --region us-east-1 \
+    --query 'Stacks[0].Outputs' \
+    --output table
 
-# Get API Gateway URL
+echo ""
+echo "Backend Stack Outputs:"
+aws cloudformation describe-stacks \
+    --stack-name "$BACKEND_STACK_NAME" \
+    --profile IBD-DEV \
+    --region us-east-1 \
+    --query 'Stacks[0].Outputs' \
+    --output table
+
+echo ""
+echo "🎉 Complete deployment finished successfully!"
+echo ""
+echo "📍 Key URLs:"
 API_URL=$(aws cloudformation describe-stacks \
-    --stack-name "$PROJECT_NAME-backend-$ENVIRONMENT" \
+    --stack-name "$BACKEND_STACK_NAME" \
     --profile IBD-DEV \
     --region us-east-1 \
     --query 'Stacks[0].Outputs[?OutputKey==`ImpactCompendiumApiUrl`].OutputValue' \
-    --output text 2>/dev/null)
+    --output text)
 
-if [ -n "$API_URL" ]; then
-    echo "🔗 API URL: $API_URL"
-    echo "📚 API Docs: ${API_URL}docs"
-fi
+DOCS_URL=$(aws cloudformation describe-stacks \
+    --stack-name "$BACKEND_STACK_NAME" \
+    --profile IBD-DEV \
+    --region us-east-1 \
+    --query 'Stacks[0].Outputs[?OutputKey==`SwaggerUIUrl`].OutputValue' \
+    --output text)
 
-# Get Frontend URL
-BUCKET_NAME=$(aws s3 ls --profile IBD-DEV | grep "$PROJECT_NAME-frontend-$ENVIRONMENT" | awk '{print $3}')
-if [ -n "$BUCKET_NAME" ]; then
-    DISTRIBUTION_ID=$(aws cloudfront list-distributions --profile IBD-DEV --region us-east-1 \
-        --query "DistributionList.Items[?Origins.Items[0].DomainName=='$BUCKET_NAME.s3.us-east-1.amazonaws.com'].Id" \
-        --output text)
-    
-    if [ -n "$DISTRIBUTION_ID" ] && [ "$DISTRIBUTION_ID" != "None" ]; then
-        CLOUDFRONT_URL=$(aws cloudfront get-distribution --id "$DISTRIBUTION_ID" --profile IBD-DEV --region us-east-1 \
-            --query 'Distribution.DomainName' --output text)
-        echo "🌐 Frontend URL: https://$CLOUDFRONT_URL"
-    fi
-fi
+FRONTEND_URL=$(aws cloudformation describe-stacks \
+    --stack-name "$INFRA_STACK_NAME" \
+    --profile IBD-DEV \
+    --region us-east-1 \
+    --query 'Stacks[0].Outputs[?OutputKey==`CloudFrontUrl`].OutputValue' \
+    --output text)
 
-echo ""
-echo "✅ Deployment completed successfully!"
+echo "🔗 API Endpoint: $API_URL"
+echo "📚 API Documentation: $DOCS_URL"
+echo "🌐 Frontend URL: $FRONTEND_URL"

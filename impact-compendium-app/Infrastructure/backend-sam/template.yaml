@@ -1,6 +1,6 @@
 AWSTemplateFormatVersion: '2010-09-09'
 Transform: AWS::Serverless-2016-10-31
-Description: Impact Compendium Backend API - SAM Deployment
+Description: Impact Compendium Backend API - Update Existing Infrastructure
 
 Parameters:
   Environment:
@@ -13,26 +13,6 @@ Parameters:
     Type: String
     Default: impact-compendium
     Description: Project name for resource naming
-
-  VpcId:
-    Type: String
-    Description: VPC ID from existing infrastructure
-    Default: vpc-0123456789abcdef0
-  
-  SecurityGroupId:
-    Type: String
-    Description: Security Group ID for Lambda
-    Default: sg-0123456789abcdef0
-  
-  SubnetId1:
-    Type: String
-    Description: Private Subnet 1 ID
-    Default: subnet-0123456789abcdef0
-  
-  SubnetId2:
-    Type: String
-    Description: Private Subnet 2 ID
-    Default: subnet-0123456789abcdef1
 
 Globals:
   Function:
@@ -66,10 +46,10 @@ Resources:
       Description: Impact Compendium FastAPI Backend
       VpcConfig:
         SecurityGroupIds:
-          - !Ref SecurityGroupId
+          - sg-065091b3c3dee0244  # Lambda security group
         SubnetIds:
-          - !Ref SubnetId1
-          - !Ref SubnetId2
+          - subnet-066e86ea668685ccd  # Private subnet 1
+          - subnet-093ac733fb9254274  # Private subnet 2
       Environment:
         Variables:
           STAGE: !Ref Environment
@@ -85,7 +65,7 @@ Resources:
             Fn::ImportValue: !Sub "${ProjectName}-${Environment}-cognito-client-id"
           COGNITO_REGION: !Ref AWS::Region
       Policies:
-        - VPCAccessPolicy: {}
+        - VPCAccessPolicy: {}  # Required for VPC Lambda functions
         - Version: '2012-10-17'
           Statement:
             - Effect: Allow

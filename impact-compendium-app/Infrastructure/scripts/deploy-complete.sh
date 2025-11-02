@@ -32,9 +32,33 @@ if [ "$INFRA_EXISTS" = "CREATE_COMPLETE" ] || [ "$INFRA_EXISTS" = "UPDATE_COMPLE
     echo "   Using existing infrastructure with CloudFormation exports"
     echo "   Available resources: VPC, RDS, Cognito, S3, CloudFront"
 else
-    echo "❌ Infrastructure stack not found: $INFRA_STACK_NAME"
-    echo "   Your existing infrastructure should be deployed first"
-    echo "   Current infrastructure appears to be working - continuing with backend deployment"
+    echo "🚀 Deploying new infrastructure..."
+    aws cloudformation create-stack \
+        --stack-name "$INFRA_STACK_NAME" \
+        --template-body "file://$(pwd)/cloudformation-infrastructure-only.yaml" \
+        --capabilities CAPABILITY_NAMED_IAM \
+        --parameters \
+            ParameterKey=Environment,ParameterValue=$ENVIRONMENT \
+            ParameterKey=ProjectName,ParameterValue=impact-compendium \
+        --profile IBD-DEV \
+        --region us-east-1 \
+        --tags \
+            Key=Project,Value=impact-compendium \
+            Key=Environment,Value=$ENVIRONMENT \
+            Key=Component,Value=infrastructure
+
+    echo "⏳ Waiting for infrastructure deployment..."
+    aws cloudformation wait stack-create-complete \
+        --stack-name "$INFRA_STACK_NAME" \
+        --profile IBD-DEV \
+        --region us-east-1
+
+    if [ $? -ne 0 ]; then
+        echo "❌ Infrastructure deployment failed!"
+        exit 1
+    fi
+
+    echo "✅ Infrastructure deployed successfully!"
 fi
 echo ""
 

@@ -1,8 +1,19 @@
 # Impact Compendium - Deployment Quick Reference
 
+## 🏗️ Architecture Overview
+
+![Infrastructure Architecture](./impact-compendium-infrastructure.png)
+
+**Key Components:**
+- **CloudFront + S3**: Frontend distribution with automatic cache invalidation
+- **API Gateway + Lambda**: Serverless backend API with FastAPI
+- **RDS MySQL**: Database in private VPC subnets
+- **Cognito**: User authentication and management
+- **Secrets Manager**: Secure credential storage
+
 ## 🚀 Essential Commands
 
-### Check Status
+### Check Status (Enhanced)
 ```bash
 cd Infrastructure/
 ./scripts/check-status.sh testing
@@ -13,24 +24,59 @@ cd Infrastructure/
 ./scripts/deploy-complete.sh testing
 ```
 
-### Update Frontend Only
+### Update Frontend Configuration (Automated)
+```bash
+./scripts/update-frontend-config.sh testing
+```
+
+### Update Frontend Only (Enhanced)
 ```bash
 ./scripts/deploy-frontend.sh testing
 ```
+**Features**: Auto-build, S3 sync with cleanup, CloudFront invalidation
 
-### Clean Up Everything
+### Smart Cleanup
 ```bash
 ./scripts/delete-complete.sh testing
 ```
 
-## 📋 Deployment Flow
+### Emergency Force Delete
+```bash
+./scripts/force-delete.sh testing all          # Everything
+./scripts/force-delete.sh testing backend     # Backend only
+./scripts/force-delete.sh testing infrastructure  # Infrastructure only
+```
+
+## 📋 Enhanced Deployment Flow
 
 ```
-1. check-status.sh     → See what's deployed
-2. deploy-complete.sh  → Deploy missing components
-3. deploy-frontend.sh  → Quick frontend updates
-4. delete-complete.sh  → Clean up when done
+1. check-status.sh           → Detailed status + error analysis
+2. deploy-complete.sh        → Smart deployment (auto-config sync + invalidation)
+3. update-frontend-config.sh → Sync frontend config with backend URLs
+4. deploy-frontend.sh        → Frontend updates (auto-build + invalidation)
+5. delete-complete.sh        → Safe cleanup with validation
+6. force-delete.sh           → Emergency cleanup for stuck deployments
 ```
+
+## 🚀 Key Enhancements
+
+### Automatic Configuration Management
+- ✅ **API URL Sync**: Frontend automatically gets current backend URL
+- ✅ **Multi-file Update**: Updates `.env`, `.env.production`, `.env.local`
+- ✅ **Cognito Sync**: Automatically syncs User Pool and Client IDs
+- ✅ **Prevents Drift**: No manual configuration updates needed
+
+### CloudFront Integration
+- ✅ **Automatic Invalidation**: Cache cleared on every frontend deployment
+- ✅ **Complete Coverage**: Invalidates all paths (`/*`)
+- ✅ **Immediate Updates**: Changes visible without cache wait
+- ✅ **Error Resilience**: Deployment succeeds even if invalidation fails
+
+### Smart Deployment Features
+- ✅ **Auto-build Detection**: Builds frontend if needed
+- ✅ **Clean S3 Sync**: Removes old files with `--delete` flag
+- ✅ **Status Monitoring**: Enhanced error detection and reporting
+- ✅ **Idempotent Operations**: Safe to run multiple times
 
 ## 🏗️ Architecture
 
@@ -59,38 +105,71 @@ https://{api-id}.execute-api.us-east-1.amazonaws.com/testing/docs
 https://{cloudfront-id}.cloudfront.net
 ```
 
-## 🛠️ Troubleshooting
+## 🔄 API URL Changes (Automated)
 
-### Infrastructure Issues
+### When Backend URL Changes
 ```bash
-# Check CloudFormation stacks
-aws cloudformation list-stacks --profile IBD-DEV --region us-east-1
+# 1. Update all frontend environment files automatically
+./scripts/update-frontend-config.sh testing
 
-# View stack events
-aws cloudformation describe-stack-events \
-  --stack-name impact-compendium-infra-testing \
-  --profile IBD-DEV --region us-east-1
+# 2. Rebuild and deploy with CloudFront invalidation
+cd ../Frontend && npm run build
+cd ../Infrastructure && ./scripts/deploy-frontend.sh testing
 ```
 
-### Backend Issues
+### Fully Automated (Recommended)
 ```bash
-# Check Lambda logs
-sam logs --name ImpactCompendiumFunction --profile IBD-DEV --tail
-
-# Test API health
-curl https://your-api-url/health
+# This handles everything automatically:
+# - Updates frontend config with current backend URL
+# - Rebuilds frontend with new config
+# - Deploys to S3 with cleanup
+# - Invalidates CloudFront cache
+./scripts/deploy-complete.sh testing
 ```
 
-### Frontend Issues
-```bash
-# Check S3 bucket contents
-aws s3 ls s3://impact-compendium-frontend-testing-{account-id} --profile IBD-DEV
+### Configuration Sync Features
+- ✅ **Multi-file Update**: Updates `.env`, `.env.production`, `.env.local`
+- ✅ **API URL Detection**: Gets current URL from CloudFormation stack
+- ✅ **Cognito Sync**: Updates User Pool and Client IDs automatically
+- ✅ **Build Integration**: Ensures frontend builds with correct config
 
-# Rebuild and redeploy
-cd Frontend/
-npm run build
-cd ../Infrastructure/
-./scripts/deploy-frontend.sh testing
+## 🛠️ Error Handling
+
+### Deployment Failures
+```bash
+# 1. Check what failed
+./scripts/check-status.sh testing
+
+# 2. Clean slate approach
+./scripts/delete-complete.sh testing
+./scripts/deploy-complete.sh testing
+
+# 3. Emergency force delete (if stuck)
+./scripts/force-delete.sh testing all
+```
+
+### Stack Status Issues
+```bash
+# Stuck in progress states
+./scripts/force-delete.sh testing all
+
+# Failed deployments
+./scripts/delete-complete.sh testing
+./scripts/deploy-complete.sh testing
+
+# Partial failures
+./scripts/force-delete.sh testing backend
+./scripts/deploy-complete.sh testing
+```
+
+### Production Safety
+```bash
+# Extra confirmation required
+./scripts/delete-complete.sh production
+# Prompts: "Type 'DELETE PRODUCTION' to confirm"
+
+./scripts/force-delete.sh production all
+# Prompts: "Type 'FORCE DELETE' to confirm"
 ```
 
 ## 📁 File Structure
@@ -100,10 +179,12 @@ Infrastructure/
 ├── cloudformation-infrastructure-only.yaml  # Infrastructure template
 ├── backend-sam/template.yaml               # Backend SAM template
 ├── scripts/
-│   ├── deploy-complete.sh                  # 🚀 Main deployment
-│   ├── check-status.sh                     # 📊 Status checker  
+│   ├── deploy-complete.sh                  # 🚀 Main deployment (auto-updates frontend config)
+│   ├── check-status.sh                     # 📊 Enhanced status checker
 │   ├── deploy-frontend.sh                  # 🌐 Frontend updater
-│   └── delete-complete.sh                  # 🗑️ Cleanup
+│   ├── update-frontend-config.sh           # 🔧 Frontend config automation
+│   ├── delete-complete.sh                  # 🗑️ Smart cleanup
+│   └── force-delete.sh                     # 🚨 Emergency cleanup
 └── DEPLOYMENT_GUIDE.md                     # 📖 Full documentation
 ```
 
@@ -170,7 +251,15 @@ sam deploy --config-env testing --profile IBD-DEV
 ### Emergency Reset
 ```bash
 # Nuclear option: Delete everything and start fresh
-./scripts/delete-complete.sh testing
+./scripts/force-delete.sh testing all
 # Wait 5 minutes for complete deletion
 ./scripts/deploy-complete.sh testing
+```
+
+### Manual Resource Cleanup
+```bash
+# If automated cleanup fails
+aws s3 rm s3://impact-compendium-frontend-testing-* --recursive --profile IBD-DEV
+aws lambda delete-function --function-name impact-compendium-backend-api-testing --profile IBD-DEV
+aws rds delete-db-instance --db-instance-identifier impact-compendium-db-testing --skip-final-snapshot --profile IBD-DEV
 ```

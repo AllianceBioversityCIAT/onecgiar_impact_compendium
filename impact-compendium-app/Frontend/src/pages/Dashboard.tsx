@@ -276,11 +276,9 @@ export const Dashboard: React.FC = () => {
       const { job_id } = await startResponse.json();
       
       // Show loading notification with progress
-      console.log('Showing loading toast...');
       loadingToast = toast.loading('Starting full report generation...', {
         duration: 0,
       });
-      console.log('Loading toast ID:', loadingToast);
 
       // Poll for completion
       const pollInterval = setInterval(async () => {

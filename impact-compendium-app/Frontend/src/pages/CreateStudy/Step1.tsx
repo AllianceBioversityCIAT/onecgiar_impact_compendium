@@ -89,8 +89,6 @@ export const CreateStudyStep1: React.FC = () => {
           interventionTypes: interventionTypes.map((type: any) => ({ value: type.id.toString(), label: type.name }))
         });
         
-        console.log('Step1 - Categories loaded:', categories.length, 'options');
-        console.log('Step1 - First category:', categories[0]);
       } catch (error) {
         console.error('Failed to load reference data:', error);
         // Fallback options
@@ -130,7 +128,6 @@ export const CreateStudyStep1: React.FC = () => {
           if (response.ok) {
             const apiResponse = await response.json();
             const data = apiResponse.data || apiResponse;
-            console.log('Step1 Edit Mode - Raw study data loaded:', data);
             setStudyData(data);
           }
         } catch (error) {
@@ -499,7 +496,6 @@ export const CreateStudyStep1: React.FC = () => {
                   options={options.interventionTypes}
                   value={formData.interventionType}
                   onChange={(value) => {
-                    console.log('Intervention type changed to:', value);
                     setFormData((prev: any) => ({ ...prev, interventionType: value }));
                   }}
                   placeholder="Search intervention types..."

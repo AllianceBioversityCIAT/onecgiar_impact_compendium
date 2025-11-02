@@ -39,13 +39,31 @@ export const StudyDetailsPanel: React.FC<StudyDetailsPanelProps> = ({ isOpen, on
         .then(data => {
           if (data.success && data.data) {
             const studyData = data.data;
+            
+            // Debug: Log the actual data structure
+            console.log('=== STUDY DATA DEBUG ===');
+            console.log('Available fields:', Object.keys(studyData));
+            console.log('Full studyData:', studyData);
+            console.log('========================');
+            
+            // Try different possible field names for contributors
+            const contributingInitiatives = studyData.contributing_initiatives || 
+                                           studyData.contributingInitiatives || 
+                                           studyData.initiatives || [];
+            const contributingCenters = studyData.contributing_centers || 
+                                       studyData.contributingCenters || 
+                                       studyData.centers || [];
+            const allContributors = [...contributingInitiatives, ...contributingCenters];
+            
+            console.log('Final contributors:', allContributors);
+            
             setStudy({
               id: studyData.study_id || studyData.id || studyId,
               title: studyData.title,
               summary: studyData.summary,
               category: typeof studyData.category === 'object' ? studyData.category.name : studyData.category || 'Other',
               year: studyData.year,
-              contributors: studyData.contributors || studyData.contributing_initiatives || 'N/A',
+              contributors: allContributors.length > 0 ? allContributors : 'N/A',
               doi: studyData.doi,
               indicators: studyData.indicators || [],
               impact_areas: studyData.impact_areas || [],
@@ -130,7 +148,14 @@ export const StudyDetailsPanel: React.FC<StudyDetailsPanelProps> = ({ isOpen, on
             <div>
               <h4 className="text-sm font-medium text-gray-900 mb-2">Contributors</h4>
               <div className="flex flex-wrap gap-2">
-                {typeof study.contributors === 'string' ? study.contributors.split(',').map((contributor, index) => (
+                {Array.isArray(study.contributors) ? study.contributors.map((contributor, index) => (
+                  <span
+                    key={index}
+                    className="inline-flex items-center px-2 py-1 rounded-md text-xs font-medium bg-gray-100 text-gray-800"
+                  >
+                    {typeof contributor === 'object' ? contributor.name || contributor.title : contributor}
+                  </span>
+                )) : typeof study.contributors === 'string' && study.contributors !== 'N/A' ? study.contributors.split(',').map((contributor, index) => (
                   <span
                     key={index}
                     className="inline-flex items-center px-2 py-1 rounded-md text-xs font-medium bg-gray-100 text-gray-800"

@@ -72,20 +72,32 @@ async def download_export(job_id: str):
     if not file_path or not os.path.exists(file_path):
         raise HTTPException(status_code=404, detail="Export file not found")
     
-    with open(file_path, "rb") as f:
-        content = f.read()
+    # Verify file is a valid Excel file
+    try:
+        file_size = os.path.getsize(file_path)
+        if file_size == 0:
+            raise HTTPException(status_code=500, detail="Export file is empty")
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"File validation failed: {str(e)}")
     
-    # Clean up file after download
+    # Read file content as binary
+    with open(file_path, "rb") as f:
+        file_content = f.read()
+    
+    # Clean up file immediately after reading
     try:
         os.remove(file_path)
         del export_jobs[job_id]
     except:
         pass
     
-    return StreamingResponse(
-        BytesIO(content),
+    from fastapi.responses import Response
+    return Response(
+        content=file_content,
         media_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
-        headers={"Content-Disposition": f"attachment; filename={job['filename']}"}
+        headers={
+            "Content-Disposition": f"attachment; filename={job['filename']}"
+        }
     )
 
 def process_full_export(job_id: str, format: str, limit: int):
@@ -213,6 +225,10 @@ def process_full_export(job_id: str, format: str, limit: int):
                         pass
                 adjusted_width = min(max_length + 2, 50)
                 worksheet.column_dimensions[column_letter].width = adjusted_width
+        
+        # Ensure file is written and verify it exists
+        if not os.path.exists(file_path) or os.path.getsize(file_path) == 0:
+            raise Exception("Failed to create Excel file")
         
         export_jobs[job_id] = {
             **export_jobs[job_id],

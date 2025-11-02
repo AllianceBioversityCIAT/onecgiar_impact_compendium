@@ -114,6 +114,11 @@ app.add_middleware(
     expose_headers=["*"]
 )
 
+# Add explicit OPTIONS handler for all routes
+@app.options("/{path:path}")
+async def options_handler(path: str):
+    return {"message": "OK"}
+
 
 @app.middleware("http")
 async def log_requests(request: Request, call_next):

@@ -46,10 +46,10 @@ Resources:
       Description: Impact Compendium FastAPI Backend
       VpcConfig:
         SecurityGroupIds:
-          - sg-065091b3c3dee0244  # Lambda security group
+          - Fn::ImportValue: !Sub "${ProjectName}-${Environment}-lambda-sg-id"
         SubnetIds:
-          - subnet-066e86ea668685ccd  # Private subnet 1
-          - subnet-093ac733fb9254274  # Private subnet 2
+          - Fn::ImportValue: !Sub "${ProjectName}-${Environment}-private-subnet-1"
+          - Fn::ImportValue: !Sub "${ProjectName}-${Environment}-private-subnet-2"
       Environment:
         Variables:
           STAGE: !Ref Environment

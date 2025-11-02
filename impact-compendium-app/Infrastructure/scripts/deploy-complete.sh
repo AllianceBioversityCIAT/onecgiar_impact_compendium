@@ -118,7 +118,7 @@ fi
 echo "📦 Uploading to bucket: $S3_BUCKET"
 
 # Navigate to frontend directory and sync to S3
-cd ../Frontend
+cd ../../Frontend
 
 if [ ! -d "dist" ]; then
     echo "❌ Frontend dist directory not found. Run 'npm run build' first."

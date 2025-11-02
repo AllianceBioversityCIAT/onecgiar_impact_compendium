@@ -21,6 +21,7 @@
     "test:auth-scenario": "node tests/scenarios/authentication/auth-test.cjs",
     "test:dashboard-scenario": "node tests/scenarios/dashboard/dashboard-test.cjs",
     "test:studies-scenario": "node tests/scenarios/studies/studies-test.cjs",
+    "test:authenticated": "node tests/scenarios/authenticated-test.cjs",
     "test:report": "playwright show-report test-results/html-report",
     "test:clean": "rm -rf test-results && mkdir -p test-results/screenshots"
   },

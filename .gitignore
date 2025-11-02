@@ -198,6 +198,9 @@ coverage/
 .coverage
 htmlcov/
 test-results/
+tests/config/credentials.json
+tests/.env
+tests/.env.local
 
 # Logs and Monitoring
 *.log.*

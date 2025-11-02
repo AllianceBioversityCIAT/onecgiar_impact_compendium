@@ -24,6 +24,17 @@ INFRA_STATUS=$(aws cloudformation describe-stacks \
 
 if [ $? -eq 0 ]; then
     echo "   Status: ✅ $INFRA_STATUS"
+    
+    # Show additional info for failed states
+    if [[ "$INFRA_STATUS" == *"FAILED"* ]] || [[ "$INFRA_STATUS" == *"ROLLBACK"* ]]; then
+        echo "   ⚠️  Stack is in failed state - checking last events..."
+        aws cloudformation describe-stack-events \
+            --stack-name "$INFRA_STACK_NAME" \
+            --profile IBD-DEV \
+            --region us-east-1 \
+            --query 'StackEvents[?ResourceStatus==`CREATE_FAILED` || ResourceStatus==`UPDATE_FAILED`] | [0:3].{Resource:LogicalResourceId,Reason:ResourceStatusReason}' \
+            --output table 2>/dev/null
+    fi
 else
     echo "   Status: ❌ NOT DEPLOYED"
 fi
@@ -41,6 +52,17 @@ BACKEND_STATUS=$(aws cloudformation describe-stacks \
 
 if [ $? -eq 0 ]; then
     echo "   Status: ✅ $BACKEND_STATUS"
+    
+    # Show additional info for failed states
+    if [[ "$BACKEND_STATUS" == *"FAILED"* ]] || [[ "$BACKEND_STATUS" == *"ROLLBACK"* ]]; then
+        echo "   ⚠️  Stack is in failed state - checking last events..."
+        aws cloudformation describe-stack-events \
+            --stack-name "$BACKEND_STACK_NAME" \
+            --profile IBD-DEV \
+            --region us-east-1 \
+            --query 'StackEvents[?ResourceStatus==`CREATE_FAILED` || ResourceStatus==`UPDATE_FAILED`] | [0:3].{Resource:LogicalResourceId,Reason:ResourceStatusReason}' \
+            --output table 2>/dev/null
+    fi
 else
     echo "   Status: ❌ NOT DEPLOYED"
 fi
@@ -82,4 +104,14 @@ else
     echo "💡 All components deployed. Use:"
     echo "   - ./scripts/deploy-frontend.sh $ENVIRONMENT (frontend updates)"
     echo "   - ./scripts/deploy-complete.sh $ENVIRONMENT (full update)"
+fi
+
+# Emergency options for failed states
+if [[ "$INFRA_STATUS" == *"FAILED"* ]] || [[ "$BACKEND_STATUS" == *"FAILED"* ]] || [[ "$INFRA_STATUS" == *"ROLLBACK"* ]] || [[ "$BACKEND_STATUS" == *"ROLLBACK"* ]]; then
+    echo ""
+    echo "🚨 Emergency Options:"
+    echo "   - ./scripts/delete-complete.sh $ENVIRONMENT (clean slate)"
+    echo "   - ./scripts/force-delete.sh $ENVIRONMENT all (if stuck)"
+    echo "   - ./scripts/force-delete.sh $ENVIRONMENT backend (backend only)"
+    echo "   - ./scripts/force-delete.sh $ENVIRONMENT infrastructure (infrastructure only)"
 fi

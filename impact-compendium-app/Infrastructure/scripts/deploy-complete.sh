@@ -123,8 +123,34 @@ fi
 echo "✅ Backend deployed successfully!"
 echo ""
 
-# Step 3: Deploy Frontend to S3
-echo "🌐 Step 3: Deploying Frontend to S3..."
+# Step 3: Update Frontend Configuration and Deploy
+echo "🌐 Step 3: Updating Frontend Configuration..."
+
+# Update frontend environment variables with current API URL
+echo "🔧 Updating frontend environment variables..."
+$(dirname "$0")/update-frontend-config.sh $ENVIRONMENT
+
+if [ $? -ne 0 ]; then
+    echo "❌ Failed to update frontend configuration"
+    exit 1
+fi
+
+echo ""
+echo "📦 Step 4: Building and Deploying Frontend..."
+
+# Navigate to frontend directory and rebuild with updated config
+cd ../../Frontend
+
+echo "🔨 Building frontend with updated configuration..."
+npm run build
+
+if [ $? -ne 0 ]; then
+    echo "❌ Frontend build failed!"
+    exit 1
+fi
+
+# Navigate back to Infrastructure directory
+cd ../Infrastructure
 
 # Get S3 bucket name from infrastructure stack
 S3_BUCKET=$(aws cloudformation describe-stacks \
@@ -141,11 +167,9 @@ fi
 
 echo "📦 Uploading to bucket: $S3_BUCKET"
 
-# Navigate to frontend directory and sync to S3
-cd ../../Frontend
-
+# Sync built frontend to S3
 if [ ! -d "dist" ]; then
-    echo "❌ Frontend dist directory not found. Run 'npm run build' first."
+    echo "❌ Frontend dist directory not found after build"
     exit 1
 fi
 
@@ -166,7 +190,7 @@ cd ../Infrastructure
 
 echo ""
 
-# Step 4: Display Results
+# Step 5: Display Results
 echo "📋 Deployment Summary:"
 echo ""
 echo "Infrastructure Stack Outputs:"

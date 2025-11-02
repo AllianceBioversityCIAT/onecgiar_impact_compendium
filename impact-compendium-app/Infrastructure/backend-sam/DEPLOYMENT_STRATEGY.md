@@ -271,17 +271,40 @@ ReservedConcurrency: 100      # Limit concurrent executions
 
 ## Smart Deployment Commands
 
-### Recommended Workflow
+### Recommended Workflow (Enhanced)
 ```bash
-# 1. Check current status
+# 1. Check current status with error analysis
 cd Infrastructure/
 ./scripts/check-status.sh testing
 
-# 2. Deploy complete stack (safe to run multiple times)
+# 2. Deploy complete stack with automatic frontend config sync
 ./scripts/deploy-complete.sh testing
 
-# 3. Frontend-only updates (after frontend changes)
+# 3. Frontend-only updates with CloudFront invalidation
 ./scripts/deploy-frontend.sh testing
+
+# 4. Update frontend configuration when backend changes
+./scripts/update-frontend-config.sh testing
+```
+
+### Frontend Integration Features
+- ✅ **Automatic Config Sync**: Frontend config updated with current backend URL
+- ✅ **Multi-environment Support**: Updates all `.env` files consistently
+- ✅ **CloudFront Invalidation**: Immediate cache clearing for frontend updates
+- ✅ **Build Automation**: Auto-builds frontend when configuration changes
+
+### Error Handling & Recovery
+```bash
+# Backend deployment failures
+./scripts/force-delete.sh testing backend
+./scripts/deploy-complete.sh testing
+
+# Infrastructure dependency issues
+./scripts/delete-complete.sh testing
+./scripts/deploy-complete.sh testing
+
+# Stuck deployments
+./scripts/force-delete.sh testing all
 ```
 
 ### Backend-Specific Commands
@@ -306,45 +329,88 @@ curl http://localhost:3000/health
 ./scripts/check-status.sh testing
 ```
 
-## Troubleshooting
+## Enhanced Troubleshooting
 
-### Common Issues
-
-1. **VPC Configuration Errors**
-   - Verify security group allows Lambda → RDS communication
-   - Check subnet routing to NAT Gateway for internet access
-
-2. **Database Connection Issues**
-   - Verify Secrets Manager permissions
-   - Check RDS security group inbound rules
-   - Validate database endpoint and credentials
-
-3. **CORS Issues**
-   - Verify API Gateway CORS configuration
-   - Check FastAPI CORS middleware settings
-   - Test with browser developer tools
-
-4. **Import Errors**
-   - Ensure all dependencies in requirements.txt
-   - Check Python path and module imports
-   - Verify Lambda layer compatibility
-
-### Debugging Commands
+### Deployment Status Analysis
 ```bash
-# Check Lambda logs
-sam logs --name ImpactCompendiumFunction --profile IBD-DEV
+# Get detailed status with error analysis
+../scripts/check-status.sh testing
+```
 
-# Describe stack
-aws cloudformation describe-stacks \
-    --stack-name impact-compendium-backend-testing \
+**Enhanced Output:**
+- Stack status and health indicators
+- Failed resource identification
+- Error reason analysis
+- Context-aware recommendations
+- Emergency cleanup suggestions
+
+### Common Backend Issues
+
+#### 1. VPC Configuration Errors
+```bash
+# Problem: Lambda can't connect to RDS
+# Check: VPC configuration and security groups
+aws lambda get-function-configuration \
+    --function-name impact-compendium-backend-api-testing \
+    --profile IBD-DEV \
+    --query 'VpcConfig'
+
+# Solution: Redeploy with correct VPC settings
+../scripts/force-delete.sh testing backend
+../scripts/deploy-complete.sh testing
+```
+
+#### 2. Import Value Errors
+```bash
+# Problem: Can't import infrastructure exports
+# Check: Infrastructure stack exists and exports available
+aws cloudformation list-exports --profile IBD-DEV | grep impact-compendium-testing
+
+# Solution: Ensure infrastructure is deployed first
+../scripts/check-status.sh testing
+../scripts/deploy-complete.sh testing
+```
+
+#### 3. SAM Build Failures
+```bash
+# Problem: Dependencies or code issues
+# Check: Backend code and requirements
+cd ../../Backend/
+pip install -r requirements.txt
+
+# Solution: Clean build and redeploy
+cd ../Infrastructure/backend-sam/
+rm -rf .aws-sam/
+sam build --profile IBD-DEV
+sam deploy --config-env testing --profile IBD-DEV
+```
+
+### Emergency Recovery Procedures
+
+#### Backend-Only Recovery
+```bash
+# Keep infrastructure, rebuild backend only
+../scripts/force-delete.sh testing backend
+../scripts/deploy-complete.sh testing
+```
+
+#### Complete Environment Reset
+```bash
+# Nuclear option: Start completely fresh
+../scripts/force-delete.sh testing all
+# Wait 5 minutes for AWS cleanup
+../scripts/deploy-complete.sh testing
+```
+
+#### Manual Backend Cleanup
+```bash
+# If automated cleanup fails
+aws lambda delete-function \
+    --function-name impact-compendium-backend-api-testing \
     --profile IBD-DEV
 
-# Test API Gateway
-aws apigateway test-invoke-method \
-    --rest-api-id {api-id} \
-    --resource-id {resource-id} \
-    --http-method GET \
-    --profile IBD-DEV
+aws apigatewayv2 get-apis --profile IBD-DEV | grep impact-compendium-testing
+aws apigatewayv2 delete-api --api-id <api-id> --profile IBD-DEV
 ```
 
 ## Next Steps

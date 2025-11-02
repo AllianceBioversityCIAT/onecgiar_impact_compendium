@@ -62,6 +62,34 @@ fi
 echo "🔄 Invalidating CloudFront cache..."
 cd ../Infrastructure
 
+# Get CloudFront distribution ID
+CLOUDFRONT_DISTRIBUTION_ID=$(aws cloudformation describe-stack-resources \
+    --stack-name "$INFRA_STACK_NAME" \
+    --profile IBD-DEV \
+    --region us-east-1 \
+    --query 'StackResources[?ResourceType==`AWS::CloudFront::Distribution`].PhysicalResourceId' \
+    --output text 2>/dev/null)
+
+if [ -n "$CLOUDFRONT_DISTRIBUTION_ID" ]; then
+    echo "📡 Creating CloudFront invalidation for distribution: $CLOUDFRONT_DISTRIBUTION_ID"
+    
+    INVALIDATION_ID=$(aws cloudfront create-invalidation \
+        --distribution-id "$CLOUDFRONT_DISTRIBUTION_ID" \
+        --paths "/*" \
+        --profile IBD-DEV \
+        --query 'Invalidation.Id' \
+        --output text)
+    
+    if [ $? -eq 0 ]; then
+        echo "✅ CloudFront invalidation created: $INVALIDATION_ID"
+    else
+        echo "⚠️  CloudFront invalidation failed, but deployment succeeded"
+    fi
+else
+    echo "⚠️  Could not find CloudFront distribution ID"
+fi
+
+# Get CloudFront URL for display
 CLOUDFRONT_URL=$(aws cloudformation describe-stacks \
     --stack-name "$INFRA_STACK_NAME" \
     --profile IBD-DEV \
@@ -72,4 +100,4 @@ CLOUDFRONT_URL=$(aws cloudformation describe-stacks \
 echo "✅ Frontend deployed successfully!"
 echo ""
 echo "🌐 Frontend URL: $CLOUDFRONT_URL"
-echo "⏳ Note: CloudFront cache may take a few minutes to update"
+echo "⏳ CloudFront invalidation in progress - changes will be visible shortly"

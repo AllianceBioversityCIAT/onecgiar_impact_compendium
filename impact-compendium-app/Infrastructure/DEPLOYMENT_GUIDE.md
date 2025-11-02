@@ -4,6 +4,19 @@
 
 This guide covers the complete deployment process for the Impact Compendium application, including infrastructure, backend, and frontend components. The deployment system prevents resource duplication and supports incremental updates.
 
+## Architecture Overview
+
+![Impact Compendium Infrastructure](./impact-compendium-infrastructure.png)
+
+The architecture consists of:
+- **Frontend**: React SPA served via CloudFront CDN with S3 storage
+- **API Layer**: API Gateway routing requests to Lambda functions
+- **Backend**: FastAPI application running on AWS Lambda
+- **Database**: MySQL RDS instance in private subnets
+- **Authentication**: Cognito User Pool for user management
+- **Configuration**: Secrets Manager for secure credential storage
+- **Automation**: CloudFormation stacks for infrastructure and backend deployment
+
 ## Architecture
 
 ### Deployment Components
@@ -59,31 +72,57 @@ cd impact-compendium-app/Infrastructure
 ./scripts/check-status.sh testing
 ```
 
-**Output Example:**
+**Enhanced Status Output:**
 ```
 📊 Infrastructure Status Check
 Environment: testing
 
-📦 Infrastructure Stack: impact-compendium-infra-testing
+📦 Infrastructure Stack: impact-compendium-testing
    Status: ✅ CREATE_COMPLETE
 
 🔧 Backend Stack: impact-compendium-backend-testing
-   Status: ❌ NOT DEPLOYED
+   Status: ✅ UPDATE_COMPLETE
 
-💡 Recommendation: Run ./scripts/deploy-complete.sh testing (backend only)
+🌐 Application URLs:
+   🔗 API: https://api-url.amazonaws.com/testing/
+   🌐 Frontend: https://cloudfront-url.net
+
+💡 All components deployed. Use:
+   - ./scripts/deploy-frontend.sh testing (frontend updates)
+   - ./scripts/deploy-complete.sh testing (full update)
 ```
 
-### 2. Complete Deployment (First Time)
+**For Failed States:**
+```
+📦 Infrastructure Stack: impact-compendium-testing
+   Status: ⚠️ CREATE_FAILED
+   ⚠️ Stack is in failed state - checking last events...
+   
+🚨 Emergency Options:
+   - ./scripts/delete-complete.sh testing (clean slate)
+   - ./scripts/force-delete.sh testing all (if stuck)
+```
+
+### 2. Complete Deployment (First Time or Full Update)
 ```bash
 # Deploy everything (infrastructure + backend + frontend)
 ./scripts/deploy-complete.sh testing
 ```
 
-**Process:**
+**Enhanced Process:**
 1. **Infrastructure Check**: Detects existing infrastructure, skips if exists
 2. **Backend Deployment**: Builds and deploys SAM application
-3. **Frontend Upload**: Syncs built frontend to S3
-4. **Status Report**: Shows all URLs and endpoints
+3. **Frontend Configuration**: Automatically updates all environment files with current API URL
+4. **Frontend Build**: Rebuilds frontend with updated configuration
+5. **Frontend Upload**: Syncs to S3 with cleanup (`--delete` flag)
+6. **CloudFront Invalidation**: Creates cache invalidation for immediate updates
+7. **Status Report**: Shows all URLs and endpoints
+
+**Automatic Configuration Sync:**
+- Updates `.env`, `.env.production`, and `.env.local` files
+- Syncs API URL from deployed backend stack
+- Syncs Cognito configuration from infrastructure stack
+- Prevents configuration drift between frontend and backend
 
 ### 3. Frontend-Only Updates
 ```bash
@@ -91,12 +130,43 @@ Environment: testing
 ./scripts/deploy-frontend.sh testing
 ```
 
-**Features:**
-- Auto-builds if `dist/` missing
-- Syncs to S3 with cleanup
-- Shows CloudFront URL
+**Enhanced Features:**
+- ✅ **Auto-build detection**: Builds frontend if `dist/` missing
+- ✅ **Clean S3 sync**: Uses `--delete` flag to remove old files
+- ✅ **CloudFront invalidation**: Automatically invalidates cache for immediate updates
+- ✅ **Error handling**: Graceful fallback if invalidation fails
 
-### 4. Backend-Only Updates
+**Process:**
+1. Detects if frontend needs building
+2. Syncs files to S3 (removes old files)
+3. Gets CloudFront distribution ID from stack
+4. Creates invalidation for all paths (`/*`)
+5. Reports invalidation ID and status
+
+### 4. Frontend Configuration Management
+```bash
+# Update frontend configuration with current backend URLs
+./scripts/update-frontend-config.sh testing
+```
+
+**Automatic Configuration Sync:**
+- ✅ **API URL Detection**: Gets current API URL from backend CloudFormation stack
+- ✅ **Cognito Configuration**: Gets User Pool and Client IDs from infrastructure stack
+- ✅ **Multi-file Update**: Updates `.env`, `.env.production`, and `.env.local`
+- ✅ **Prevents Drift**: Ensures frontend always matches deployed backend
+
+**When API URLs Change:**
+```bash
+# Manual process (if needed)
+./scripts/update-frontend-config.sh testing
+cd ../Frontend && npm run build
+cd ../Infrastructure && ./scripts/deploy-frontend.sh testing
+
+# Or use complete deployment (automatic)
+./scripts/deploy-complete.sh testing
+```
+
+### 5. Backend-Only Updates
 ```bash
 cd backend-sam
 sam build --profile IBD-DEV
@@ -150,8 +220,15 @@ Environment Variables:
 
 ### Frontend Configuration
 - **Build Output**: `Frontend/dist/`
-- **S3 Sync**: Automatic upload to infrastructure S3 bucket
-- **CloudFront**: CDN distribution for global access
+- **S3 Sync**: Automatic upload to infrastructure S3 bucket with `--delete` flag
+- **CloudFront**: CDN distribution with automatic cache invalidation
+- **Configuration Sync**: Automatic API URL and Cognito configuration updates
+
+**CloudFront Invalidation:**
+- ✅ **Automatic**: Created on every frontend deployment
+- ✅ **Complete**: Invalidates all paths (`/*`)
+- ✅ **Immediate**: Changes visible without waiting for cache expiry
+- ✅ **Tracked**: Returns invalidation ID for monitoring
 
 ## Deployment Outputs
 
@@ -209,87 +286,213 @@ Production Environment: $70/month
 
 ## Troubleshooting
 
-### Common Issues
+### Enhanced Error Diagnosis
 
-#### 1. Infrastructure Already Exists Error
+#### 1. Deployment Status Check
 ```bash
-# Check what exists
+# Get detailed status and error analysis
 ./scripts/check-status.sh testing
+```
 
-# If stuck in failed state, delete and retry
+#### 2. Common Issues & Solutions
+
+##### Infrastructure Deployment Failures
+```bash
+# Problem: CREATE_FAILED or ROLLBACK_COMPLETE
+# Solution: Clean slate deployment
+./scripts/delete-complete.sh testing
+./scripts/deploy-complete.sh testing
+
+# If deletion fails:
+./scripts/force-delete.sh testing infrastructure
+```
+
+##### Backend Deployment Issues
+```bash
+# Problem: Lambda deployment fails
+# Check: VPC configuration, security groups, imports
+
+# Solution: Redeploy backend only
+./scripts/force-delete.sh testing backend
+./scripts/deploy-complete.sh testing
+```
+
+##### Stuck Deployments
+```bash
+# Problem: Stack stuck in *_IN_PROGRESS state
+# Solution: Force delete with operation cancellation
+./scripts/force-delete.sh testing all
+
+# Manual verification
+aws cloudformation describe-stacks --stack-name impact-compendium-testing --profile IBD-DEV
+```
+
+##### Resource Import Errors
+```bash
+# Problem: Backend can't import infrastructure exports
+# Check: Infrastructure stack exists and exports are available
+aws cloudformation list-exports --profile IBD-DEV --region us-east-1 | grep impact-compendium-testing
+
+# Solution: Redeploy infrastructure first
 ./scripts/delete-complete.sh testing
 ./scripts/deploy-complete.sh testing
 ```
 
-#### 2. Backend Import Errors
-```bash
-# Verify infrastructure exports exist
-aws cloudformation list-exports --profile IBD-DEV --region us-east-1 | grep impact-compendium-testing
+#### 3. Emergency Recovery Procedures
 
-# If missing, redeploy infrastructure
-aws cloudformation delete-stack --stack-name impact-compendium-infra-testing --profile IBD-DEV
+##### Complete Environment Reset
+```bash
+# Nuclear option: Start completely fresh
+./scripts/force-delete.sh testing all
+# Wait 5 minutes for AWS resource cleanup
 ./scripts/deploy-complete.sh testing
 ```
 
-#### 3. Frontend Build Missing
+##### Selective Recovery
 ```bash
-# Build frontend manually
-cd Frontend/
-npm install
-npm run build
+# Keep infrastructure, rebuild backend
+./scripts/force-delete.sh testing backend
+./scripts/deploy-complete.sh testing
 
-# Then deploy
-cd ../Infrastructure/
-./scripts/deploy-frontend.sh testing
-```
-
-#### 4. SAM Build Failures
-```bash
-# Check Python dependencies
-cd Backend/
-pip install -r requirements.txt
-
-# Verify SAM template
-cd ../Infrastructure/backend-sam/
-sam validate --profile IBD-DEV
+# Keep backend, rebuild infrastructure  
+./scripts/force-delete.sh testing infrastructure
+./scripts/deploy-complete.sh testing
 ```
 
 ### Debug Commands
+
+#### Stack Analysis
 ```bash
-# Check stack status
-aws cloudformation describe-stacks --stack-name impact-compendium-infra-testing --profile IBD-DEV
+# Check stack events for failures
+aws cloudformation describe-stack-events \
+    --stack-name impact-compendium-testing \
+    --profile IBD-DEV \
+    --region us-east-1 \
+    --query 'StackEvents[?ResourceStatus==`CREATE_FAILED`]'
 
-# View Lambda logs
-sam logs --name ImpactCompendiumFunction --profile IBD-DEV --tail
-
-# Test API endpoint
-curl https://your-api-id.execute-api.us-east-1.amazonaws.com/testing/health
-
-# Check S3 bucket contents
-aws s3 ls s3://impact-compendium-frontend-testing-123456789 --profile IBD-DEV
+# Check stack resources
+aws cloudformation describe-stack-resources \
+    --stack-name impact-compendium-testing \
+    --profile IBD-DEV \
+    --region us-east-1
 ```
 
-## Cleanup
-
-### Complete Environment Cleanup
+#### Lambda Function Debugging
 ```bash
-# Delete all resources for environment
+# Check Lambda logs
+sam logs --name ImpactCompendiumFunction --profile IBD-DEV --tail
+
+# Test Lambda function
+aws lambda invoke \
+    --function-name impact-compendium-backend-api-testing \
+    --payload '{}' \
+    response.json \
+    --profile IBD-DEV
+```
+
+#### Network Connectivity
+```bash
+# Verify VPC configuration
+aws lambda get-function-configuration \
+    --function-name impact-compendium-backend-api-testing \
+    --profile IBD-DEV \
+    --query 'VpcConfig'
+
+# Check security group rules
+aws ec2 describe-security-groups \
+    --group-ids sg-xxx \
+    --profile IBD-DEV
+```
+
+## Error Handling & Cleanup
+
+### Enhanced Cleanup System
+
+#### 1. Smart Cleanup (Recommended)
+```bash
+# Safe cleanup with validation
 ./scripts/delete-complete.sh testing
 ```
 
-**Process:**
-1. Deletes backend stack first (Lambda, API Gateway)
-2. Deletes infrastructure stack (VPC, RDS, S3, etc.)
-3. Waits for complete deletion
-4. Reports cleanup status
+**Features:**
+- ✅ **Pre-deletion validation**: Checks stack states before deletion
+- ✅ **Production protection**: Extra confirmation for production environments
+- ✅ **Error reporting**: Shows failed resources and reasons
+- ✅ **Manual guidance**: Provides cleanup commands for persistent resources
 
-### Partial Cleanup
+#### 2. Emergency Force Delete
 ```bash
-# Delete only backend (keep infrastructure)
-aws cloudformation delete-stack --stack-name impact-compendium-backend-testing --profile IBD-DEV
+# For stuck or failed deployments
+./scripts/force-delete.sh testing all          # Delete everything
+./scripts/force-delete.sh testing backend     # Backend only
+./scripts/force-delete.sh testing infrastructure  # Infrastructure only
+```
 
-# Delete only frontend files (keep S3 bucket)
-aws s3 rm s3://your-bucket-name --recursive --profile IBD-DEV
+**When to Use:**
+- Stacks stuck in `*_IN_PROGRESS` states
+- Failed deployments that won't delete normally
+- Rollback states that need manual intervention
+
+#### 3. Enhanced Status Monitoring
+```bash
+# Detailed status with error analysis
+./scripts/check-status.sh testing
+```
+
+**Provides:**
+- Stack status and health checks
+- Failed resource identification
+- Error reason analysis
+- Context-aware recommendations
+- Emergency cleanup suggestions
+
+### Common Error Scenarios
+
+#### Deployment Failures
+```bash
+# 1. Check what failed
+./scripts/check-status.sh testing
+
+# 2. Clean slate approach
+./scripts/delete-complete.sh testing
+./scripts/deploy-complete.sh testing
+
+# 3. Emergency option (if stuck)
+./scripts/force-delete.sh testing all
+```
+
+#### Partial Deployment Issues
+```bash
+# Backend deployment failed
+./scripts/force-delete.sh testing backend
+./scripts/deploy-complete.sh testing
+
+# Infrastructure issues
+./scripts/force-delete.sh testing infrastructure
+./scripts/deploy-complete.sh testing
+```
+
+#### Stack Stuck in Progress
+```bash
+# Force delete with operation cancellation
+./scripts/force-delete.sh testing all
+
+# Manual resource cleanup (if needed)
+aws s3 rm s3://bucket-name --recursive --profile IBD-DEV
+aws lambda delete-function --function-name function-name --profile IBD-DEV
+```
+
+### Production Environment Safety
+
+#### Extra Protection Measures
+- **Double confirmation**: Requires typing "DELETE PRODUCTION"
+- **State validation**: Prevents deletion of unstable stacks
+- **Resource preservation**: Guidance for critical resource cleanup
+
+```bash
+# Production deletion requires extra confirmation
+./scripts/delete-complete.sh production
+# Prompts: Type 'DELETE PRODUCTION' to confirm
 ```
 
 ## Production Deployment
@@ -334,9 +537,14 @@ aws s3 rm s3://your-bucket-name --recursive --profile IBD-DEV
 Infrastructure/
 ├── cloudformation-infrastructure-only.yaml  # Infrastructure template
 ├── backend-sam/template.yaml               # Backend SAM template
-├── scripts/deploy-complete.sh              # Main deployment
-├── scripts/check-status.sh                 # Status checker
-└── scripts/deploy-frontend.sh              # Frontend updater
+├── scripts/
+│   ├── deploy-complete.sh                  # 🚀 Main deployment (auto-config sync)
+│   ├── check-status.sh                     # 📊 Enhanced status checker
+│   ├── deploy-frontend.sh                  # 🌐 Frontend updater (with invalidation)
+│   ├── update-frontend-config.sh           # 🔧 Frontend config automation
+│   ├── delete-complete.sh                  # 🗑️ Smart cleanup
+│   └── force-delete.sh                     # 🚨 Emergency cleanup
+└── DEPLOYMENT_GUIDE.md                     # 📖 This documentation
 ```
 
 This deployment system ensures no resource duplication while providing flexible deployment options for different development workflows.

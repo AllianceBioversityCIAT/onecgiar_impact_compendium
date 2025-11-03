@@ -10,3 +10,4 @@ export { Table } from './Table';
 export { ProgressStepper } from './ProgressStepper';
 export { HeaderBar } from './HeaderBar';
 export { FormFooter } from './FooterBar';
+export { Footer } from './Footer';

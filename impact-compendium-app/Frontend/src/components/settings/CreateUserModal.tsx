@@ -15,11 +15,27 @@ export const CreateUserModal: React.FC<CreateUserModalProps> = ({ onClose, onSub
   const [error, setError] = useState<string | null>(null);
 
   const generatePassword = () => {
-    const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789!@#$%^&*';
+    const uppercase = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ';
+    const lowercase = 'abcdefghijklmnopqrstuvwxyz';
+    const numbers = '0123456789';
+    const symbols = '!@#$%^&*';
+    
+    // Ensure at least one character from each required category
     let password = '';
-    for (let i = 0; i < 12; i++) {
-      password += chars.charAt(Math.floor(Math.random() * chars.length));
+    password += uppercase.charAt(Math.floor(Math.random() * uppercase.length));
+    password += lowercase.charAt(Math.floor(Math.random() * lowercase.length));
+    password += numbers.charAt(Math.floor(Math.random() * numbers.length));
+    password += symbols.charAt(Math.floor(Math.random() * symbols.length));
+    
+    // Fill remaining 8 characters randomly
+    const allChars = uppercase + lowercase + numbers + symbols;
+    for (let i = 4; i < 12; i++) {
+      password += allChars.charAt(Math.floor(Math.random() * allChars.length));
     }
+    
+    // Shuffle the password to randomize character positions
+    password = password.split('').sort(() => Math.random() - 0.5).join('');
+    
     setFormData(prev => ({ ...prev, temporaryPassword: password }));
   };
 

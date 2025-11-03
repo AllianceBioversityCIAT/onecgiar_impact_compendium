@@ -311,6 +311,58 @@ Resources:
         - email
       UsernameAttributes:
         - email
+      EmailConfiguration:
+        EmailSendingAccount: COGNITO_DEFAULT
+      AdminCreateUserConfig:
+        InviteMessageAction: EMAIL
+        InviteMessageTemplate:
+          EmailMessage: |
+            <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px; background-color: #f8f9fa;">
+              <div style="background-color: white; padding: 30px; border-radius: 8px; box-shadow: 0 2px 4px rgba(0,0,0,0.1);">
+                <div style="text-align: center; margin-bottom: 30px;">
+                  <h1 style="color: #2c5530; margin: 0; font-size: 28px;">Welcome to Impact Compendium</h1>
+                  <div style="width: 60px; height: 3px; background-color: #7cb342; margin: 15px auto;"></div>
+                </div>
+                
+                <p style="color: #333; font-size: 16px; line-height: 1.6; margin-bottom: 20px;">
+                  Your account has been successfully created for the CGIAR Impact Compendium platform.
+                </p>
+                
+                <div style="background-color: #f1f8e9; padding: 20px; border-radius: 6px; margin: 20px 0;">
+                  <h3 style="color: #2c5530; margin: 0 0 15px 0; font-size: 18px;">Your Login Details:</h3>
+                  <p style="margin: 8px 0; color: #333;"><strong>Username:</strong> {username}</p>
+                  <p style="margin: 8px 0; color: #333;"><strong>Temporary Password:</strong> {####}</p>
+                </div>
+                
+                <div style="background-color: #fff3e0; padding: 15px; border-radius: 6px; margin: 20px 0; border-left: 4px solid #ff9800;">
+                  <p style="margin: 0; color: #e65100; font-size: 14px;">
+                    <strong>Important:</strong> You will be required to change your password on first login for security purposes.
+                  </p>
+                </div>
+                
+                <div style="text-align: center; margin: 30px 0;">
+                  <a href="#" style="background-color: #2c5530; color: white; padding: 12px 30px; text-decoration: none; border-radius: 6px; font-weight: bold; display: inline-block;">
+                    Access Impact Compendium
+                  </a>
+                </div>
+                
+                <div style="border-top: 1px solid #e0e0e0; padding-top: 20px; margin-top: 30px;">
+                  <p style="color: #666; font-size: 14px; line-height: 1.5; margin-bottom: 15px;">
+                    The Impact Compendium is CGIAR's comprehensive platform for documenting and sharing research impact evidence across our global initiatives.
+                  </p>
+                  
+                  <div style="text-align: center;">
+                    <p style="color: #999; font-size: 12px; margin: 5px 0;">
+                      © {current_year} CGIAR System Organization
+                    </p>
+                    <p style="color: #999; font-size: 12px; margin: 5px 0;">
+                      Transforming food, land, and water systems in a climate crisis
+                    </p>
+                  </div>
+                </div>
+              </div>
+            </div>
+          EmailSubject: "Welcome to CGIAR Impact Compendium - Account Created"
       UserPoolTags:
         Project: !Ref ProjectName
         Environment: !Ref Environment

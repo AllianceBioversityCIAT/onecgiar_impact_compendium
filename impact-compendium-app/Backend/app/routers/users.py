@@ -103,17 +103,23 @@ async def create_user(
         user_pool_id = os.getenv('COGNITO_USER_POOL_ID', 'us-east-1_yFLIp9zBk')
         cognito_client = boto3.client('cognito-idp', region_name='us-east-1')
         
-        response = cognito_client.admin_create_user(
-            UserPoolId=user_pool_id,
-            Username=username,
-            UserAttributes=[
+        # Create user with conditional email sending
+        create_user_params = {
+            'UserPoolId': user_pool_id,
+            'Username': username,
+            'UserAttributes': [
                 {'Name': 'email', 'Value': user_data.email},
                 {'Name': 'name', 'Value': user_data.email.split('@')[0]},
                 {'Name': 'email_verified', 'Value': 'true'}
             ],
-            TemporaryPassword=user_data.temporary_password,
-            MessageAction='SUPPRESS'
-        )
+            'TemporaryPassword': user_data.temporary_password
+        }
+        
+        # Only add MessageAction if we want to suppress the email
+        if not user_data.send_email:
+            create_user_params['MessageAction'] = 'SUPPRESS'
+        
+        response = cognito_client.admin_create_user(**create_user_params)
         
         return {
             'username': response['User']['Username'],

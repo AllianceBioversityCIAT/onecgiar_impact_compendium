@@ -1,5 +1,6 @@
 import React from 'react';
 import { AppLayout } from '../layouts/AppLayout';
+import { Footer } from '../components/ui/Footer';
 
 export const Home: React.FC = () => {
   const handleCreateStudy = () => {
@@ -15,8 +16,8 @@ export const Home: React.FC = () => {
 
   return (
     <AppLayout title="Home" showAddButton={false}>
-      <div className="min-h-screen bg-[#FAFAFA] -m-6">
-        <div className="flex flex-col items-start px-16 pb-20 gap-8 max-w-[95vw] mx-auto">
+      <div className="min-h-screen bg-[#FAFAFA] -m-6 flex flex-col">
+        <div className="flex-grow flex flex-col items-center justify-center px-16 py-20 gap-8 max-w-[95vw] mx-auto">
         
         {/* Hero Section */}
         <div className="w-full h-[400px] relative bg-gradient-to-br from-[#B96A28] to-[#DC9700] rounded-3xl overflow-hidden">
@@ -160,9 +161,11 @@ export const Home: React.FC = () => {
             </div>
           </div>
         </div>
+        </div>
         
+        {/* Footer */}
+        <Footer />
       </div>
-    </div>
     </AppLayout>
   );
 };

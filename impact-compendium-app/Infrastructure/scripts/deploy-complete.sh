@@ -185,6 +185,49 @@ fi
 
 echo "✅ Frontend deployed successfully!"
 
+# Get CloudFront Distribution ID
+echo "🔄 Invalidating CloudFront cache..."
+
+# Try to get Distribution ID from CloudFormation outputs first
+DISTRIBUTION_ID=$(aws cloudformation describe-stacks \
+    --stack-name "$INFRA_STACK_NAME" \
+    --profile IBD-DEV \
+    --region us-east-1 \
+    --query 'Stacks[0].Outputs[?OutputKey==`CloudFrontDistributionId`].OutputValue' \
+    --output text 2>/dev/null)
+
+# If not found in outputs, try to find it by S3 bucket origin
+if [ -z "$DISTRIBUTION_ID" ] || [ "$DISTRIBUTION_ID" = "None" ]; then
+    echo "🔍 Searching for CloudFront distribution by S3 bucket origin..."
+    DISTRIBUTION_ID=$(aws cloudfront list-distributions \
+        --profile IBD-DEV \
+        --query "DistributionList.Items[?contains(Origins.Items[0].DomainName, '$S3_BUCKET')].Id" \
+        --output text 2>/dev/null)
+fi
+
+if [ -z "$DISTRIBUTION_ID" ] || [ "$DISTRIBUTION_ID" = "None" ]; then
+    echo "⚠️  CloudFront Distribution ID not found, skipping cache invalidation"
+    echo "💡 Frontend changes may take time to appear due to CloudFront caching"
+else
+    # Create invalidation for all files
+    echo "🎯 Found CloudFront Distribution: $DISTRIBUTION_ID"
+    INVALIDATION_ID=$(aws cloudfront create-invalidation \
+        --distribution-id "$DISTRIBUTION_ID" \
+        --paths "/*" \
+        --profile IBD-DEV \
+        --query 'Invalidation.Id' \
+        --output text)
+    
+    if [ $? -eq 0 ]; then
+        echo "✅ CloudFront cache invalidation created: $INVALIDATION_ID"
+        echo "🕐 Cache invalidation may take 5-15 minutes to complete"
+        echo "🔄 New frontend changes will be visible after invalidation completes"
+    else
+        echo "⚠️  CloudFront cache invalidation failed, but deployment succeeded"
+        echo "💡 You may need to wait for cache TTL or manually invalidate cache"
+    fi
+fi
+
 # Navigate back to Infrastructure directory for final outputs
 cd ../Infrastructure
 

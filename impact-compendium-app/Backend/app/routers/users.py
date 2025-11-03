@@ -165,10 +165,10 @@ async def reset_user_password(
     current_user: dict = Depends(require_admin)
 ):
     """
-    Reset user password (force password change on next login)
+    Send password reset email to user
     
     Args:
-        username: Username to reset password for
+        username: Username to send reset email to
         
     Returns:
         Success confirmation with instructions
@@ -177,7 +177,26 @@ async def reset_user_password(
         HTTPException: 500 if password reset fails
     """
     try:
-        cognito_service.reset_user_password(username)
+        import boto3
+        
+        user_pool_id = os.getenv('COGNITO_USER_POOL_ID', 'us-east-1_yFLIp9zBk')
+        cognito_client = boto3.client('cognito-idp', region_name='us-east-1')
+        
+        # Send password reset email with verification code
+        cognito_client.admin_reset_user_password(
+            UserPoolId=user_pool_id,
+            Username=username
+        )
+        
+        return {
+            'message': 'Password reset email sent successfully',
+            'username': username,
+            'instructions': 'User will receive an email with reset code and instructions'
+        }
+        
+    except Exception as e:
+        logger.error(f"Failed to send password reset email: {e}")
+        raise HTTPException(status_code=500, detail="Failed to send password reset email")
         return {
             "success": True, 
             "message": f"Password reset for user {username}. User will be required to change password on next login."

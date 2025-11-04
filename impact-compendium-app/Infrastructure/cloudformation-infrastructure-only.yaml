@@ -319,7 +319,7 @@ Resources:
         EmailSendingAccount: COGNITO_DEFAULT
       VerificationMessageTemplate:
         DefaultEmailOption: CONFIRM_WITH_CODE
-        EmailMessage: |
+        EmailMessage: !Sub |
           <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px; background-color: #f8f9fa;">
             <div style="background-color: white; padding: 30px; border-radius: 8px; box-shadow: 0 2px 4px rgba(0,0,0,0.1);">
               <div style="text-align: center; margin-bottom: 30px;">
@@ -366,9 +366,10 @@ Resources:
           </div>
         EmailSubject: "CGIAR Impact Compendium - Password Reset Code"
       AdminCreateUserConfig:
-        InviteMessageAction: EMAIL
+        AllowAdminCreateUserOnly: false
+        UnusedAccountValidityDays: 7
         InviteMessageTemplate:
-          EmailMessage: |
+          EmailMessage: !Sub |
             <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px; background-color: #f8f9fa;">
               <div style="background-color: white; padding: 30px; border-radius: 8px; box-shadow: 0 2px 4px rgba(0,0,0,0.1);">
                 <div style="text-align: center; margin-bottom: 30px;">

@@ -40,6 +40,7 @@ else
         --parameters \
             ParameterKey=Environment,ParameterValue=$ENVIRONMENT \
             ParameterKey=ProjectName,ParameterValue=impact-compendium \
+            ParameterKey=DomainName,ParameterValue=test-impact-admin.prms.cgiar.org \
         --profile IBD-DEV \
         --region us-east-1 \
         --tags \

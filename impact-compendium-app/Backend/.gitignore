@@ -99,3 +99,7 @@ tests/*SUMMARY.md
 pytest.ini
 alembic.ini
 run_tests.py
+
+# Virtual environment
+.venv/
+venv/

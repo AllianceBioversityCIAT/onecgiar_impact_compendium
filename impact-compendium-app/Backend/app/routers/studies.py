@@ -177,37 +177,54 @@ async def list_studies(
     q: Optional[str] = Query(None, description="Search query"),
     page: int = Query(1, ge=1, description="Page number (1-based)"),
     pageSize: int = Query(25, ge=1, le=100, description="Number of records per page"),
-    sort: str = Query("year:desc", description="Sort format: field:dir (year, title, category)"),
+    sort: str = Query("year:desc", description="Sort format: field:dir (year, title, category, id)"),
     category: Optional[str] = Query(None, description="Filter by category name"),
     year_from: Optional[int] = Query(None, description="Filter from year"),
     year_to: Optional[int] = Query(None, description="Filter to year"),
     db: Optional[Session] = Depends(get_db)
 ):
-    """List studies with structure matching detail endpoint."""
+    """
+    List studies with pagination, search, and sorting capabilities.
+    
+    Args:
+        q: Search query to filter by study ID, title, or summary
+        page: Page number (1-based)
+        pageSize: Number of records per page (1-100)
+        sort: Sort format as "field:direction" (e.g., "id:desc", "year:asc")
+        category: Filter by category name
+        year_from: Filter studies from this year onwards
+        year_to: Filter studies up to this year
+        db: Database session
+        
+    Returns:
+        Paginated list of studies with metadata
+    """
     
     actual_skip = (page - 1) * pageSize
     actual_limit = pageSize
     
     # Build ORDER BY clause - default to study_id DESC for newest first
-    order_clause = "ORDER BY s.study_id DESC"
+    order_clause = "ORDER BY study_id DESC"
     if sort:
         try:
             field, direction = sort.split(':')
             field_mapping = {
-                'year': 's.year',
-                'title': 's.title',
-                'category': 's.category_id',
-                'id': 's.study_id'
+                'year': 'year',
+                'title': 'title', 
+                'category': 'category_id',
+                'id': 'study_id'
             }
-            if field in field_mapping and direction in ['asc', 'desc']:
+            if field in field_mapping and direction.lower() in ['asc', 'desc']:
                 order_clause = f"ORDER BY {field_mapping[field]} {direction.upper()}"
         except ValueError:
+            # Invalid sort format, use default
             pass
     
-    # Build WHERE clause
+    # Build WHERE clause for the first query (with table alias)
     where_conditions = ["s.is_active = 1"]
     params = {"limit": actual_limit, "skip": actual_skip}
     
+    # Build search and filter conditions
     if q:
         where_conditions.append("(CAST(s.study_id AS CHAR) LIKE :search_term OR s.title LIKE :search_term OR s.summary LIKE :search_term)")
         params["search_term"] = f"%{q}%"
@@ -222,42 +239,7 @@ async def list_studies(
     
     where_clause = "WHERE " + " AND ".join(where_conditions)
     
-    def db_query(session):
-        # Optimized single query to get basic study data
-        query = text(f"""
-            SELECT s.study_id, s.title, s.year, s.summary, s.is_active, s.created_at, 
-                   s.category_id, s.doi, s.study_intervention_types_intervention_type_id
-            FROM studies s
-            {where_clause}
-            {order_clause}
-            LIMIT :limit OFFSET :skip
-        """)
-        
-        result = session.execute(query, params)
-        studies = result.fetchall()
-        
-        # Get total count
-        count_query = text(f"SELECT COUNT(*) FROM studies s {where_clause}")
-        count_params = {k: v for k, v in params.items() if k not in ['limit', 'skip']}
-        total_result = session.execute(count_query, count_params)
-        total = total_result.scalar()
-        
-        # Transform to simplified structure for list view
-        enhanced_data = []
-        for row in studies:
-            enhanced_data.append({
-                "id": row[0],  # Database ID is already numeric
-                "title": row[1] or "No title",
-                "summary": row[3],
-                "year": row[2],
-                "category": {"id": row[6] or 1, "name": "Research"},  # Use generic name for now
-                "doi": row[7],
-                "created_at": row[5].isoformat() if row[5] else None
-            })
-        
-        return {"data": enhanced_data, "total": total}
-    
-    # Force database query - return real data with DESC order
+    # Database connection check
     if not db:
         return {
             "success": True,
@@ -267,25 +249,26 @@ async def list_studies(
         }
     
     try:
-        # Build WHERE clause for search
-        where_clause = "WHERE is_active = 1"
-        params = {"limit": actual_limit, "skip": actual_skip}
+        # Build WHERE clause for direct query (without table alias)
+        direct_where_clause = "WHERE is_active = 1"
+        direct_params = {"limit": actual_limit, "skip": actual_skip}
         
         if q:
-            where_clause += " AND (CAST(study_id AS CHAR) LIKE :search_term OR title LIKE :search_term)"
-            params["search_term"] = f"%{q}%"
+            direct_where_clause += " AND (CAST(study_id AS CHAR) LIKE :search_term OR title LIKE :search_term)"
+            direct_params["search_term"] = f"%{q}%"
         
-        # Get total count with search
-        count_query = text(f"SELECT COUNT(*) FROM studies {where_clause}")
-        count_params = {k: v for k, v in params.items() if k not in ['limit', 'skip']}
+        # Get total count
+        count_query = text(f"SELECT COUNT(*) FROM studies {direct_where_clause}")
+        count_params = {k: v for k, v in direct_params.items() if k not in ['limit', 'skip']}
         total_result = db.execute(count_query, count_params)
         total_count = total_result.scalar()
         
-        # Get paginated data with search
-        query = text(f"SELECT study_id, title, year, summary, category_id, doi FROM studies {where_clause} ORDER BY study_id DESC LIMIT :limit OFFSET :skip")
-        result = db.execute(query, params)
+        # Get paginated data with sorting
+        query = text(f"SELECT study_id, title, year, summary, category_id, doi FROM studies {direct_where_clause} {order_clause} LIMIT :limit OFFSET :skip")
+        result = db.execute(query, direct_params)
         studies = result.fetchall()
         
+        # Transform data for response
         data = []
         for row in studies:
             data.append({
@@ -311,13 +294,16 @@ async def list_studies(
                 "totalPages": total_pages
             }
         }
+        
     except Exception as e:
-        logger.error(f"Database error: {e}")
+        logger.error(f"Database error in list_studies: {e}")
         return {
             "success": False,
             "error": str(e),
             "data": [],
             "total": 0,
+            "pagination": {"total": 0, "count": 0, "page": page, "pageSize": pageSize, "totalPages": 0}
+        }
             "pagination": {"total": 0, "count": 0, "page": page, "pageSize": pageSize, "totalPages": 0}
         }
 

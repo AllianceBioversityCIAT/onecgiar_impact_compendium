@@ -304,8 +304,7 @@ async def list_studies(
             "total": 0,
             "pagination": {"total": 0, "count": 0, "page": page, "pageSize": pageSize, "totalPages": 0}
         }
-            "pagination": {"total": 0, "count": 0, "page": page, "pageSize": pageSize, "totalPages": 0}
-        }
+
 
 @router.get("/{study_id}", response_model=Dict[str, Any])
 async def get_study_detail(

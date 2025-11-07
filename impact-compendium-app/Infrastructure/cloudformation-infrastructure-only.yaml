@@ -315,6 +315,8 @@ Resources:
         - email
       UsernameAttributes:
         - email
+      UsernameConfiguration:
+        CaseSensitive: false
       EmailConfiguration:
         EmailSendingAccount: COGNITO_DEFAULT
       VerificationMessageTemplate:

@@ -257,6 +257,9 @@ export const CreateStudyStep3: React.FC = () => {
         }, 1500);
       }, 1500);
       
+      // Keep isSubmitting true until redirect to prevent multiple clicks
+      // isSubmitting will be set to false in finally block after redirect
+      
     } catch (error: any) {
       console.error('Failed to save study:', error);
       clearInterval(progressInterval);
@@ -265,9 +268,11 @@ export const CreateStudyStep3: React.FC = () => {
       // Show user-friendly error notification
       const errorMessage = error?.message || 'An unexpected error occurred while saving your study.';
       showNotification('error', 'Save Failed', `${errorMessage} Please check your data and try again.`);
-    } finally {
+      
+      // Only set isSubmitting to false on error
       setIsSubmitting(false);
     }
+    // Note: Don't set isSubmitting to false in finally block to prevent multiple clicks during success flow
   };
 
   const handleSuccessModalAction = () => {

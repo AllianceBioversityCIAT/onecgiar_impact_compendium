@@ -569,6 +569,7 @@ export const Dashboard: React.FC = () => {
         isOpen={isDetailsPanelOpen}
         onClose={handleClosePanelDetails}
         studyId={selectedStudyId}
+        onStudyDeleted={() => fetchStudies(searchParams)}
       />
 
       {/* Delete Confirmation Modal */}

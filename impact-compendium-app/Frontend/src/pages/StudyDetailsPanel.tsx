@@ -1,6 +1,8 @@
 import React, { useState, useEffect } from 'react';
 import { SlideOver } from '../components/ui/SlideOver';
 import { Button } from '../components/ui/Button';
+import { Notification } from '../components/ui/Notification';
+import { studyAPI } from '../services/api';
 
 interface Study {
   id: string;
@@ -21,13 +23,25 @@ interface StudyDetailsPanelProps {
   isOpen: boolean;
   onClose: () => void;
   studyId: string | null;
+  onStudyDeleted?: () => void; // Callback to refresh the studies list
 }
 
-export const StudyDetailsPanel: React.FC<StudyDetailsPanelProps> = ({ isOpen, onClose, studyId }) => {
+export const StudyDetailsPanel: React.FC<StudyDetailsPanelProps> = ({ isOpen, onClose, studyId, onStudyDeleted }) => {
   const [study, setStudy] = useState<Study | null>(null);
   const [loading, setLoading] = useState(false);
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
   const [deleting, setDeleting] = useState(false);
+  const [notification, setNotification] = useState<{
+    show: boolean;
+    type: 'success' | 'error' | 'info';
+    title: string;
+    message: string;
+  }>({
+    show: false,
+    type: 'info',
+    title: '',
+    message: ''
+  });
 
   useEffect(() => {
     if (isOpen && studyId) {
@@ -93,19 +107,32 @@ export const StudyDetailsPanel: React.FC<StudyDetailsPanelProps> = ({ isOpen, on
     
     setDeleting(true);
     try {
-      const response = await fetch(`${import.meta.env.VITE_API_BASE_URL || 'http://localhost:8000'}/api/studies/${studyId}`, {
-        method: 'DELETE'
+      await studyAPI.delete(studyId);
+      
+      // Show success notification
+      setNotification({
+        show: true,
+        type: 'success',
+        title: 'Study Deleted',
+        message: 'The study has been successfully deleted from the system.'
       });
       
-      if (response.ok) {
+      // Close the panel and refresh the studies list
+      setTimeout(() => {
         onClose();
-        window.location.reload(); // Refresh the dashboard
-      } else {
-        alert('Failed to delete study');
-      }
+        if (onStudyDeleted) {
+          onStudyDeleted();
+        }
+      }, 1500); // Give time for user to see the success message
+      
     } catch (error) {
       console.error('Error deleting study:', error);
-      alert('Error deleting study');
+      setNotification({
+        show: true,
+        type: 'error',
+        title: 'Delete Failed',
+        message: 'Failed to delete the study. Please try again or contact support if the problem persists.'
+      });
     } finally {
       setDeleting(false);
       setShowDeleteConfirm(false);
@@ -402,7 +429,7 @@ export const StudyDetailsPanel: React.FC<StudyDetailsPanelProps> = ({ isOpen, on
           {/* Enhanced Delete Confirmation Modal */}
           {showDeleteConfirm && (
             <div className="fixed inset-0 bg-black bg-opacity-60 flex items-center justify-center z-50 backdrop-blur-sm">
-              <div className="bg-white rounded-2xl p-8 max-w-md w-full mx-4 shadow-2xl transform transition-all">
+              <div className="bg-white rounded-2xl p-8 max-w-md w-full mx-4 shadow-2xl transform transition-all animate-in fade-in-0 zoom-in-95 duration-300">
                 <div className="flex items-center gap-4 mb-6">
                   <div className="flex-shrink-0 w-12 h-12 bg-red-100 rounded-full flex items-center justify-center">
                     <svg className="w-6 h-6 text-red-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -411,30 +438,43 @@ export const StudyDetailsPanel: React.FC<StudyDetailsPanelProps> = ({ isOpen, on
                   </div>
                   <div>
                     <h3 className="text-xl font-bold text-gray-900">Delete Study</h3>
-                    <p className="text-sm text-gray-500 mt-1">This action cannot be undone</p>
+                    <p className="text-sm text-red-600 mt-1 font-medium">This action cannot be undone</p>
                   </div>
                 </div>
                 <div className="mb-8">
                   <p className="text-gray-700 leading-relaxed">
                     Are you sure you want to delete <span className="font-semibold text-gray-900">"{study?.title}"</span>? 
-                    All associated data will be permanently removed from the system.
                   </p>
+                  <div className="mt-3 p-3 bg-red-50 border border-red-200 rounded-lg">
+                    <p className="text-sm text-red-800">
+                      <span className="font-medium">Warning:</span> All associated data including indicators, relationships, and metadata will be permanently removed from the system.
+                    </p>
+                  </div>
                 </div>
                 <div className="flex gap-3">
                   <Button 
                     onClick={handleDelete} 
-                    className="flex-1 bg-red-600 hover:bg-red-700 text-white font-semibold py-3 flex items-center justify-center gap-2 rounded-xl shadow-md hover:shadow-lg transition-all duration-200 transform hover:-translate-y-0.5"
+                    className="flex-1 bg-red-600 hover:bg-red-700 text-white font-semibold py-3 flex items-center justify-center gap-2 rounded-xl shadow-md hover:shadow-lg transition-all duration-200 transform hover:-translate-y-0.5 disabled:opacity-50 disabled:cursor-not-allowed disabled:transform-none"
                     disabled={deleting}
                   >
-                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
-                    </svg>
-                    {deleting ? 'Deleting...' : 'Delete Study'}
+                    {deleting ? (
+                      <>
+                        <div className="animate-spin rounded-full h-4 w-4 border-2 border-white border-t-transparent"></div>
+                        Deleting...
+                      </>
+                    ) : (
+                      <>
+                        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                        </svg>
+                        Delete Study
+                      </>
+                    )}
                   </Button>
                   <Button 
                     variant="secondary" 
                     onClick={() => setShowDeleteConfirm(false)} 
-                    className="flex-1 bg-gray-100 hover:bg-gray-200 text-gray-700 font-semibold py-3 flex items-center justify-center gap-2 rounded-xl transition-all duration-200"
+                    className="flex-1 bg-gray-100 hover:bg-gray-200 text-gray-700 font-semibold py-3 flex items-center justify-center gap-2 rounded-xl transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed"
                     disabled={deleting}
                   >
                     <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -446,6 +486,17 @@ export const StudyDetailsPanel: React.FC<StudyDetailsPanelProps> = ({ isOpen, on
               </div>
             </div>
           )}
+
+          {/* Notification */}
+          <Notification
+            type={notification.type}
+            title={notification.title}
+            message={notification.message}
+            show={notification.show}
+            onClose={() => setNotification(prev => ({ ...prev, show: false }))}
+            autoClose={notification.type === 'success'}
+            duration={notification.type === 'success' ? 2000 : 5000}
+          />
         </div>
       ) : null}
     </SlideOver>

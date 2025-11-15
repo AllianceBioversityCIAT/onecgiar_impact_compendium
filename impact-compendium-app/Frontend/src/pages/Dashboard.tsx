@@ -93,7 +93,7 @@ export const Dashboard: React.FC = () => {
       q: urlParams.get('q') || '',
       page: parseInt(urlParams.get('page') || '1'),
       pageSize: parseInt(urlParams.get('pageSize') || '10'),
-      sort: urlParams.get('sort') || '',
+      sort: urlParams.get('sort') || 'id:desc', // Default to id:desc if no sort in URL
       category: urlParams.get('category') || ''
     });
   }, []);

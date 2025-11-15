@@ -3,6 +3,7 @@ import { useNavigate, useParams } from 'react-router-dom';
 import { FormLayout } from '../../layouts/FormLayout';
 import { AppLayout } from '../../layouts/AppLayout';
 import { ProgressStepper } from '../../components/ui/ProgressStepper';
+import { StudyContextHeader } from '../../components/ui/StudyContextHeader';
 import { Input } from '../../components/ui/Input';
 import { Button } from '../../components/ui/Button';
 import { Card } from '../../components/ui/Card';
@@ -38,6 +39,14 @@ export const CreateStudyStep3: React.FC = () => {
     }
     return [{ id: '1', indicatorMeasured: '', unitOfMeasure: '', resultReported: '' }];
   };
+
+  // Get Step 1 data for context header
+  const getStep1Data = () => {
+    const savedData = localStorage.getItem('studyFormStep1');
+    return savedData ? JSON.parse(savedData) : { studyId: '', title: '' };
+  };
+
+  const step1Data = getStep1Data();
 
   const [indicators, setIndicators] = useState<Indicator[]>(getSavedData);
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -363,6 +372,14 @@ export const CreateStudyStep3: React.FC = () => {
 
       <div className="space-y-6">
         <h1 className="text-2xl font-bold text-[var(--ic-color-text)]">{pageTitle}</h1>
+
+        {/* Study Context Header */}
+        <StudyContextHeader 
+          studyId={step1Data.studyId}
+          title={step1Data.title}
+          currentStep={3}
+          isEditMode={isEditMode}
+        />
 
         <div className="space-y-6">
           {/* Add Indicator Button */}

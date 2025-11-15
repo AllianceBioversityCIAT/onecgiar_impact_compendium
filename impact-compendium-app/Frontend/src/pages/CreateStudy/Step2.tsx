@@ -2,6 +2,7 @@ import React, { useState, useEffect, useMemo, useCallback } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { FormLayout } from '../../layouts/FormLayout';
 import { ProgressStepper } from '../../components/ui/ProgressStepper';
+import { StudyContextHeader } from '../../components/ui/StudyContextHeader';
 import { Select } from '../../components/ui/Select';
 import { MultiSelect } from '../../components/ui/MultiSelect';
 import { Button } from '../../components/ui/Button';
@@ -41,6 +42,14 @@ export const CreateStudyStep2: React.FC = () => {
       cgiarRegions: [] as string[]
     };
   };
+
+  // Get Step 1 data for context header
+  const getStep1Data = () => {
+    const savedData = localStorage.getItem('studyFormStep1');
+    return savedData ? JSON.parse(savedData) : { studyId: '', title: '' };
+  };
+
+  const step1Data = getStep1Data();
 
   const [loading, setLoading] = useState(true);
   const [mappingData, setMappingData] = useState(false);
@@ -256,7 +265,7 @@ export const CreateStudyStep2: React.FC = () => {
   const handleNext = () => {
     // Validate required fields
     if (!formData.primaryCGIARImpactArea) {
-      alert('Please select a Primary CGIAR Impact Area');
+      showNotification('error', 'Please select a Primary CGIAR Impact Area to continue');
       return;
     }
 
@@ -268,7 +277,7 @@ export const CreateStudyStep2: React.FC = () => {
 
   const handleSaveDraft = async () => {
     if (!formData.primaryCGIARImpactArea) {
-      alert('Please select a Primary CGIAR Impact Area');
+      showNotification('error', 'Please select a Primary CGIAR Impact Area before saving draft');
       return;
     }
 
@@ -331,36 +340,67 @@ export const CreateStudyStep2: React.FC = () => {
       currentStep={2}
       onClose={handleClose}
     >
-      {/* Notification Toast */}
+      {/* Professional Notification Toast */}
       {notification.show && (
-        <div className={`fixed top-4 right-4 z-50 max-w-md p-4 rounded-lg shadow-lg transition-all duration-300 ${
-          notification.type === 'success' ? 'bg-green-500 text-white' :
-          notification.type === 'error' ? 'bg-red-500 text-white' :
-          'bg-blue-500 text-white'
+        <div className={`fixed top-4 right-4 z-50 max-w-sm p-4 rounded-xl shadow-2xl transition-all duration-500 transform ${
+          notification.show ? 'translate-x-0 opacity-100' : 'translate-x-full opacity-0'
+        } ${
+          notification.type === 'success' ? 'bg-gradient-to-r from-green-500 to-green-600 text-white border border-green-400' :
+          notification.type === 'error' ? 'bg-gradient-to-r from-red-500 to-red-600 text-white border border-red-400' :
+          'bg-gradient-to-r from-blue-500 to-blue-600 text-white border border-blue-400'
         }`}>
-          <div className="flex items-center space-x-2">
-            {notification.type === 'success' && (
-              <svg className="w-5 h-5" fill="currentColor" viewBox="0 0 20 20">
-                <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd" />
+          <div className="flex items-start space-x-3">
+            <div className="flex-shrink-0">
+              {notification.type === 'success' && (
+                <div className="w-6 h-6 bg-white/20 rounded-full flex items-center justify-center">
+                  <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 20 20">
+                    <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd" />
+                  </svg>
+                </div>
+              )}
+              {notification.type === 'error' && (
+                <div className="w-6 h-6 bg-white/20 rounded-full flex items-center justify-center">
+                  <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 20 20">
+                    <path fillRule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7 4a1 1 0 11-2 0 1 1 0 012 0zm-1-9a1 1 0 00-1 1v4a1 1 0 102 0V6a1 1 0 00-1-1z" clipRule="evenodd" />
+                  </svg>
+                </div>
+              )}
+              {notification.type === 'info' && (
+                <div className="w-6 h-6 bg-white/20 rounded-full flex items-center justify-center">
+                  <svg className="w-4 h-4 animate-spin" fill="currentColor" viewBox="0 0 20 20">
+                    <path fillRule="evenodd" d="M4 2a1 1 0 011 1v2.101a7.002 7.002 0 0111.601 2.566 1 1 0 11-1.885.666A5.002 5.002 0 005.999 7H9a1 1 0 010 2H4a1 1 0 01-1-1V3a1 1 0 011-1zm.008 9.057a1 1 0 011.276.61A5.002 5.002 0 0014.001 13H11a1 1 0 110-2h5a1 1 0 011 1v5a1 1 0 11-2 0v-2.101a7.002 7.002 0 01-11.601-2.566 1 1 0 01.61-1.276z" clipRule="evenodd" />
+                  </svg>
+                </div>
+              )}
+            </div>
+            <div className="flex-1 min-w-0">
+              <p className="text-sm font-semibold leading-relaxed">{notification.message}</p>
+              {notification.type === 'error' && (
+                <p className="text-xs mt-1 opacity-90">Please correct this issue to continue</p>
+              )}
+            </div>
+            <button 
+              onClick={() => setNotification(prev => ({ ...prev, show: false }))}
+              className="flex-shrink-0 w-5 h-5 bg-white/20 hover:bg-white/30 rounded-full flex items-center justify-center transition-colors"
+            >
+              <svg className="w-3 h-3" fill="currentColor" viewBox="0 0 20 20">
+                <path fillRule="evenodd" d="M4.293 4.293a1 1 0 011.414 0L10 8.586l4.293-4.293a1 1 0 111.414 1.414L11.414 10l4.293 4.293a1 1 0 01-1.414 1.414L10 11.414l-4.293 4.293a1 1 0 01-1.414-1.414L8.586 10 4.293 5.707a1 1 0 010-1.414z" clipRule="evenodd" />
               </svg>
-            )}
-            {notification.type === 'error' && (
-              <svg className="w-5 h-5" fill="currentColor" viewBox="0 0 20 20">
-                <path fillRule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7 4a1 1 0 11-2 0 1 1 0 012 0zm-1-9a1 1 0 00-1 1v4a1 1 0 102 0V6a1 1 0 00-1-1z" clipRule="evenodd" />
-              </svg>
-            )}
-            {notification.type === 'info' && (
-              <svg className="w-5 h-5 animate-spin" fill="currentColor" viewBox="0 0 20 20">
-                <path fillRule="evenodd" d="M4 2a1 1 0 011 1v2.101a7.002 7.002 0 0111.601 2.566 1 1 0 11-1.885.666A5.002 5.002 0 005.999 7H9a1 1 0 010 2H4a1 1 0 01-1-1V3a1 1 0 011-1zm.008 9.057a1 1 0 011.276.61A5.002 5.002 0 0014.001 13H11a1 1 0 110-2h5a1 1 0 011 1v5a1 1 0 11-2 0v-2.101a7.002 7.002 0 01-11.601-2.566 1 1 0 01.61-1.276z" clipRule="evenodd" />
-              </svg>
-            )}
-            <span className="text-sm font-medium">{notification.message}</span>
+            </button>
           </div>
         </div>
       )}
       
       <div className="space-y-6">
         <h1 className="text-2xl font-bold text-[var(--ic-color-text)]">{pageTitle}</h1>
+
+        {/* Study Context Header */}
+        <StudyContextHeader 
+          studyId={step1Data.studyId}
+          title={step1Data.title}
+          currentStep={2}
+          isEditMode={isEditMode}
+        />
 
         {loading || mappingData ? (
           <Card>

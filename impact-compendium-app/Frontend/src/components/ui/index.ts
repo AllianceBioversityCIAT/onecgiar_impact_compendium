@@ -11,3 +11,4 @@ export { ProgressStepper } from './ProgressStepper';
 export { HeaderBar } from './HeaderBar';
 export { FormFooter } from './FooterBar';
 export { Footer } from './Footer';
+export { StudyContextHeader } from './StudyContextHeader';

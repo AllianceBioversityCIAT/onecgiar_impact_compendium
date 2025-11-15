@@ -1,4 +1,5 @@
 import { authService } from './auth';
+import { EmailValidator } from '../utils/emailValidation';
 
 interface User {
   username: string;
@@ -18,6 +19,10 @@ interface CreateUserRequest {
 
 class UserService {
   private baseURL = import.meta.env.VITE_API_BASE_URL || "http://localhost:8000";
+
+  private normalizeEmail(email: string): string {
+    return EmailValidator.normalize(email);
+  }
 
   async listUsers(): Promise<User[]> {
     const headers = await authService.getAuthHeaders();
@@ -40,7 +45,7 @@ class UserService {
     const authHeaders = await authService.getAuthHeaders();
     
     const requestBody = {
-      email: userData.email,
+      email: this.normalizeEmail(userData.email), // Normalize email
       temporary_password: userData.temporaryPassword,
       send_email: userData.sendEmail
     };

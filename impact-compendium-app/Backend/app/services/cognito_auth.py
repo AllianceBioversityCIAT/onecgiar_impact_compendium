@@ -130,11 +130,14 @@ class CognitoAuth:
 
     def get_user_info(self, token_payload: Dict[str, Any]) -> Dict[str, Any]:
         """Extract user information from token payload"""
+        # Normalize email to lowercase for consistency
+        email = token_payload.get("email", "").lower()
+        
         return {
             "user_id": token_payload.get("sub"),
             "username": token_payload.get("username"),
-            "email": token_payload.get("email"),
-            "name": token_payload.get("name", token_payload.get("email")),
+            "email": email,
+            "name": token_payload.get("name", email),
             "groups": token_payload.get("cognito:groups", []),
             "is_authenticated": True
         }

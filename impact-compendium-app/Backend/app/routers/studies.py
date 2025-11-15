@@ -258,13 +258,20 @@ async def list_studies(
             direct_params["search_term"] = f"%{q}%"
         
         # Get total count
-        count_query = text(f"SELECT COUNT(*) FROM studies {direct_where_clause}")
+        count_query = text(f"SELECT COUNT(*) FROM studies s {direct_where_clause.replace('WHERE', 'WHERE s.')}")
         count_params = {k: v for k, v in direct_params.items() if k not in ['limit', 'skip']}
         total_result = db.execute(count_query, count_params)
         total_count = total_result.scalar()
         
-        # Get paginated data with sorting
-        query = text(f"SELECT study_id, title, year, summary, category_id, doi FROM studies {direct_where_clause} {order_clause} LIMIT :limit OFFSET :skip")
+        # Get paginated data with sorting - JOIN with categories table to get category name
+        query = text(f"""
+            SELECT s.study_id, s.title, s.year, s.summary, s.category_id, s.doi, c.name as category_name
+            FROM studies s 
+            LEFT JOIN categories c ON s.category_id = c.study_category_id 
+            {direct_where_clause.replace('WHERE', 'WHERE s.')} 
+            {order_clause.replace('study_id', 's.study_id').replace('year', 's.year').replace('title', 's.title')} 
+            LIMIT :limit OFFSET :skip
+        """)
         result = db.execute(query, direct_params)
         studies = result.fetchall()
         
@@ -276,7 +283,7 @@ async def list_studies(
                 "title": row[1] or "No title",
                 "year": row[2] or "N/A",
                 "summary": row[3] or "No summary available",
-                "category": {"id": row[4] or 1, "name": "Research"},
+                "category": {"id": row[4] or 1, "name": row[6] or "Unknown Category"},
                 "doi": row[5] or "N/A"
             })
         
@@ -504,22 +511,8 @@ async def create_study(
             VALUES (:study_id, :title, :summary, :year, :doi, :category_id, 1, NOW(), :created_by)
         """)
         
-        # Map category to valid database IDs (116-120)
-        # Handle both frontend IDs (1-5) and direct database IDs (116-120)
-        category_mapping = {
-            "1": 116,  # Impact Study
-            "2": 117,  # Impact/Outcome story  
-            "3": 118,  # Other
-            "4": 119,  # Outcome Study
-            "5": 120,  # Synthesis Study
-            # Also handle direct database IDs
-            "116": 116, # Impact Study
-            "117": 117, # Impact/Outcome story
-            "118": 118, # Other
-            "119": 119, # Outcome Study
-            "120": 120  # Synthesis Study
-        }
-        db_category_id = category_mapping.get(str(study_data.category), 116)
+        # Use the category ID directly from frontend (already database IDs)
+        db_category_id = int(study_data.category) if study_data.category else 156
         
         session.execute(insert_query, {
             "study_id": study_data.studyId,
@@ -598,22 +591,8 @@ async def update_study(
                 update_fields.append("doi = :doi")
                 params["doi"] = study_data.doi
             if study_data.category is not None:
-                # Map category to valid database IDs (116-120)
-                # Handle both frontend IDs (1-5) and direct database IDs (116-120)
-                category_mapping = {
-                    "1": 116,  # Impact Study
-                    "2": 117,  # Impact/Outcome story  
-                    "3": 118,  # Other
-                    "4": 119,  # Outcome Study
-                    "5": 120,  # Synthesis Study
-                    # Also handle direct database IDs
-                    "116": 116, # Impact Study
-                    "117": 117, # Impact/Outcome story
-                    "118": 118, # Other
-                    "119": 119, # Outcome Study
-                    "120": 120  # Synthesis Study
-                }
-                db_category_id = category_mapping.get(str(study_data.category), 116)
+                # Use the category ID directly from frontend (already database IDs)
+                db_category_id = int(study_data.category) if study_data.category else 156
                 update_fields.append("category_id = :category_id")
                 params["category_id"] = db_category_id
             if study_data.periodStart is not None:
@@ -727,23 +706,8 @@ async def update_complete_study(
                 WHERE study_id = :study_id
             """)
             
-            # Map category to valid database IDs (116-120)
-            # Handle both frontend IDs (1-5) and direct database IDs (116-120)
-            category_mapping = {
-                "1": 116,  # Impact Study
-                "2": 117,  # Impact/Outcome story  
-                "3": 118,  # Other
-                "4": 119,  # Outcome Study
-                "5": 120,  # Synthesis Study
-                # Also handle direct database IDs
-                "116": 116, # Impact Study
-                "117": 117, # Impact/Outcome story
-                "118": 118, # Other
-                "119": 119, # Outcome Study
-                "120": 120  # Synthesis Study
-            }
-            
-            db_category_id = category_mapping.get(str(study_data.category), 116)  # Default to Impact Study
+            # Use the category ID directly from frontend (already database IDs)
+            db_category_id = int(study_data.category) if study_data.category else 156
             
             db.execute(study_update, {
                 "study_id": numeric_id,
@@ -950,23 +914,8 @@ async def save_complete_study(
                     last_updated_date = NOW()
             """)
             
-            # Map category to valid database IDs (116-120)
-            # Handle both frontend IDs (1-5) and direct database IDs (116-120)
-            category_mapping = {
-                "1": 116,  # Impact Study
-                "2": 117,  # Impact/Outcome story  
-                "3": 118,  # Other
-                "4": 119,  # Outcome Study
-                "5": 120,  # Synthesis Study
-                # Also handle direct database IDs
-                "116": 116, # Impact Study
-                "117": 117, # Impact/Outcome story
-                "118": 118, # Other
-                "119": 119, # Outcome Study
-                "120": 120  # Synthesis Study
-            }
-            
-            db_category_id = category_mapping.get(str(study_data.category), 116)  # Default to Impact Study
+            # Use the category ID directly from frontend (already database IDs)
+            db_category_id = int(study_data.category) if study_data.category else 156
             
             db.execute(study_insert, {
                 "study_id": study_data.studyId,

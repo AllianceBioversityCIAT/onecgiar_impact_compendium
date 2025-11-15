@@ -11,7 +11,7 @@ aws-credentials.json
 
 # Internal Planning and Development Documentation
 planning/
-specs/cost/
+specs/
 
 # Temporary and Debug Files
 test_*.js

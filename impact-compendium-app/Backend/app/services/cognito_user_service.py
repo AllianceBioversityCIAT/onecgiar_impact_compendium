@@ -292,15 +292,18 @@ class CognitoUserService:
             return self._mock_create_user(email, temporary_password, send_email)
         
         try:
+            # Normalize email to lowercase for consistency
+            normalized_email = email.lower()
+            
             # Generate readable username from email
-            base_username = generate_readable_username(email)
+            base_username = generate_readable_username(normalized_email)
             username = base_username
             
-            logger.info(f"Creating user: {username}, email: {email}")
+            logger.info(f"Creating user: {username}, email: {normalized_email}")
             
             # Use boto3 client instead of AWS CLI
             user_attributes = [
-                {'Name': 'email', 'Value': email},
+                {'Name': 'email', 'Value': normalized_email},
                 {'Name': 'name', 'Value': base_username},
                 {'Name': 'email_verified', 'Value': 'true'}
             ]
@@ -317,7 +320,7 @@ class CognitoUserService:
             logger.info(f"User created successfully: {username}")
             return {
                 'username': response['User']['Username'],
-                'email': email,
+                'email': normalized_email,
                 'status': response['User']['UserStatus'],
                 'created': response['User']['UserCreateDate'].isoformat()
             }

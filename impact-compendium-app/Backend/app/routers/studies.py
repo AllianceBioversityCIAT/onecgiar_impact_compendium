@@ -134,20 +134,20 @@ def get_study_related_data(session, study_id):
         centers = [{"id": row[0], "acronym": row[1] or row[2]} for row in centers_result.fetchall()]
         
         return {
-            "impact_areas": impact_areas if impact_areas else [{"id": 1, "name": "Nutrition, Health and Food Security"}],
-            "countries": countries if countries else [{"id": 1, "name": "Multiple Countries"}],
-            "regions": regions if regions else [{"id": 1, "name": "Global"}],
-            "initiatives": initiatives if initiatives else [{"id": 1, "name": "CGIAR Initiative"}],
-            "centers": centers if centers else [{"id": 1, "acronym": "CGIAR"}]
+            "impact_areas": impact_areas,
+            "countries": countries,
+            "regions": regions,
+            "initiatives": initiatives,
+            "centers": centers
         }
     except Exception as e:
         logger.warning(f"Error getting related data: {e}")
         return {
-            "impact_areas": [{"id": 1, "name": "Nutrition, Health and Food Security"}],
-            "countries": [{"id": 1, "name": "Multiple Countries"}],
-            "regions": [{"id": 1, "name": "Global"}],
-            "initiatives": [{"id": 1, "name": "CGIAR Initiative"}],
-            "centers": [{"id": 1, "acronym": "CGIAR"}]
+            "impact_areas": [],
+            "countries": [],
+            "regions": [],
+            "initiatives": [],
+            "centers": []
         }
 
 @router.get("/check-id/{study_id}")
@@ -351,6 +351,17 @@ async def get_study_detail(
         
         # Get all related data
         related_data = get_study_related_data(session, numeric_id)
+        
+        # DEBUG: Add raw counts for verification
+        impact_count_query = text("SELECT COUNT(*) FROM studies_impact_areas WHERE studies_study_id = :study_id")
+        impact_count = session.execute(impact_count_query, {"study_id": numeric_id}).scalar()
+        
+        initiative_count_query = text("SELECT COUNT(*) FROM studies_contributors WHERE study_id = :study_id AND clarisa_initiatives_initiative_id IS NOT NULL")
+        initiative_count = session.execute(initiative_count_query, {"study_id": numeric_id}).scalar()
+        
+        logger.info(f"DEBUG Study {numeric_id}: impact_areas_count={impact_count}, initiatives_count={initiative_count}")
+        logger.info(f"DEBUG Study {numeric_id}: impact_areas_data={related_data['impact_areas']}")
+        logger.info(f"DEBUG Study {numeric_id}: initiatives_data={related_data['initiatives']}")
         
         # Get additional detail-specific data
         # Get keywords

@@ -3,11 +3,14 @@ import { Page } from '@playwright/test';
 export async function loginAsAdmin(page: Page) {
   await page.addInitScript(() => {
     localStorage.setItem('ic_access_token', 'mock-admin-token');
-    localStorage.setItem('ic_user', JSON.stringify({
-      email: 'admin@example.com',
-      sub: '123',
-      groups: ['admin']
-    }));
+    localStorage.setItem(
+      'ic_user',
+      JSON.stringify({
+        email: 'admin@example.com',
+        sub: '123',
+        groups: ['admin'],
+      })
+    );
   });
 
   await page.route('**/api/auth/me', async route => {
@@ -17,8 +20,8 @@ export async function loginAsAdmin(page: Page) {
       body: JSON.stringify({
         email: 'admin@example.com',
         sub: '123',
-        groups: ['admin']
-      })
+        groups: ['admin'],
+      }),
     });
   });
 }
@@ -26,11 +29,14 @@ export async function loginAsAdmin(page: Page) {
 export async function loginAsUser(page: Page) {
   await page.addInitScript(() => {
     localStorage.setItem('ic_access_token', 'mock-user-token');
-    localStorage.setItem('ic_user', JSON.stringify({
-      email: 'user@example.com',
-      sub: '456',
-      groups: ['researchers']
-    }));
+    localStorage.setItem(
+      'ic_user',
+      JSON.stringify({
+        email: 'user@example.com',
+        sub: '456',
+        groups: ['researchers'],
+      })
+    );
   });
 
   await page.route('**/api/auth/me', async route => {
@@ -40,8 +46,8 @@ export async function loginAsUser(page: Page) {
       body: JSON.stringify({
         email: 'user@example.com',
         sub: '456',
-        groups: ['researchers']
-      })
+        groups: ['researchers'],
+      }),
     });
   });
 }
@@ -54,8 +60,8 @@ export async function mockStudiesAPI(page: Page, studies: any[] = []) {
         contentType: 'application/json',
         body: JSON.stringify({
           studies,
-          total: studies.length
-        })
+          total: studies.length,
+        }),
       });
     }
   });
@@ -67,7 +73,7 @@ export async function mockUsersAPI(page: Page, users: any[] = []) {
       await route.fulfill({
         status: 200,
         contentType: 'application/json',
-        body: JSON.stringify(users)
+        body: JSON.stringify(users),
       });
     }
   });

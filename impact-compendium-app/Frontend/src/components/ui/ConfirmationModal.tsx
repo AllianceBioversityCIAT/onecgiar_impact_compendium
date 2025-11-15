@@ -19,7 +19,7 @@ export const ConfirmationModal: React.FC<ConfirmationModalProps> = ({
   cancelText = 'Cancel',
   type = 'warning',
   onConfirm,
-  onCancel
+  onCancel,
 }) => {
   if (!isOpen) return null;
 
@@ -30,21 +30,21 @@ export const ConfirmationModal: React.FC<ConfirmationModalProps> = ({
           icon: '⚠️',
           iconBg: 'bg-red-100',
           iconColor: 'text-red-600',
-          confirmBtn: 'bg-red-600 hover:bg-red-700 text-white'
+          confirmBtn: 'bg-red-600 hover:bg-red-700 text-white',
         };
       case 'warning':
         return {
           icon: '⚠️',
           iconBg: 'bg-yellow-100',
           iconColor: 'text-yellow-600',
-          confirmBtn: 'bg-yellow-600 hover:bg-yellow-700 text-white'
+          confirmBtn: 'bg-yellow-600 hover:bg-yellow-700 text-white',
         };
       case 'info':
         return {
           icon: 'ℹ️',
           iconBg: 'bg-blue-100',
           iconColor: 'text-blue-600',
-          confirmBtn: 'bg-blue-600 hover:bg-blue-700 text-white'
+          confirmBtn: 'bg-blue-600 hover:bg-blue-700 text-white',
         };
     }
   };
@@ -55,7 +55,9 @@ export const ConfirmationModal: React.FC<ConfirmationModalProps> = ({
     <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
       <div className="bg-white rounded-lg p-6 w-full max-w-md mx-4 shadow-xl">
         <div className="flex items-start space-x-4">
-          <div className={`flex-shrink-0 w-10 h-10 rounded-full ${styles.iconBg} flex items-center justify-center`}>
+          <div
+            className={`flex-shrink-0 w-10 h-10 rounded-full ${styles.iconBg} flex items-center justify-center`}
+          >
             <span className="text-lg">{styles.icon}</span>
           </div>
           <div className="flex-1">

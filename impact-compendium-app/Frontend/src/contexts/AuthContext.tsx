@@ -1,4 +1,10 @@
-import React, { createContext, useContext, useState, useEffect, ReactNode } from 'react';
+import React, {
+  createContext,
+  useContext,
+  useState,
+  useEffect,
+  ReactNode,
+} from 'react';
 import { authService } from '../services/auth';
 
 interface User {
@@ -54,12 +60,8 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
   };
 
   const login = async (email: string, password: string) => {
-    try {
-      await authService.login({ email, password });
-      await refreshUser();
-    } catch (error) {
-      throw error;
-    }
+    await authService.login({ email, password });
+    await refreshUser();
   };
 
   const logout = async () => {
@@ -117,7 +119,10 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     };
   }, []);
 
-  const isAdmin = user?.groups?.includes('admin') || user?.groups?.includes('administrators') || false;
+  const isAdmin =
+    user?.groups?.includes('admin') ||
+    user?.groups?.includes('administrators') ||
+    false;
 
   const value: AuthContextType = {
     user,
@@ -129,9 +134,5 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     refreshUser,
   };
 
-  return (
-    <AuthContext.Provider value={value}>
-      {children}
-    </AuthContext.Provider>
-  );
+  return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
 };

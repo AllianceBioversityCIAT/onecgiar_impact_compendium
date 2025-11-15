@@ -1,4 +1,10 @@
-import { signIn, signOut, getCurrentUser, fetchAuthSession, confirmSignIn } from 'aws-amplify/auth';
+import {
+  signIn,
+  signOut,
+  getCurrentUser,
+  fetchAuthSession,
+  confirmSignIn,
+} from 'aws-amplify/auth';
 
 interface LoginCredentials {
   email: string;
@@ -19,7 +25,8 @@ class AuthService {
   private tokenKey = 'ic_access_token';
   private userKey = 'ic_user';
   private pendingSignInKey = 'ic_pending_signin';
-  private baseURL = import.meta.env.VITE_API_BASE_URL || "http://localhost:8000";
+  private baseURL =
+    import.meta.env.VITE_API_BASE_URL || 'http://localhost:8000';
 
   async login(credentials: LoginCredentials): Promise<AuthResponse> {
     try {
@@ -35,7 +42,7 @@ class AuthService {
       if (credentials.email === 'testuser@example.com') {
         username = 'testuser';
       }
-      
+
       const signInResult = await signIn({
         username: username,
         password: credentials.password,
@@ -44,7 +51,7 @@ class AuthService {
       if (signInResult.isSignedIn) {
         const session = await fetchAuthSession();
         const user = await getCurrentUser();
-        
+
         const tokens = session.tokens;
         if (!tokens) {
           throw new Error('No tokens received from Cognito');
@@ -62,15 +69,21 @@ class AuthService {
 
         localStorage.setItem(this.tokenKey, authData.access_token);
         localStorage.setItem(this.userKey, JSON.stringify(authData.user));
-        
+
         return authData;
-      } else if (signInResult.nextStep?.signInStep === 'CONFIRM_SIGN_IN_WITH_NEW_PASSWORD_REQUIRED') {
+      } else if (
+        signInResult.nextStep?.signInStep ===
+        'CONFIRM_SIGN_IN_WITH_NEW_PASSWORD_REQUIRED'
+      ) {
         // Store pending sign-in info for password change
-        localStorage.setItem(this.pendingSignInKey, JSON.stringify({
-          email: credentials.email,
-          username: username
-        }));
-        
+        localStorage.setItem(
+          this.pendingSignInKey,
+          JSON.stringify({
+            email: credentials.email,
+            username: username,
+          })
+        );
+
         // User needs to set a new password - throw specific error to trigger password change UI
         throw new Error('NEW_PASSWORD_REQUIRED');
       } else {
@@ -117,16 +130,16 @@ class AuthService {
     try {
       const user = await getCurrentUser();
       const session = await fetchAuthSession();
-      
+
       // Extract groups from JWT token
       const idToken = session.tokens?.idToken;
       let groups: string[] = [];
-      
+
       if (idToken) {
         const payload = idToken.payload;
         groups = (payload['cognito:groups'] as string[]) || [];
       }
-      
+
       return {
         email: user.signInDetails?.loginId || '',
         sub: user.userId,
@@ -141,12 +154,12 @@ class AuthService {
   async isAuthenticated(): Promise<boolean> {
     try {
       // Add timeout to prevent hanging
-      const timeoutPromise = new Promise<never>((_, reject) => 
+      const timeoutPromise = new Promise<never>((_, reject) =>
         setTimeout(() => reject(new Error('Auth check timeout')), 5000)
       );
-      
+
       const authPromise = getCurrentUser();
-      
+
       await Promise.race([authPromise, timeoutPromise]);
       return true;
     } catch (error) {
@@ -170,18 +183,20 @@ class AuthService {
       const confirmResult = await confirmSignIn({
         challengeResponse: newPassword,
       });
-      
+
       if (confirmResult.isSignedIn) {
         const session = await fetchAuthSession();
         const user = await getCurrentUser();
-        
+
         const tokens = session.tokens;
         if (!tokens) {
           throw new Error('No tokens received from Cognito');
         }
 
         const pendingSignIn = localStorage.getItem(this.pendingSignInKey);
-        const email = pendingSignIn ? JSON.parse(pendingSignIn).email : user.signInDetails?.loginId;
+        const email = pendingSignIn
+          ? JSON.parse(pendingSignIn).email
+          : user.signInDetails?.loginId;
 
         const authData = {
           access_token: tokens.accessToken.toString(),
@@ -196,7 +211,7 @@ class AuthService {
         localStorage.setItem(this.tokenKey, authData.access_token);
         localStorage.setItem(this.userKey, JSON.stringify(authData.user));
         localStorage.removeItem(this.pendingSignInKey);
-        
+
         return authData;
       } else {
         throw new Error('Password change was not completed');

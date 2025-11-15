@@ -12,32 +12,32 @@ interface AppLayoutProps {
   onClose?: () => void;
 }
 
-export const AppLayout: React.FC<AppLayoutProps> = ({ 
-  children, 
-  title = "Dashboard",
+export const AppLayout: React.FC<AppLayoutProps> = ({
+  children,
+  title = 'Dashboard',
   onAddStudy,
   showAddButton = true,
   hasFormFooter = false,
   steps,
   currentStep,
-  onClose
+  onClose,
 }) => {
   return (
     <div className="min-h-screen bg-[var(--ic-surface-muted)]">
-      <HeaderBar 
-        title={title} 
+      <HeaderBar
+        title={title}
         onAddStudy={onAddStudy}
         showAddButton={showAddButton}
         steps={steps}
         currentStep={currentStep}
         onClose={onClose}
       />
-      
-      <main className={`max-w-[95vw] mx-auto px-4 py-4 pt-28 ${hasFormFooter ? 'pb-32' : 'pb-28'}`}>
+
+      <main
+        className={`max-w-[95vw] mx-auto px-4 py-4 pt-28 ${hasFormFooter ? 'pb-32' : 'pb-28'}`}
+      >
         {hasFormFooter ? (
-          <div>
-            {children}
-          </div>
+          <div>{children}</div>
         ) : (
           <div className="bg-white rounded-lg shadow-sm border border-[var(--ic-border-light)] p-6">
             {children}

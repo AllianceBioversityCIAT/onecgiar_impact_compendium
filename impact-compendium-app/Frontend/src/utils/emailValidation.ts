@@ -25,7 +25,7 @@ export class EmailValidator {
       isValid: true,
       normalizedEmail: '',
       warnings: [],
-      errors: []
+      errors: [],
     };
 
     // Basic validation
@@ -52,10 +52,12 @@ export class EmailValidator {
       if (email.includes(' ')) {
         result.warnings.push('Email contained spaces that were removed');
       }
-      
+
       const hasUpperCase = /[A-Z]/.test(email);
       if (hasUpperCase) {
-        result.warnings.push('Email was converted to lowercase for consistency');
+        result.warnings.push(
+          'Email was converted to lowercase for consistency'
+        );
       }
     }
 

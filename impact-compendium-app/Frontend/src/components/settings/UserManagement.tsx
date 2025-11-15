@@ -18,6 +18,8 @@ interface User {
 
 export const UserManagement: React.FC = () => {
   const [users, setUsers] = useState<User[]>([]);
+  const [filteredUsers, setFilteredUsers] = useState<User[]>([]);
+  const [searchTerm, setSearchTerm] = useState('');
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [showCreateModal, setShowCreateModal] = useState(false);
@@ -52,6 +54,7 @@ export const UserManagement: React.FC = () => {
       setLoading(true);
       const userData = await userService.listUsers();
       setUsers(userData);
+      setFilteredUsers(userData);
       setError(null);
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to load users');
@@ -59,6 +62,19 @@ export const UserManagement: React.FC = () => {
       setLoading(false);
     }
   };
+
+  // Filter users based on search term
+  useEffect(() => {
+    if (!searchTerm.trim()) {
+      setFilteredUsers(users);
+    } else {
+      const filtered = users.filter(user => 
+        user.email.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        user.username.toLowerCase().includes(searchTerm.toLowerCase())
+      );
+      setFilteredUsers(filtered);
+    }
+  }, [searchTerm, users]);
 
   useEffect(() => {
     loadUsers();
@@ -171,6 +187,29 @@ export const UserManagement: React.FC = () => {
         </button>
       </div>
 
+      {/* Search Bar */}
+      <div className="mb-6">
+        <div className="relative max-w-md">
+          <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+            <svg className="h-5 w-5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+            </svg>
+          </div>
+          <input
+            type="text"
+            placeholder="Search users by email or username..."
+            value={searchTerm}
+            onChange={(e) => setSearchTerm(e.target.value)}
+            className="block w-full pl-10 pr-3 py-2 border border-gray-300 rounded-lg leading-5 bg-white placeholder-gray-500 focus:outline-none focus:placeholder-gray-400 focus:ring-2 focus:ring-[#FDC82F] focus:border-transparent"
+          />
+        </div>
+        {searchTerm && (
+          <p className="text-sm text-gray-500 mt-2">
+            Found {filteredUsers.length} user{filteredUsers.length !== 1 ? 's' : ''} matching "{searchTerm}"
+          </p>
+        )}
+      </div>
+
       {error && (
         <div className="mb-4 p-4 bg-red-50 border border-red-200 rounded-md">
           <p className="text-red-800">{error}</p>
@@ -178,7 +217,7 @@ export const UserManagement: React.FC = () => {
       )}
 
       <UserTable
-        users={users}
+        users={filteredUsers}
         loading={loading}
         onToggleStatus={handleToggleUserStatus}
         onDeleteUser={handleDeleteUser}

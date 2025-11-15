@@ -1,4 +1,5 @@
 import React from 'react';
+import { Tooltip } from '../ui/Tooltip';
 
 interface User {
   username: string;
@@ -73,7 +74,7 @@ export const UserTable: React.FC<UserTableProps> = ({
               Last Modified
             </th>
             <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-              MFA
+              Group
             </th>
             <th className="px-6 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">
               Actions
@@ -99,38 +100,54 @@ export const UserTable: React.FC<UserTableProps> = ({
                 {formatDate(user.last_modified_date)}
               </td>
               <td className="px-6 py-4 whitespace-nowrap">
-                <span className={`px-2 py-1 text-xs font-medium rounded-full ${
-                  user.mfa_enabled 
-                    ? 'bg-green-100 text-green-800' 
-                    : 'bg-gray-100 text-gray-800'
-                }`}>
-                  {user.mfa_enabled ? 'Enabled' : 'Disabled'}
+                <span className="px-2 py-1 text-xs font-medium rounded-full bg-blue-100 text-blue-800">
+                  Admin
                 </span>
               </td>
-              <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
-                <div className="flex justify-end space-x-2">
-                  <button
-                    onClick={() => onToggleStatus(user.username, !user.enabled)}
-                    className={`px-3 py-1 text-xs font-medium rounded ${
-                      user.enabled
-                        ? 'bg-red-100 text-red-700 hover:bg-red-200'
-                        : 'bg-green-100 text-green-700 hover:bg-green-200'
-                    }`}
-                  >
-                    {user.enabled ? 'Disable' : 'Enable'}
-                  </button>
-                  <button
-                    onClick={() => onResetPassword(user.username)}
-                    className="px-3 py-1 text-xs font-medium bg-blue-100 text-blue-700 rounded hover:bg-blue-200"
-                  >
-                    Reset Password
-                  </button>
-                  <button
-                    onClick={() => onDeleteUser(user.username)}
-                    className="px-3 py-1 text-xs font-medium bg-red-100 text-red-700 rounded hover:bg-red-200"
-                  >
-                    Delete
-                  </button>
+              <td className="px-6 py-4 whitespace-nowrap text-center">
+                <div className="flex justify-center space-x-1">
+                  <Tooltip content={user.enabled ? 'Disable User' : 'Enable User'}>
+                    <button
+                      onClick={() => onToggleStatus(user.username, !user.enabled)}
+                      className={`p-2 rounded-lg transition-colors ${
+                        user.enabled
+                          ? 'text-red-600 hover:bg-red-50 hover:text-red-700'
+                          : 'text-green-600 hover:bg-green-50 hover:text-green-700'
+                      }`}
+                    >
+                      {user.enabled ? (
+                        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M18.364 18.364A9 9 0 005.636 5.636m12.728 12.728L5.636 5.636m12.728 12.728L18.364 5.636M5.636 18.364l12.728-12.728" />
+                        </svg>
+                      ) : (
+                        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                        </svg>
+                      )}
+                    </button>
+                  </Tooltip>
+                  
+                  <Tooltip content="Reset Password">
+                    <button
+                      onClick={() => onResetPassword(user.username)}
+                      className="p-2 text-blue-600 hover:bg-blue-50 hover:text-blue-700 rounded-lg transition-colors"
+                    >
+                      <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 7a2 2 0 012 2m4 0a6 6 0 01-7.743 5.743L11 17H9v2H7v2H4a1 1 0 01-1-1v-2.586a1 1 0 01.293-.707l5.964-5.964A6 6 0 1121 9z" />
+                      </svg>
+                    </button>
+                  </Tooltip>
+                  
+                  <Tooltip content="Delete User">
+                    <button
+                      onClick={() => onDeleteUser(user.username)}
+                      className="p-2 text-red-600 hover:bg-red-50 hover:text-red-700 rounded-lg transition-colors"
+                    >
+                      <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                      </svg>
+                    </button>
+                  </Tooltip>
                 </div>
               </td>
             </tr>

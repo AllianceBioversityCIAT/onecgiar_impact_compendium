@@ -1,6 +1,8 @@
 from sqlalchemy import Column, Integer, String
 from sqlalchemy.orm import relationship
+
 from app.db.connection import Base
+
 
 class Region(Base):
     __tablename__ = "clarisa_cgiar_regions"
@@ -9,4 +11,6 @@ class Region(Base):
     name = Column(String(255), nullable=False)
 
     # Relationships
-    studies = relationship("Study", secondary="studies_regions", back_populates="regions")
+    studies = relationship(
+        "Study", secondary="studies_regions", back_populates="regions"
+    )

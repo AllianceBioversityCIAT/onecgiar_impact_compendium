@@ -1,10 +1,13 @@
-from sqlalchemy.orm import Query
 from typing import Tuple
+
+from sqlalchemy.orm import Query
+
 
 def apply_limit_offset(query: Query, page: int, page_size: int) -> Query:
     """Apply pagination to SQLAlchemy query"""
     offset = (page - 1) * page_size
     return query.offset(offset).limit(page_size)
+
 
 def parse_query_params(page: int = 1, pageSize: int = 10) -> Tuple[int, int]:
     """Parse and validate pagination parameters"""

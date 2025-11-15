@@ -1,6 +1,8 @@
-from sqlalchemy import Column, Integer, String, ForeignKey
+from sqlalchemy import Column, ForeignKey, Integer, String
 from sqlalchemy.orm import relationship
+
 from app.db.connection import Base
+
 
 class StudyKeyword(Base):
     __tablename__ = "studies_keywords"

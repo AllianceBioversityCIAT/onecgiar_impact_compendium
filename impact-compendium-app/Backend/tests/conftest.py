@@ -5,32 +5,40 @@ Test configuration and fixtures
 Global test configuration and shared fixtures for the test suite.
 """
 
+from unittest.mock import Mock, patch
+
 import pytest
 from fastapi.testclient import TestClient
-from unittest.mock import Mock, patch
 from sqlalchemy.orm import Session
 
-from app.main import app
 from app.db.connection import get_db
+from app.main import app
 from app.middleware.auth import get_current_user, require_admin, require_researcher
+
 
 @pytest.fixture
 def client():
     """FastAPI test client"""
     return TestClient(app)
 
+
 @pytest.fixture
 def mock_db_session():
     """Mock database session"""
     return Mock(spec=Session)
 
+
 @pytest.fixture
 def mock_request():
     """Mock FastAPI request object"""
     request = Mock()
-    request.headers = {"authorization": "Bearer test-token", "x-user-email": "test@example.com"}
+    request.headers = {
+        "authorization": "Bearer test-token",
+        "x-user-email": "test@example.com",
+    }
     request.cookies = {}
     return request
+
 
 # JWT Authentication fixtures
 @pytest.fixture
@@ -41,8 +49,9 @@ def mock_user():
         "email": "test@example.com",
         "name": "Test User",
         "groups": ["researchers"],
-        "is_authenticated": True
+        "is_authenticated": True,
     }
+
 
 @pytest.fixture
 def mock_admin_user():
@@ -52,8 +61,9 @@ def mock_admin_user():
         "email": "admin@example.com",
         "name": "Admin User",
         "groups": ["admin"],
-        "is_authenticated": True
+        "is_authenticated": True,
     }
+
 
 @pytest.fixture
 def mock_researcher_user():
@@ -63,33 +73,42 @@ def mock_researcher_user():
         "email": "researcher@example.com",
         "name": "Researcher User",
         "groups": ["researchers"],
-        "is_authenticated": True
+        "is_authenticated": True,
     }
+
 
 @pytest.fixture
 def auth_headers():
     """Authentication headers for API requests"""
     return {"Authorization": "Bearer mock_jwt_token_12345"}
 
+
 @pytest.fixture
 def authenticated_client(client, mock_user):
     """Test client with mocked authentication"""
-    with patch('app.middleware.auth.get_current_user', return_value=mock_user):
+    with patch("app.middleware.auth.get_current_user", return_value=mock_user):
         yield client
+
 
 @pytest.fixture
 def admin_client(client, mock_admin_user):
     """Test client with mocked admin authentication"""
-    with patch('app.middleware.auth.get_current_user', return_value=mock_admin_user), \
-         patch('app.middleware.auth.require_admin', return_value=mock_admin_user):
+    with patch(
+        "app.middleware.auth.get_current_user", return_value=mock_admin_user
+    ), patch("app.middleware.auth.require_admin", return_value=mock_admin_user):
         yield client
+
 
 @pytest.fixture
 def researcher_client(client, mock_researcher_user):
     """Test client with mocked researcher authentication"""
-    with patch('app.middleware.auth.get_current_user', return_value=mock_researcher_user), \
-         patch('app.middleware.auth.require_researcher', return_value=mock_researcher_user):
+    with patch(
+        "app.middleware.auth.get_current_user", return_value=mock_researcher_user
+    ), patch(
+        "app.middleware.auth.require_researcher", return_value=mock_researcher_user
+    ):
         yield client
+
 
 # Test data fixtures
 @pytest.fixture
@@ -112,10 +131,11 @@ def sample_study_data():
             {
                 "indicatorMeasure": "Test Metric",
                 "unitMeasure": "%",
-                "resultReported": "25%"
+                "resultReported": "25%",
             }
-        ]
+        ],
     }
+
 
 @pytest.fixture
 def sample_study_response():
@@ -126,5 +146,5 @@ def sample_study_response():
         "summary": "Test summary",
         "year": 2024,
         "category": {"id": 31, "name": "Impact Study"},
-        "created_at": "2024-10-26T16:01:28"
+        "created_at": "2024-10-26T16:01:28",
     }

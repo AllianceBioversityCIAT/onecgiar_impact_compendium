@@ -2,15 +2,18 @@
 Main Study model.
 """
 
-from sqlalchemy import Column, Integer, String, Text, DateTime, Boolean, ForeignKey
+from sqlalchemy import Boolean, Column, DateTime, ForeignKey, Integer, String, Text
 from sqlalchemy.orm import relationship
 from sqlalchemy.sql import func
+
 from app.db.connection import Base
+
 
 class Study(Base):
     """Main study model."""
+
     __tablename__ = "studies"
-    
+
     id = Column(Integer, primary_key=True)
     title = Column(String(500), nullable=False)
     summary = Column(Text)
@@ -26,7 +29,7 @@ class Study(Base):
     created_at = Column(DateTime, server_default=func.now())
     updated_at = Column(DateTime, server_default=func.now(), onupdate=func.now())
     is_active = Column(Boolean, default=True)
-    
+
     # Relationships
     category = relationship("StudyCategory", back_populates="studies")
     indicators = relationship("StudyIndicator", back_populates="study")

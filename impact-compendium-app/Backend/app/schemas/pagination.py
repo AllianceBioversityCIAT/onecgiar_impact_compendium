@@ -1,7 +1,9 @@
-from pydantic import BaseModel
-from typing import List, TypeVar, Generic
+from typing import Generic, List, TypeVar
 
-T = TypeVar('T')
+from pydantic import BaseModel
+
+T = TypeVar("T")
+
 
 class PageOut(BaseModel, Generic[T]):
     items: List[T]

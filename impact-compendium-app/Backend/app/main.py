@@ -42,7 +42,7 @@ load_dotenv()
 
 # Import application routers
 from app.routers import auth, studies, indicators, admin, reports, users
-from app.routers import clarisa, reference, study_relations
+from app.routers import clarisa, reference, study_relations, debug
 from app.db.connection import db_connection
 from app.utils.logging import setup_logging
 
@@ -321,6 +321,13 @@ app.include_router(
     study_relations.router, 
     prefix="/api/study-relations", 
     tags=["Study Relations"]
+)
+
+# Debug endpoints (temporary)
+app.include_router(
+    debug.router, 
+    prefix="/api/debug", 
+    tags=["Debug"]
 )
 
 # Lambda handler for AWS deployment

@@ -2,6 +2,7 @@
 Lambda Handler for Impact Compendium
 """
 import os
+
 from mangum import Mangum
 
 # Import the full FastAPI app
@@ -9,7 +10,7 @@ from app.main import app
 
 # Create Lambda handler with HTML support
 handler = Mangum(
-    app, 
+    app,
     lifespan="off",
     api_gateway_base_path=None,
     text_mime_types=[
@@ -21,6 +22,6 @@ handler = Mangum(
         "text/html",
         "text/css",
         "text/plain",
-        "text/javascript"
-    ]
+        "text/javascript",
+    ],
 )

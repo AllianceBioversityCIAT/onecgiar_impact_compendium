@@ -1,6 +1,8 @@
 from sqlalchemy import Column, Integer, String
 from sqlalchemy.orm import relationship
+
 from app.db.connection import Base
+
 
 class StudyCategory(Base):
     __tablename__ = "study_categories"

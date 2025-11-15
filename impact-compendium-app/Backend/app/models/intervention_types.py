@@ -1,5 +1,7 @@
 from sqlalchemy import Column, Integer, String
+
 from app.db.connection import Base
+
 
 class InterventionType(Base):
     __tablename__ = "intervention_types"

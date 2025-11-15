@@ -1,6 +1,8 @@
 from sqlalchemy import Column, Integer, String
 from sqlalchemy.orm import relationship
+
 from app.db.connection import Base
+
 
 class Initiative(Base):
     __tablename__ = "clarisa_initiatives"
@@ -9,4 +11,6 @@ class Initiative(Base):
     name = Column(String(255), nullable=False)
 
     # Relationships
-    studies = relationship("Study", secondary="studies_initiatives", back_populates="initiatives")
+    studies = relationship(
+        "Study", secondary="studies_initiatives", back_populates="initiatives"
+    )

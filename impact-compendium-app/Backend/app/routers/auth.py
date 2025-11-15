@@ -2,28 +2,32 @@
 Authentication router with AWS Cognito integration
 """
 
-from typing import Dict, Any
-from fastapi import APIRouter, HTTPException, status, Depends, Header
-from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
-from pydantic import BaseModel
 import logging
+from typing import Any, Dict
 
-from app.services.cognito_auth import cognito_auth
+from fastapi import APIRouter, Depends, Header, HTTPException, status
+from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
+from pydantic import BaseModel
+
 from app.middleware.auth import get_current_user
+from app.services.cognito_auth import cognito_auth
 
 logger = logging.getLogger(__name__)
 router = APIRouter()
 security = HTTPBearer()
 
+
 class LoginRequest(BaseModel):
     email: str
     password: str
+
 
 class TokenResponse(BaseModel):
     access_token: str
     token_type: str
     expires_in: int
     user: Dict[str, Any]
+
 
 @router.post("/login", response_model=Dict[str, Any])
 async def login(login_data: LoginRequest):
@@ -35,7 +39,7 @@ async def login(login_data: LoginRequest):
         # For development, we can return mock data or redirect to Cognito
         # In a real implementation, this would redirect to Cognito Hosted UI
         # or use AWS SDK to authenticate
-        
+
         if cognito_auth.mock_mode:
             # Development mock mode
             if login_data.email and login_data.password:
@@ -49,15 +53,15 @@ async def login(login_data: LoginRequest):
                         "user": {
                             "email": login_data.email,
                             "name": "Mock User",
-                            "role": "researcher"
-                        }
+                            "role": "researcher",
+                        },
                     },
                     "cognito_info": {
                         "user_pool_id": cognito_auth.user_pool_id or "not-configured",
                         "client_id": cognito_auth.client_id or "not-configured",
                         "region": cognito_auth.region,
-                        "mock_mode": cognito_auth.mock_mode
-                    }
+                        "mock_mode": cognito_auth.mock_mode,
+                    },
                 }
         else:
             # Production mode - frontend should use Amplify directly
@@ -69,34 +73,35 @@ async def login(login_data: LoginRequest):
                     "user_pool_id": cognito_auth.user_pool_id,
                     "client_id": cognito_auth.client_id,
                     "region": cognito_auth.region,
-                    "mock_mode": cognito_auth.mock_mode
-                }
+                    "mock_mode": cognito_auth.mock_mode,
+                },
             }
-        
+
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
-            detail="Email and password are required"
+            detail="Email and password are required",
         )
-        
+
     except HTTPException:
         raise
     except Exception as e:
         logger.error(f"Error during login: {e}")
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=f"Login failed: {str(e)}"
+            detail=f"Login failed: {str(e)}",
         )
+
 
 @router.post("/logout", response_model=Dict[str, Any])
 async def logout():
     """Logout endpoint"""
-    return {
-        "success": True,
-        "message": "Logged out successfully"
-    }
+    return {"success": True, "message": "Logged out successfully"}
+
 
 @router.get("/me", response_model=Dict[str, Any])
-async def get_current_user_info(current_user: Dict[str, Any] = Depends(get_current_user)):
+async def get_current_user_info(
+    current_user: Dict[str, Any] = Depends(get_current_user)
+):
     """
     Get current user information from JWT token
     """
@@ -107,16 +112,17 @@ async def get_current_user_info(current_user: Dict[str, Any] = Depends(get_curre
             "token_info": {
                 "user_id": current_user.get("user_id"),
                 "email": current_user.get("email"),
-                "groups": current_user.get("groups", [])
-            }
+                "groups": current_user.get("groups", []),
+            },
         }
-        
+
     except Exception as e:
         logger.error(f"Error getting current user: {e}")
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=f"Failed to get user info: {str(e)}"
+            detail=f"Failed to get user info: {str(e)}",
         )
+
 
 @router.get("/verify-token", response_model=Dict[str, Any])
 async def verify_token(current_user: Dict[str, Any] = Depends(get_current_user)):
@@ -130,17 +136,14 @@ async def verify_token(current_user: Dict[str, Any] = Depends(get_current_user))
             "data": {
                 "user_id": current_user.get("user_id"),
                 "email": current_user.get("email"),
-                "groups": current_user.get("groups", [])
-            }
+                "groups": current_user.get("groups", []),
+            },
         }
-        
+
     except Exception as e:
         logger.error(f"Error verifying token: {e}")
-        return {
-            "success": False,
-            "valid": False,
-            "error": str(e)
-        }
+        return {"success": False, "valid": False, "error": str(e)}
+
 
 @router.get("/status", response_model=Dict[str, Any])
 async def auth_status():
@@ -153,10 +156,11 @@ async def auth_status():
         "service": "cognito-auth",
         "configuration": {
             "user_pool_id": cognito_auth.user_pool_id or "not-configured",
-            "client_id": cognito_auth.client_id or "not-configured", 
+            "client_id": cognito_auth.client_id or "not-configured",
             "region": cognito_auth.region,
             "mock_mode": cognito_auth.mock_mode,
-            "jwks_url": getattr(cognito_auth, 'jwks_url', 'not-configured')
+            "jwks_url": getattr(cognito_auth, "jwks_url", "not-configured"),
         },
-        "message": "Cognito authentication service" + (" (mock mode)" if cognito_auth.mock_mode else " (production mode)")
+        "message": "Cognito authentication service"
+        + (" (mock mode)" if cognito_auth.mock_mode else " (production mode)"),
     }

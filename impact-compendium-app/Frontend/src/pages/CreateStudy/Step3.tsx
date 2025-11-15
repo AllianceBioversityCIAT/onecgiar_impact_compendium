@@ -9,6 +9,7 @@ import { Button } from '../../components/ui/Button';
 import { Card } from '../../components/ui/Card';
 import { SuccessModal } from '../../components/ui/SuccessModal';
 import { ConfirmationModal } from '../../components/ui/ConfirmationModal';
+import { Notification } from '../../components/ui/Notification';
 import { studyAPI } from '../../services/api';
 import { authService } from '../../services/auth';
 
@@ -35,9 +36,9 @@ export const CreateStudyStep3: React.FC = () => {
     const savedData = localStorage.getItem('studyFormStep3');
     if (savedData) {
       const parsed = JSON.parse(savedData);
-      return parsed.indicators || [{ id: '1', indicatorMeasured: '', unitOfMeasure: '', resultReported: '' }];
+      return parsed.indicators || [];
     }
-    return [{ id: '1', indicatorMeasured: '', unitOfMeasure: '', resultReported: '' }];
+    return []; // Start with empty array instead of default indicator
   };
 
   // Get Step 1 data for context header
@@ -55,10 +56,12 @@ export const CreateStudyStep3: React.FC = () => {
   const [mappingData, setMappingData] = useState(false);
   const [notification, setNotification] = useState<{
     type: 'success' | 'error' | 'info';
+    title: string;
     message: string;
     show: boolean;
-  }>({ type: 'info', message: '', show: false });
+  }>({ type: 'info', title: '', message: '', show: false });
   const [showCloseConfirm, setShowCloseConfirm] = useState(false);
+  const [saveProgress, setSaveProgress] = useState(0);
 
   // Load study data for edit mode
   React.useEffect(() => {
@@ -140,24 +143,35 @@ export const CreateStudyStep3: React.FC = () => {
     }
   };
 
-  const showNotification = (type: 'success' | 'error' | 'info', message: string) => {
-    setNotification({ type, message, show: true });
-    setTimeout(() => {
-      setNotification(prev => ({ ...prev, show: false }));
-    }, 5000);
+  const showNotification = (type: 'success' | 'error' | 'info', title: string, message: string) => {
+    setNotification({ type, title, message, show: true });
+  };
+
+  const hideNotification = () => {
+    setNotification(prev => ({ ...prev, show: false }));
   };
 
   const handleFinish = async () => {
     setIsSubmitting(true);
-    showNotification('info', 'Saving your study...');
+    setSaveProgress(0);
+    
+    // Animated progress for better UX
+    const progressInterval = setInterval(() => {
+      setSaveProgress(prev => {
+        if (prev >= 90) {
+          clearInterval(progressInterval);
+          return 90;
+        }
+        return prev + 10;
+      });
+    }, 200);
+    
+    showNotification('info', 'Saving Study', 'Please wait while we save your study to the database...');
     
     try {
       // Get all form data from localStorage
       const step1Data = JSON.parse(localStorage.getItem('studyFormStep1') || '{}');
       const step2Data = JSON.parse(localStorage.getItem('studyFormStep2') || '{}');
-      
-      // Get current user
-      // (currentUser will be handled in auth headers section below)
       
       // Prepare complete study data according to backend schema
       const completeStudyData = {
@@ -189,8 +203,6 @@ export const CreateStudyStep3: React.FC = () => {
           unitMeasure: indicator.unitOfMeasure,
           resultReported: indicator.resultReported
         }))
-        
-        // Note: created_by is now automatically captured from logged-in user in backend
       };
 
       // Get auth headers (with local development bypass)
@@ -222,33 +234,37 @@ export const CreateStudyStep3: React.FC = () => {
       
       const result = await response.json();
       
+      // Complete progress
+      clearInterval(progressInterval);
+      setSaveProgress(100);
+      
       // Clear localStorage
       localStorage.removeItem('studyFormStep1');
       localStorage.removeItem('studyFormStep2');
       localStorage.removeItem('studyFormStep3');
       
       // Show success notification
-      showNotification('success', `Study ${completeStudyData.studyId} saved successfully! Redirecting to studies list...`);
+      showNotification('success', 'Study Saved Successfully!', `Study ${completeStudyData.studyId} has been saved to the Impact Compendium database.`);
       
       // Show success modal after a brief delay
       setTimeout(() => {
+        hideNotification();
         setShowSuccessModal(true);
+        
+        // Auto redirect after showing modal (shorter time)
+        setTimeout(() => {
+          navigate('/studies?sort=id%3Adesc');
+        }, 1500);
       }, 1500);
-      
-      // Auto redirect after 3 seconds
-      setTimeout(() => {
-        navigate('/studies?sort=id%3Adesc');
-      }, 3000);
-      
-      // Clear localStorage after successful save
       
     } catch (error: any) {
       console.error('Failed to save study:', error);
-      console.error('Error details:', error?.message, error?.stack);
+      clearInterval(progressInterval);
+      setSaveProgress(0);
       
       // Show user-friendly error notification
       const errorMessage = error?.message || 'An unexpected error occurred while saving your study.';
-      showNotification('error', `Save failed: ${errorMessage} Please check your data and try again.`);
+      showNotification('error', 'Save Failed', `${errorMessage} Please check your data and try again.`);
     } finally {
       setIsSubmitting(false);
     }
@@ -268,17 +284,19 @@ export const CreateStudyStep3: React.FC = () => {
 
   const handleSaveDraft = async () => {
     try {
-      showNotification('info', 'Saving draft...');
+      showNotification('info', 'Saving Draft', 'Saving your progress locally...');
       
       // Save to localStorage for now (simple approach)
       localStorage.setItem('studyFormStep3', JSON.stringify({ indicators }));
       
       // Show success notification
-      showNotification('success', 'Draft saved locally!');
+      setTimeout(() => {
+        showNotification('success', 'Draft Saved', 'Your progress has been saved locally and will be available when you return.');
+      }, 500);
       
     } catch (error: any) {
       console.error('Failed to save draft:', error);
-      showNotification('error', 'Failed to save draft. Please try again.');
+      showNotification('error', 'Draft Save Failed', 'Failed to save draft. Please try again.');
     }
   };
 
@@ -321,9 +339,9 @@ export const CreateStudyStep3: React.FC = () => {
         <SuccessModal
           isOpen={showSuccessModal}
           onClose={() => setShowSuccessModal(false)}
-          title="Study Saved Successfully!"
+          title="🎉 Study Saved Successfully!"
           message={`Your ${isEditMode ? 'study has been updated' : 'new study has been created'} and saved to the Impact Compendium database. You can now view it in the studies list or continue working on other studies.`}
-          actionLabel="View Studies"
+          actionLabel="View All Studies"
           onAction={handleSuccessModalAction}
         />
       </AppLayout>
@@ -336,36 +354,43 @@ export const CreateStudyStep3: React.FC = () => {
       onBack={handleGoBack}
       onNext={handleFinish}
       onSaveDraft={handleSaveDraft}
-      nextLabel={isSubmitting ? 'Saving...' : 'Save'}
+      nextLabel={isSubmitting ? 'Saving...' : 'Save Study'}
       isLoading={isSubmitting}
       steps={steps}
       currentStep={3}
       onClose={handleClose}
     >
-      {/* Notification Toast */}
-      {notification.show && (
-        <div className={`fixed top-4 right-4 z-50 max-w-md p-4 rounded-lg shadow-lg transition-all duration-300 ${
-          notification.type === 'success' ? 'bg-green-500 text-white' :
-          notification.type === 'error' ? 'bg-red-500 text-white' :
-          'bg-blue-500 text-white'
-        }`}>
-          <div className="flex items-center space-x-2">
-            {notification.type === 'success' && (
-              <svg className="w-5 h-5" fill="currentColor" viewBox="0 0 20 20">
-                <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd" />
-              </svg>
-            )}
-            {notification.type === 'error' && (
-              <svg className="w-5 h-5" fill="currentColor" viewBox="0 0 20 20">
-                <path fillRule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7 4a1 1 0 11-2 0 1 1 0 012 0zm-1-9a1 1 0 00-1 1v4a1 1 0 102 0V6a1 1 0 00-1-1z" clipRule="evenodd" />
-              </svg>
-            )}
-            {notification.type === 'info' && (
-              <svg className="w-5 h-5 animate-spin" fill="currentColor" viewBox="0 0 20 20">
-                <path fillRule="evenodd" d="M4 2a1 1 0 011 1v2.101a7.002 7.002 0 0111.601 2.566 1 1 0 11-1.885.666A5.002 5.002 0 005.999 7H9a1 1 0 010 2H4a1 1 0 01-1-1V3a1 1 0 011-1zm.008 9.057a1 1 0 011.276.61A5.002 5.002 0 0014.001 13H11a1 1 0 110-2h5a1 1 0 011 1v5a1 1 0 11-2 0v-2.101a7.002 7.002 0 01-11.601-2.566 1 1 0 01.61-1.276z" clipRule="evenodd" />
-              </svg>
-            )}
-            <span className="text-sm font-medium">{notification.message}</span>
+      {/* Enhanced Notification */}
+      <Notification
+        type={notification.type}
+        title={notification.title}
+        message={notification.message}
+        show={notification.show}
+        onClose={hideNotification}
+        autoClose={notification.type === 'success'}
+        duration={notification.type === 'success' ? 3000 : 6000}
+      />
+
+      {/* Progress Overlay for Saving */}
+      {isSubmitting && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 backdrop-blur-sm">
+          <div className="bg-white rounded-2xl p-8 max-w-md w-full mx-4 shadow-2xl">
+            <div className="text-center">
+              <div className="w-16 h-16 bg-blue-100 rounded-full flex items-center justify-center mx-auto mb-4">
+                <div className="animate-spin rounded-full h-8 w-8 border-3 border-blue-600 border-t-transparent"></div>
+              </div>
+              <h3 className="text-xl font-semibold text-gray-900 mb-2">Saving Your Study</h3>
+              <p className="text-gray-600 mb-4">Please wait while we save your study to the database...</p>
+              
+              {/* Progress Bar */}
+              <div className="w-full bg-gray-200 rounded-full h-2 mb-2">
+                <div 
+                  className="bg-blue-600 h-2 rounded-full transition-all duration-300 ease-out"
+                  style={{ width: `${saveProgress}%` }}
+                ></div>
+              </div>
+              <p className="text-sm text-gray-500">{saveProgress}% complete</p>
+            </div>
           </div>
         </div>
       )}
@@ -392,8 +417,32 @@ export const CreateStudyStep3: React.FC = () => {
             </Button>
           </div>
 
-          {/* Indicator Cards */}
-          {indicators.map((indicator, index) => (
+          {/* Empty State or Indicator Cards */}
+          {indicators.length === 0 ? (
+            <Card className="text-center py-12">
+              <div className="flex flex-col items-center space-y-4">
+                <div className="w-16 h-16 bg-gray-100 rounded-full flex items-center justify-center">
+                  <svg className="w-8 h-8 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />
+                  </svg>
+                </div>
+                <div className="space-y-2">
+                  <h3 className="text-lg font-medium text-gray-900">No indicators added yet</h3>
+                  <p className="text-gray-500 max-w-md">
+                    Add indicators to measure the impact and results of your study. Click the "Add indicator" button above to get started.
+                  </p>
+                </div>
+                <Button onClick={addIndicator} className="flex items-center space-x-2 mt-4">
+                  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
+                  </svg>
+                  <span>Add your first indicator</span>
+                </Button>
+              </div>
+            </Card>
+          ) : (
+            /* Indicator Cards */
+            indicators.map((indicator, index) => (
             <Card key={indicator.id} className="relative">
               <div className="space-y-4">
                 <div className="flex items-center justify-between">
@@ -451,7 +500,8 @@ export const CreateStudyStep3: React.FC = () => {
                 />
               </div>
             </Card>
-          ))}
+          ))
+          )}
         </div>
       </div>
 

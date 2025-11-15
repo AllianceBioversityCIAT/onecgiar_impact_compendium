@@ -4,7 +4,8 @@ const mockStudies: Study[] = [
   {
     id: '1',
     title: 'Climate-Smart Agriculture in Sub-Saharan Africa',
-    description: 'Impact assessment of climate-smart agricultural practices on smallholder farmers',
+    description:
+      'Impact assessment of climate-smart agricultural practices on smallholder farmers',
     category: 'Agriculture',
     status: 'Published',
     createdAt: '2024-01-15',
@@ -15,12 +16,13 @@ const mockStudies: Study[] = [
     impact_areas: 'Climate adaptation and mitigation',
     regions: 'Africa',
     countries: 'Kenya, Ethiopia, Ghana',
-    center: 'CIMMYT'
+    center: 'CIMMYT',
   },
   {
     id: '2',
     title: 'Water Management Systems in Rice Production',
-    description: 'Evaluation of water-efficient irrigation systems in Asian rice fields',
+    description:
+      'Evaluation of water-efficient irrigation systems in Asian rice fields',
     category: 'Water Management',
     status: 'Published',
     createdAt: '2024-02-10',
@@ -31,12 +33,13 @@ const mockStudies: Study[] = [
     impact_areas: 'Environmental health and biodiversity',
     regions: 'Asia',
     countries: 'Bangladesh, Vietnam, Philippines',
-    center: 'IRRI'
+    center: 'IRRI',
   },
   {
     id: '3',
     title: 'Nutrition Security Through Crop Diversification',
-    description: 'Analysis of nutritional outcomes from diversified cropping systems',
+    description:
+      'Analysis of nutritional outcomes from diversified cropping systems',
     category: 'Nutrition',
     status: 'Published',
     createdAt: '2024-01-20',
@@ -47,12 +50,13 @@ const mockStudies: Study[] = [
     impact_areas: 'Nutrition, health and food security',
     regions: 'Global',
     countries: 'Multiple Countries',
-    center: 'ICRISAT'
+    center: 'ICRISAT',
   },
   {
     id: '4',
     title: 'Sustainable Livestock Management',
-    description: 'Comprehensive study on sustainable livestock practices and their impact on rural livelihoods',
+    description:
+      'Comprehensive study on sustainable livestock practices and their impact on rural livelihoods',
     category: 'Livestock',
     status: 'Published',
     createdAt: '2023-05-15',
@@ -63,12 +67,13 @@ const mockStudies: Study[] = [
     impact_areas: 'Poverty reduction, livelihoods and jobs',
     regions: 'Africa',
     countries: 'Kenya, Tanzania, Uganda',
-    center: 'ILRI'
+    center: 'ILRI',
   },
   {
     id: '5',
     title: 'Gender Inclusion in Agricultural Value Chains',
-    description: 'Assessment of women\'s participation in agricultural value chains and economic empowerment',
+    description:
+      "Assessment of women's participation in agricultural value chains and economic empowerment",
     category: 'Gender',
     status: 'Published',
     createdAt: '2024-03-10',
@@ -79,8 +84,8 @@ const mockStudies: Study[] = [
     impact_areas: 'Gender equality, youth and social inclusion',
     regions: 'Latin America',
     countries: 'Colombia, Peru, Ecuador',
-    center: 'CIAT'
-  }
+    center: 'CIAT',
+  },
 ];
 
 export interface StudiesResponse {
@@ -110,10 +115,10 @@ export function getMockStudies(params: {
         study.createdAt,
         study.updatedAt,
         study.authors.join(' '),
-        study.tags.join(' ')
+        study.tags.join(' '),
       ];
-      
-      return searchableFields.some(field => 
+
+      return searchableFields.some(field =>
         field.toLowerCase().includes(query)
       );
     });
@@ -143,6 +148,6 @@ export function getMockStudies(params: {
 
   return {
     items,
-    total: filtered.length
+    total: filtered.length,
   };
 }

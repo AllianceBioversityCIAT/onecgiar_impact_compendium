@@ -5,13 +5,13 @@ import { Dashboard } from '../Dashboard';
 // Mock the API
 jest.mock('../../services/api', () => ({
   studyAPI: {
-    getAll: jest.fn()
-  }
+    getAll: jest.fn(),
+  },
 }));
 
 // Mock environment variable
 Object.defineProperty(import.meta, 'env', {
-  value: { VITE_USE_MOCKS: 'true' }
+  value: { VITE_USE_MOCKS: 'true' },
 });
 
 describe('Dashboard Pagination', () => {
@@ -19,13 +19,13 @@ describe('Dashboard Pagination', () => {
     jest.clearAllMocks();
     // Mock window.history.replaceState
     Object.defineProperty(window, 'history', {
-      value: { replaceState: jest.fn() }
+      value: { replaceState: jest.fn() },
     });
   });
 
   test('renders pagination component', async () => {
     render(<Dashboard />);
-    
+
     await waitFor(() => {
       expect(screen.getByText(/of \d+ results/)).toBeInTheDocument();
     });
@@ -33,11 +33,11 @@ describe('Dashboard Pagination', () => {
 
   test('displays correct page size options', async () => {
     render(<Dashboard />);
-    
+
     await waitFor(() => {
       const pageSizeSelect = screen.getByLabelText('Show:');
       expect(pageSizeSelect).toBeInTheDocument();
-      
+
       const options = screen.getAllByRole('option');
       expect(options).toHaveLength(3);
       expect(options[0]).toHaveValue('10');
@@ -48,12 +48,12 @@ describe('Dashboard Pagination', () => {
 
   test('changes page size and resets to page 1', async () => {
     render(<Dashboard />);
-    
+
     await waitFor(() => {
       const pageSizeSelect = screen.getByLabelText('Show:');
       fireEvent.change(pageSizeSelect, { target: { value: '25' } });
     });
-    
+
     await waitFor(() => {
       expect(window.history.replaceState).toHaveBeenCalled();
     });
@@ -61,14 +61,14 @@ describe('Dashboard Pagination', () => {
 
   test('navigates to next page', async () => {
     render(<Dashboard />);
-    
+
     await waitFor(() => {
       const nextButton = screen.getByLabelText('Next page');
       if (!nextButton.disabled) {
         fireEvent.click(nextButton);
       }
     });
-    
+
     await waitFor(() => {
       expect(window.history.replaceState).toHaveBeenCalled();
     });
@@ -78,19 +78,19 @@ describe('Dashboard Pagination', () => {
     // Mock URL with page=2
     Object.defineProperty(window, 'location', {
       value: {
-        href: 'http://localhost:3000/dashboard?page=2'
-      }
+        href: 'http://localhost:3000/dashboard?page=2',
+      },
     });
-    
+
     render(<Dashboard />);
-    
+
     await waitFor(() => {
       const prevButton = screen.getByLabelText('Previous page');
       if (!prevButton.disabled) {
         fireEvent.click(prevButton);
       }
     });
-    
+
     await waitFor(() => {
       expect(window.history.replaceState).toHaveBeenCalled();
     });
@@ -98,7 +98,7 @@ describe('Dashboard Pagination', () => {
 
   test('shows skeleton loading state', () => {
     render(<Dashboard />);
-    
+
     // Should show skeleton initially
     expect(document.querySelector('.animate-pulse')).toBeInTheDocument();
   });
@@ -106,19 +106,20 @@ describe('Dashboard Pagination', () => {
   test('shows empty state when no results', async () => {
     // Mock empty results
     Object.defineProperty(import.meta, 'env', {
-      value: { VITE_USE_MOCKS: 'false' }
+      value: { VITE_USE_MOCKS: 'false' },
     });
-    
+
     global.fetch = jest.fn().mockResolvedValue({
-      json: () => Promise.resolve({
-        success: true,
-        data: [],
-        pagination: { total: 0 }
-      })
+      json: () =>
+        Promise.resolve({
+          success: true,
+          data: [],
+          pagination: { total: 0 },
+        }),
     });
-    
+
     render(<Dashboard />);
-    
+
     await waitFor(() => {
       expect(screen.getByText('No studies found')).toBeInTheDocument();
     });
@@ -128,25 +129,26 @@ describe('Dashboard Pagination', () => {
     // Mock URL with search query
     Object.defineProperty(window, 'location', {
       value: {
-        href: 'http://localhost:3000/dashboard?q=nonexistent'
-      }
+        href: 'http://localhost:3000/dashboard?q=nonexistent',
+      },
     });
-    
+
     // Mock empty results
     Object.defineProperty(import.meta, 'env', {
-      value: { VITE_USE_MOCKS: 'false' }
+      value: { VITE_USE_MOCKS: 'false' },
     });
-    
+
     global.fetch = jest.fn().mockResolvedValue({
-      json: () => Promise.resolve({
-        success: true,
-        data: [],
-        pagination: { total: 0 }
-      })
+      json: () =>
+        Promise.resolve({
+          success: true,
+          data: [],
+          pagination: { total: 0 },
+        }),
     });
-    
+
     render(<Dashboard />);
-    
+
     await waitFor(() => {
       expect(screen.getByText('Clear filters')).toBeInTheDocument();
     });
@@ -156,30 +158,31 @@ describe('Dashboard Pagination', () => {
     // Mock URL with search query
     Object.defineProperty(window, 'location', {
       value: {
-        href: 'http://localhost:3000/dashboard?q=test&category=Impact'
-      }
+        href: 'http://localhost:3000/dashboard?q=test&category=Impact',
+      },
     });
-    
+
     // Mock empty results
     Object.defineProperty(import.meta, 'env', {
-      value: { VITE_USE_MOCKS: 'false' }
+      value: { VITE_USE_MOCKS: 'false' },
     });
-    
+
     global.fetch = jest.fn().mockResolvedValue({
-      json: () => Promise.resolve({
-        success: true,
-        data: [],
-        pagination: { total: 0 }
-      })
+      json: () =>
+        Promise.resolve({
+          success: true,
+          data: [],
+          pagination: { total: 0 },
+        }),
     });
-    
+
     render(<Dashboard />);
-    
+
     await waitFor(() => {
       const clearButton = screen.getByText('Clear filters');
       fireEvent.click(clearButton);
     });
-    
+
     await waitFor(() => {
       expect(window.history.replaceState).toHaveBeenCalled();
     });
@@ -187,12 +190,12 @@ describe('Dashboard Pagination', () => {
 
   test('preserves pagination state in URL', async () => {
     render(<Dashboard />);
-    
+
     await waitFor(() => {
       const pageSizeSelect = screen.getByLabelText('Show:');
       fireEvent.change(pageSizeSelect, { target: { value: '25' } });
     });
-    
+
     await waitFor(() => {
       // Check that URL was updated with pageSize parameter
       const calls = (window.history.replaceState as jest.Mock).mock.calls;

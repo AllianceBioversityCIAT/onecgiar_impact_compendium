@@ -21,7 +21,7 @@ test.describe('Authentication Flow', () => {
     await page.fill('input[type="email"]', 'invalid@test.com');
     await page.fill('input[type="password"]', 'wrongpassword');
     await page.click('button[type="submit"]');
-    
+
     await expect(page.locator('.error, .text-red-500')).toBeVisible();
   });
 
@@ -31,17 +31,17 @@ test.describe('Authentication Flow', () => {
       await route.fulfill({
         status: 200,
         contentType: 'application/json',
-        body: JSON.stringify({ 
+        body: JSON.stringify({
           token: 'mock-token',
-          user: { id: 1, email: 'test@example.com', role: 'user' }
-        })
+          user: { id: 1, email: 'test@example.com', role: 'user' },
+        }),
       });
     });
 
     await page.fill('input[type="email"]', 'test@example.com');
     await page.fill('input[type="password"]', 'password123');
     await page.click('button[type="submit"]');
-    
+
     await expect(page).toHaveURL(/.*dashboard/);
   });
 });

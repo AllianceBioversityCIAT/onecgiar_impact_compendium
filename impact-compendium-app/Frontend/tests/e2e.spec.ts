@@ -2,13 +2,15 @@ import { test, expect } from '@playwright/test';
 import { loginAsAdmin, mockStudiesAPI } from './helpers/auth';
 
 test.describe('End-to-End User Journey', () => {
-  test('complete admin workflow: login -> create study -> manage users', async ({ page }) => {
+  test('complete admin workflow: login -> create study -> manage users', async ({
+    page,
+  }) => {
     // Step 1: Login as admin
     await loginAsAdmin(page);
     await mockStudiesAPI(page);
-    
+
     await page.goto('/');
-    
+
     // Should redirect to dashboard for authenticated user
     await expect(page).toHaveURL('/dashboard');
     await expect(page.locator('text=Dashboard')).toBeVisible();
@@ -16,14 +18,20 @@ test.describe('End-to-End User Journey', () => {
     // Step 2: Navigate to studies and create a new study
     await page.click('text=Studies');
     await expect(page).toHaveURL('/studies');
-    
+
     await page.click('button:has-text("Add Study")');
     await expect(page.locator('text=Create New Study')).toBeVisible();
 
     // Fill out study form
     await page.fill('input[placeholder*="title"]', 'E2E Test Study');
-    await page.fill('textarea[placeholder*="description"]', 'This is an end-to-end test study');
-    await page.fill('input[placeholder*="doi"]', 'https://doi.org/10.1000/e2e-test');
+    await page.fill(
+      'textarea[placeholder*="description"]',
+      'This is an end-to-end test study'
+    );
+    await page.fill(
+      'input[placeholder*="doi"]',
+      'https://doi.org/10.1000/e2e-test'
+    );
 
     // Mock study creation
     await page.route('**/api/studies', async route => {
@@ -35,14 +43,14 @@ test.describe('End-to-End User Journey', () => {
             id: 999,
             title: 'E2E Test Study',
             description: 'This is an end-to-end test study',
-            status: 'draft'
-          })
+            status: 'draft',
+          }),
         });
       }
     });
 
     await page.click('button:has-text("Save as Draft")');
-    
+
     // Should show success and redirect
     await expect(page.locator('text=Study saved as draft')).toBeVisible();
     await expect(page).toHaveURL('/studies');
@@ -61,9 +69,9 @@ test.describe('End-to-End User Journey', () => {
             username: 'admin@example.com',
             email: 'admin@example.com',
             status: 'CONFIRMED',
-            groups: ['admin']
-          }
-        ])
+            groups: ['admin'],
+          },
+        ]),
       });
     });
 
@@ -73,8 +81,8 @@ test.describe('End-to-End User Journey', () => {
         contentType: 'application/json',
         body: JSON.stringify([
           { GroupName: 'admin', Description: 'Administrator group' },
-          { GroupName: 'researchers', Description: 'Researchers group' }
-        ])
+          { GroupName: 'researchers', Description: 'Researchers group' },
+        ]),
       });
     });
 
@@ -94,8 +102,8 @@ test.describe('End-to-End User Journey', () => {
           body: JSON.stringify({
             username: 'newuser@example.com',
             email: 'newuser@example.com',
-            status: 'FORCE_CHANGE_PASSWORD'
-          })
+            status: 'FORCE_CHANGE_PASSWORD',
+          }),
         });
       }
     });
@@ -106,20 +114,27 @@ test.describe('End-to-End User Journey', () => {
     // Step 5: Logout
     await page.click('[data-testid="user-menu-button"]');
     await page.click('text=Log out');
-    
+
     await expect(page).toHaveURL('/');
-    await expect(page.locator('text=Welcome to Impact Compendium')).toBeVisible();
+    await expect(
+      page.locator('text=Welcome to Impact Compendium')
+    ).toBeVisible();
   });
 
-  test('complete researcher workflow: login -> view studies -> cannot access admin', async ({ page }) => {
+  test('complete researcher workflow: login -> view studies -> cannot access admin', async ({
+    page,
+  }) => {
     // Login as regular user
     await page.addInitScript(() => {
       localStorage.setItem('ic_access_token', 'mock-user-token');
-      localStorage.setItem('ic_user', JSON.stringify({
-        email: 'researcher@example.com',
-        sub: '456',
-        groups: ['researchers']
-      }));
+      localStorage.setItem(
+        'ic_user',
+        JSON.stringify({
+          email: 'researcher@example.com',
+          sub: '456',
+          groups: ['researchers'],
+        })
+      );
     });
 
     await page.route('**/api/auth/me', async route => {
@@ -129,8 +144,8 @@ test.describe('End-to-End User Journey', () => {
         body: JSON.stringify({
           email: 'researcher@example.com',
           sub: '456',
-          groups: ['researchers']
-        })
+          groups: ['researchers'],
+        }),
       });
     });
 
@@ -139,8 +154,8 @@ test.describe('End-to-End User Journey', () => {
         id: 1,
         title: 'Research Study',
         description: 'A study for researchers',
-        status: 'published'
-      }
+        status: 'published',
+      },
     ]);
 
     await page.goto('/dashboard');
@@ -162,22 +177,24 @@ test.describe('End-to-End User Journey', () => {
 
   test('handles network failures gracefully', async ({ page }) => {
     await loginAsAdmin(page);
-    
+
     // Mock network failure
     await page.route('**/api/studies', async route => {
       await route.abort('failed');
     });
 
     await page.goto('/studies');
-    
+
     // Should show error state
     await expect(page.locator('text=Failed to load studies')).toBeVisible();
     await expect(page.locator('button:has-text("Retry")')).toBeVisible();
 
     // Test retry functionality
-    await mockStudiesAPI(page, [{ id: 1, title: 'Recovered Study', status: 'draft' }]);
+    await mockStudiesAPI(page, [
+      { id: 1, title: 'Recovered Study', status: 'draft' },
+    ]);
     await page.click('button:has-text("Retry")');
-    
+
     await expect(page.locator('text=Recovered Study')).toBeVisible();
   });
 });

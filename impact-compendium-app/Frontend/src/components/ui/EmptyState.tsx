@@ -12,7 +12,7 @@ export const EmptyState: React.FC<EmptyStateProps> = ({
   title,
   description,
   actionLabel,
-  onAction
+  onAction,
 }) => {
   return (
     <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-12">

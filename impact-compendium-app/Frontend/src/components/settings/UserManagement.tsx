@@ -37,7 +37,7 @@ export const UserManagement: React.FC = () => {
     message: '',
     type: 'warning',
     confirmText: 'Confirm',
-    action: () => {}
+    action: () => {},
   });
   const [successNotification, setSuccessNotification] = useState<{
     isOpen: boolean;
@@ -46,7 +46,7 @@ export const UserManagement: React.FC = () => {
   }>({
     isOpen: false,
     title: '',
-    message: ''
+    message: '',
   });
 
   const loadUsers = async () => {
@@ -68,9 +68,10 @@ export const UserManagement: React.FC = () => {
     if (!searchTerm.trim()) {
       setFilteredUsers(users);
     } else {
-      const filtered = users.filter(user => 
-        user.email.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        user.username.toLowerCase().includes(searchTerm.toLowerCase())
+      const filtered = users.filter(
+        user =>
+          user.email.toLowerCase().includes(searchTerm.toLowerCase()) ||
+          user.username.toLowerCase().includes(searchTerm.toLowerCase())
       );
       setFilteredUsers(filtered);
     }
@@ -80,7 +81,11 @@ export const UserManagement: React.FC = () => {
     loadUsers();
   }, []);
 
-  const handleCreateUser = async (userData: { email: string; temporaryPassword: string; sendEmail: boolean }) => {
+  const handleCreateUser = async (userData: {
+    email: string;
+    temporaryPassword: string;
+    sendEmail: boolean;
+  }) => {
     try {
       await userService.createUser(userData);
       setShowCreateModal(false);
@@ -88,7 +93,7 @@ export const UserManagement: React.FC = () => {
       setSuccessNotification({
         isOpen: true,
         title: 'User Created',
-        message: `${userData.email} has been successfully created and added to the system.`
+        message: `${userData.email} has been successfully created and added to the system.`,
       });
     } catch (err) {
       console.error('❌ UserManagement: Error creating user:', err);
@@ -101,7 +106,9 @@ export const UserManagement: React.FC = () => {
       await userService.updateUserStatus(username, enabled);
       await loadUsers(); // Refresh the list
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Failed to update user status');
+      setError(
+        err instanceof Error ? err.message : 'Failed to update user status'
+      );
     }
   };
 
@@ -120,13 +127,15 @@ export const UserManagement: React.FC = () => {
           setSuccessNotification({
             isOpen: true,
             title: 'User Deleted',
-            message: `${user?.email || username} has been successfully deleted.`
+            message: `${user?.email || username} has been successfully deleted.`,
           });
         } catch (err) {
-          setError(err instanceof Error ? err.message : 'Failed to delete user');
+          setError(
+            err instanceof Error ? err.message : 'Failed to delete user'
+          );
         }
         setConfirmAction(prev => ({ ...prev, isOpen: false }));
-      }
+      },
     });
   };
 
@@ -144,27 +153,25 @@ export const UserManagement: React.FC = () => {
           setSuccessNotification({
             isOpen: true,
             title: 'Password Reset',
-            message: `Password reset instructions have been sent to ${user?.email || username}.`
+            message: `Password reset instructions have been sent to ${user?.email || username}.`,
           });
         } catch (err) {
-          setError(err instanceof Error ? err.message : 'Failed to reset password');
+          setError(
+            err instanceof Error ? err.message : 'Failed to reset password'
+          );
         }
         setConfirmAction(prev => ({ ...prev, isOpen: false }));
-      }
+      },
     });
   };
 
-  const handleEditUser = (user: User) => {
-    setEditingUser(user);
-  };
+  // const _handleEditUser = (user: User) => {
+  //   setEditingUser(user);
+  // };
 
   const handleUpdateUser = async (username: string, enabled: boolean) => {
-    try {
-      await userService.updateUserStatus(username, enabled);
-      await loadUsers(); // Refresh the list
-    } catch (err) {
-      throw err; // Let the modal handle the error
-    }
+    await userService.updateUserStatus(username, enabled);
+    await loadUsers(); // Refresh the list
   };
 
   return (
@@ -180,8 +187,18 @@ export const UserManagement: React.FC = () => {
           onClick={() => setShowCreateModal(true)}
           className="bg-[var(--ic-color-primary)] text-black px-4 py-2 rounded-md hover:bg-[var(--ic-color-accent)] transition-colors flex items-center gap-2"
         >
-          <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
+          <svg
+            className="w-4 h-4"
+            fill="none"
+            stroke="currentColor"
+            viewBox="0 0 24 24"
+          >
+            <path
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              strokeWidth={2}
+              d="M12 4v16m8-8H4"
+            />
           </svg>
           Add User
         </button>
@@ -191,21 +208,32 @@ export const UserManagement: React.FC = () => {
       <div className="mb-6">
         <div className="relative max-w-md">
           <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-            <svg className="h-5 w-5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+            <svg
+              className="h-5 w-5 text-gray-400"
+              fill="none"
+              stroke="currentColor"
+              viewBox="0 0 24 24"
+            >
+              <path
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                strokeWidth={2}
+                d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"
+              />
             </svg>
           </div>
           <input
             type="text"
             placeholder="Search users by email or username..."
             value={searchTerm}
-            onChange={(e) => setSearchTerm(e.target.value)}
+            onChange={e => setSearchTerm(e.target.value)}
             className="block w-full pl-10 pr-3 py-2 border border-gray-300 rounded-lg leading-5 bg-white placeholder-gray-500 focus:outline-none focus:placeholder-gray-400 focus:ring-2 focus:ring-[#FDC82F] focus:border-transparent"
           />
         </div>
         {searchTerm && (
           <p className="text-sm text-gray-500 mt-2">
-            Found {filteredUsers.length} user{filteredUsers.length !== 1 ? 's' : ''} matching "{searchTerm}"
+            Found {filteredUsers.length} user
+            {filteredUsers.length !== 1 ? 's' : ''} matching "{searchTerm}"
           </p>
         )}
       </div>
@@ -253,7 +281,9 @@ export const UserManagement: React.FC = () => {
         isOpen={successNotification.isOpen}
         title={successNotification.title}
         message={successNotification.message}
-        onClose={() => setSuccessNotification(prev => ({ ...prev, isOpen: false }))}
+        onClose={() =>
+          setSuccessNotification(prev => ({ ...prev, isOpen: false }))
+        }
       />
     </div>
   );

@@ -13,7 +13,7 @@ export const Pagination: React.FC<PagerProps> = ({
   pageSize,
   total,
   onPageChange,
-  onPageSizeChange
+  onPageSizeChange,
 }) => {
   const totalPages = Math.ceil(total / pageSize);
   const startItem = (page - 1) * pageSize + 1;
@@ -42,7 +42,7 @@ export const Pagination: React.FC<PagerProps> = ({
           <select
             id="pageSize"
             value={pageSize}
-            onChange={(e) => onPageSizeChange(Number(e.target.value))}
+            onChange={e => onPageSizeChange(Number(e.target.value))}
             className="border border-gray-300 rounded px-2 py-1 text-sm focus:outline-none focus:ring-2 focus:ring-yellow-500"
           >
             <option value={10}>10</option>
@@ -59,8 +59,18 @@ export const Pagination: React.FC<PagerProps> = ({
           className="p-2 rounded border border-gray-300 text-gray-500 hover:text-gray-700 hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed transition-opacity duration-200"
           aria-label="Previous page"
         >
-          <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
+          <svg
+            className="w-4 h-4"
+            fill="none"
+            stroke="currentColor"
+            viewBox="0 0 24 24"
+          >
+            <path
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              strokeWidth={2}
+              d="M15 19l-7-7 7-7"
+            />
           </svg>
         </button>
 
@@ -91,7 +101,7 @@ export const Pagination: React.FC<PagerProps> = ({
               </button>
             );
           })}
-          
+
           {totalPages > 5 && page < totalPages - 2 && (
             <>
               <span className="text-gray-500">...</span>
@@ -111,8 +121,18 @@ export const Pagination: React.FC<PagerProps> = ({
           className="p-2 rounded border border-gray-300 text-gray-500 hover:text-gray-700 hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed transition-opacity duration-200"
           aria-label="Next page"
         >
-          <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+          <svg
+            className="w-4 h-4"
+            fill="none"
+            stroke="currentColor"
+            viewBox="0 0 24 24"
+          >
+            <path
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              strokeWidth={2}
+              d="M9 5l7 7-7 7"
+            />
           </svg>
         </button>
       </div>

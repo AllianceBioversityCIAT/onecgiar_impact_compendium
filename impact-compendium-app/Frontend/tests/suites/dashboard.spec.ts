@@ -5,13 +5,16 @@ test.describe('Dashboard Functionality', () => {
     // Mock authentication
     await page.addInitScript(() => {
       localStorage.setItem('token', 'mock-token');
-      localStorage.setItem('user', JSON.stringify({ 
-        id: 1, 
-        email: 'test@example.com', 
-        role: 'user' 
-      }));
+      localStorage.setItem(
+        'user',
+        JSON.stringify({
+          id: 1,
+          email: 'test@example.com',
+          role: 'user',
+        })
+      );
     });
-    
+
     await page.goto('/dashboard');
   });
 
@@ -28,17 +31,21 @@ test.describe('Dashboard Functionality', () => {
         contentType: 'application/json',
         body: JSON.stringify([
           { id: 1, title: 'Test Study 1', status: 'active' },
-          { id: 2, title: 'Test Study 2', status: 'draft' }
-        ])
+          { id: 2, title: 'Test Study 2', status: 'draft' },
+        ]),
       });
     });
 
     await page.reload();
-    await expect(page.locator('.study-item, [data-testid="study-item"]')).toHaveCount(2);
+    await expect(
+      page.locator('.study-item, [data-testid="study-item"]')
+    ).toHaveCount(2);
   });
 
   test('should navigate to create study page', async ({ page }) => {
-    await page.click('button:has-text("Create Study"), a:has-text("Create Study")');
+    await page.click(
+      'button:has-text("Create Study"), a:has-text("Create Study")'
+    );
     await expect(page).toHaveURL(/.*create-study/);
   });
 

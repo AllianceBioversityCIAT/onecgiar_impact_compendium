@@ -23,23 +23,23 @@ export const FormLayout: React.FC<FormLayoutProps> = ({
   onNext,
   onSaveDraft,
   showBack = true,
-  nextLabel = "Next",
+  nextLabel = 'Next',
   isLoading = false,
   steps,
   currentStep,
-  onClose
+  onClose,
 }) => {
   return (
-    <AppLayout 
-      title={title} 
-      showAddButton={false} 
+    <AppLayout
+      title={title}
+      showAddButton={false}
       hasFormFooter={true}
       steps={steps}
       currentStep={currentStep}
       onClose={onClose}
     >
       {children}
-      
+
       <FormFooter
         onBack={onBack}
         onNext={onNext}

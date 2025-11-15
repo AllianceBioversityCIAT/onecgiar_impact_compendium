@@ -6,8 +6,8 @@ import { studyAPI } from '../../services/api';
 // Mock the API
 jest.mock('../../services/api', () => ({
   studyAPI: {
-    getById: jest.fn()
-  }
+    getById: jest.fn(),
+  },
 }));
 
 const mockStudy = {
@@ -17,7 +17,7 @@ const mockStudy = {
   category: 'Impact Study',
   year: 2024,
   contributors: 'John Doe, Jane Smith',
-  doi: 'https://doi.org/10.1000/test'
+  doi: 'https://doi.org/10.1000/test',
 };
 
 describe('StudyDetailsPanel', () => {
@@ -28,16 +28,10 @@ describe('StudyDetailsPanel', () => {
   test('renders when open', async () => {
     (studyAPI.getById as jest.Mock).mockResolvedValue({
       success: true,
-      data: mockStudy
+      data: mockStudy,
     });
 
-    render(
-      <StudyDetailsPanel 
-        isOpen={true} 
-        onClose={jest.fn()} 
-        studyId={1} 
-      />
-    );
+    render(<StudyDetailsPanel isOpen={true} onClose={jest.fn()} studyId={1} />);
 
     await waitFor(() => {
       expect(screen.getByText('Study Details')).toBeInTheDocument();
@@ -46,11 +40,7 @@ describe('StudyDetailsPanel', () => {
 
   test('does not render when closed', () => {
     render(
-      <StudyDetailsPanel 
-        isOpen={false} 
-        onClose={jest.fn()} 
-        studyId={1} 
-      />
+      <StudyDetailsPanel isOpen={false} onClose={jest.fn()} studyId={1} />
     );
 
     expect(screen.queryByText('Study Details')).not.toBeInTheDocument();
@@ -59,20 +49,16 @@ describe('StudyDetailsPanel', () => {
   test('loads and displays study data', async () => {
     (studyAPI.getById as jest.Mock).mockResolvedValue({
       success: true,
-      data: mockStudy
+      data: mockStudy,
     });
 
-    render(
-      <StudyDetailsPanel 
-        isOpen={true} 
-        onClose={jest.fn()} 
-        studyId={1} 
-      />
-    );
+    render(<StudyDetailsPanel isOpen={true} onClose={jest.fn()} studyId={1} />);
 
     await waitFor(() => {
       expect(screen.getByText('Test Study')).toBeInTheDocument();
-      expect(screen.getByText('This is a test study summary')).toBeInTheDocument();
+      expect(
+        screen.getByText('This is a test study summary')
+      ).toBeInTheDocument();
       expect(screen.getByText('Impact Study')).toBeInTheDocument();
       expect(screen.getByText('2024')).toBeInTheDocument();
     });
@@ -81,16 +67,10 @@ describe('StudyDetailsPanel', () => {
   test('displays contributors as chips', async () => {
     (studyAPI.getById as jest.Mock).mockResolvedValue({
       success: true,
-      data: mockStudy
+      data: mockStudy,
     });
 
-    render(
-      <StudyDetailsPanel 
-        isOpen={true} 
-        onClose={jest.fn()} 
-        studyId={1} 
-      />
-    );
+    render(<StudyDetailsPanel isOpen={true} onClose={jest.fn()} studyId={1} />);
 
     await waitFor(() => {
       expect(screen.getByText('John Doe')).toBeInTheDocument();
@@ -101,21 +81,18 @@ describe('StudyDetailsPanel', () => {
   test('displays DOI link when available', async () => {
     (studyAPI.getById as jest.Mock).mockResolvedValue({
       success: true,
-      data: mockStudy
+      data: mockStudy,
     });
 
-    render(
-      <StudyDetailsPanel 
-        isOpen={true} 
-        onClose={jest.fn()} 
-        studyId={1} 
-      />
-    );
+    render(<StudyDetailsPanel isOpen={true} onClose={jest.fn()} studyId={1} />);
 
     await waitFor(() => {
       const doiLink = screen.getByText('https://doi.org/10.1000/test');
       expect(doiLink).toBeInTheDocument();
-      expect(doiLink.closest('a')).toHaveAttribute('href', 'https://doi.org/10.1000/test');
+      expect(doiLink.closest('a')).toHaveAttribute(
+        'href',
+        'https://doi.org/10.1000/test'
+      );
     });
   });
 
@@ -123,15 +100,11 @@ describe('StudyDetailsPanel', () => {
     const mockOnClose = jest.fn();
     (studyAPI.getById as jest.Mock).mockResolvedValue({
       success: true,
-      data: mockStudy
+      data: mockStudy,
     });
 
     render(
-      <StudyDetailsPanel 
-        isOpen={true} 
-        onClose={mockOnClose} 
-        studyId={1} 
-      />
+      <StudyDetailsPanel isOpen={true} onClose={mockOnClose} studyId={1} />
     );
 
     await waitFor(() => {
@@ -145,15 +118,11 @@ describe('StudyDetailsPanel', () => {
     const mockOnClose = jest.fn();
     (studyAPI.getById as jest.Mock).mockResolvedValue({
       success: true,
-      data: mockStudy
+      data: mockStudy,
     });
 
     render(
-      <StudyDetailsPanel 
-        isOpen={true} 
-        onClose={mockOnClose} 
-        studyId={1} 
-      />
+      <StudyDetailsPanel isOpen={true} onClose={mockOnClose} studyId={1} />
     );
 
     await waitFor(() => {
@@ -163,15 +132,11 @@ describe('StudyDetailsPanel', () => {
   });
 
   test('shows loading state', () => {
-    (studyAPI.getById as jest.Mock).mockImplementation(() => new Promise(() => {}));
-
-    render(
-      <StudyDetailsPanel 
-        isOpen={true} 
-        onClose={jest.fn()} 
-        studyId={1} 
-      />
+    (studyAPI.getById as jest.Mock).mockImplementation(
+      () => new Promise(() => {})
     );
+
+    render(<StudyDetailsPanel isOpen={true} onClose={jest.fn()} studyId={1} />);
 
     expect(screen.getByRole('status', { hidden: true })).toBeInTheDocument(); // Loading spinner
   });
@@ -179,16 +144,12 @@ describe('StudyDetailsPanel', () => {
   test('handles API error gracefully', async () => {
     (studyAPI.getById as jest.Mock).mockRejectedValue(new Error('API Error'));
 
-    render(
-      <StudyDetailsPanel 
-        isOpen={true} 
-        onClose={jest.fn()} 
-        studyId={1} 
-      />
-    );
+    render(<StudyDetailsPanel isOpen={true} onClose={jest.fn()} studyId={1} />);
 
     await waitFor(() => {
-      expect(screen.getByText('Unable to load study details.')).toBeInTheDocument();
+      expect(
+        screen.getByText('Unable to load study details.')
+      ).toBeInTheDocument();
     });
   });
 
@@ -196,21 +157,15 @@ describe('StudyDetailsPanel', () => {
     const mockLocationAssign = jest.fn();
     Object.defineProperty(window, 'location', {
       value: { href: mockLocationAssign },
-      writable: true
+      writable: true,
     });
 
     (studyAPI.getById as jest.Mock).mockResolvedValue({
       success: true,
-      data: mockStudy
+      data: mockStudy,
     });
 
-    render(
-      <StudyDetailsPanel 
-        isOpen={true} 
-        onClose={jest.fn()} 
-        studyId={1} 
-      />
-    );
+    render(<StudyDetailsPanel isOpen={true} onClose={jest.fn()} studyId={1} />);
 
     await waitFor(() => {
       const editButton = screen.getByText('Edit Study');

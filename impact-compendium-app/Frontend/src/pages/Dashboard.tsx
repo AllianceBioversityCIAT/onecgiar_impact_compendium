@@ -1,5 +1,4 @@
 import React, { useState, useEffect, useCallback } from 'react';
-import * as XLSX from 'xlsx';
 import { toast } from 'react-hot-toast';
 import { AppLayout } from '../layouts/AppLayout';
 import { Table } from '../components/ui/Table';
@@ -37,7 +36,13 @@ interface SearchParams {
 
 const columns = [
   { key: 'id', label: 'Study ID', sortable: true, width: 'w-24' },
-  { key: 'title', label: 'Title', sortable: true, width: 'w-80', className: 'truncate' },
+  {
+    key: 'title',
+    label: 'Title',
+    sortable: true,
+    width: 'w-80',
+    className: 'truncate',
+  },
   { key: 'year', label: 'Year', sortable: true, width: 'w-20' },
   { key: 'category', label: 'Category', sortable: true, width: 'w-32' },
   { key: 'doi', label: 'DOI', width: 'w-32' },
@@ -48,7 +53,9 @@ export const Dashboard: React.FC = () => {
   const [studies, setStudies] = useState<Study[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
-  const [expandedRows, setExpandedRows] = useState<Set<string | number>>(new Set());
+  const [expandedRows, setExpandedRows] = useState<Set<string | number>>(
+    new Set()
+  );
   const [totalStudies, setTotalStudies] = useState(0);
   const [selectedStudyId, setSelectedStudyId] = useState<string | null>(null);
   const [isDetailsPanelOpen, setIsDetailsPanelOpen] = useState(false);
@@ -56,14 +63,14 @@ export const Dashboard: React.FC = () => {
   const [studyToDelete, setStudyToDelete] = useState<Study | null>(null);
   const [deleting, setDeleting] = useState(false);
   const [exporting, setExporting] = useState(false);
-  
+
   // Search and filter state
   const [searchParams, setSearchParams] = useState<SearchParams>({
     q: '',
     page: 1,
     pageSize: 10,
-    sort: 'id:desc',  // Default sort by ID descending
-    category: ''
+    sort: 'id:desc', // Default sort by ID descending
+    category: '',
   });
 
   // Get debounced search value
@@ -73,13 +80,14 @@ export const Dashboard: React.FC = () => {
   const updateURL = useCallback((params: SearchParams) => {
     const url = new URL(window.location.href);
     const searchParams = new URLSearchParams();
-    
+
     if (params.q) searchParams.set('q', params.q);
     if (params.page > 1) searchParams.set('page', params.page.toString());
-    if (params.pageSize !== 10) searchParams.set('pageSize', params.pageSize.toString());
+    if (params.pageSize !== 10)
+      searchParams.set('pageSize', params.pageSize.toString());
     if (params.sort) searchParams.set('sort', params.sort);
     if (params.category) searchParams.set('category', params.category);
-    
+
     url.search = searchParams.toString();
     window.history.replaceState({}, '', url.toString());
   }, []);
@@ -88,39 +96,42 @@ export const Dashboard: React.FC = () => {
   useEffect(() => {
     const url = new URL(window.location.href);
     const urlParams = new URLSearchParams(url.search);
-    
+
     setSearchParams({
       q: urlParams.get('q') || '',
       page: parseInt(urlParams.get('page') || '1'),
       pageSize: parseInt(urlParams.get('pageSize') || '10'),
       sort: urlParams.get('sort') || 'id:desc', // Default to id:desc if no sort in URL
-      category: urlParams.get('category') || ''
+      category: urlParams.get('category') || '',
     });
   }, []);
 
   const fetchStudies = useCallback(async (params: SearchParams) => {
     setLoading(true);
     setError('');
-    
+
     try {
       const useMocks = import.meta.env.VITE_USE_MOCKS === 'true';
-      
+
       if (useMocks) {
         const mockResponse = getMockStudies({
-          ...params
+          ...params,
         });
         const transformedMockStudies = mockResponse.items.map((study: any) => ({
           id: `ICD-${study.id || Math.random()}`,
           year: study.year || 2024,
           period: '2023-2024',
-          title: study.title ? study.title.charAt(0).toUpperCase() + study.title.slice(1).toLowerCase() : 'No title',
+          title: study.title
+            ? study.title.charAt(0).toUpperCase() +
+              study.title.slice(1).toLowerCase()
+            : 'No title',
           impact_areas: study.impact_areas || 'N/A',
           regions: study.regions || 'N/A',
           countries: study.countries || 'N/A',
           center: study.center || 'N/A',
           category: study.category || 'Other',
           contributors: study.authors?.join(', ') || 'N/A',
-          summary: study.description || 'No summary available'
+          summary: study.description || 'No summary available',
         }));
         setStudies(transformedMockStudies);
         setTotalStudies(mockResponse.total);
@@ -132,20 +143,20 @@ export const Dashboard: React.FC = () => {
         if (params.sort) queryParams.set('sort', params.sort);
         if (params.category) queryParams.set('category', params.category);
         if (params.q) queryParams.set('q', params.q);
-        
+
         const response = await studyAPI.getAll({
           page: params.page.toString(),
           pageSize: params.pageSize.toString(),
           ...(params.sort && { sort: params.sort }),
           ...(params.category && { category: params.category }),
-          ...(params.q && { q: params.q })
+          ...(params.q && { q: params.q }),
         });
         const data = response;
-        
+
         // Handle new backend response format
         let studiesData = [];
         let total = 0;
-        
+
         if (data.success && data.data) {
           studiesData = data.data;
           total = data.pagination?.total || data.data.length;
@@ -156,7 +167,7 @@ export const Dashboard: React.FC = () => {
           studiesData = data.studies || data.data || [];
           total = studiesData.length;
         }
-        
+
         // Transform data to match table format - use actual API data
         const transformedStudies = studiesData.map((study: any) => ({
           id: study.id,
@@ -164,29 +175,32 @@ export const Dashboard: React.FC = () => {
           year: study.year || 'N/A',
           category: study.category?.name || 'Research',
           doi: study.doi || 'N/A',
-          summary: study.summary || 'No summary available'  // Keep for expanded view
+          summary: study.summary || 'No summary available', // Keep for expanded view
         }));
-        
+
         setStudies(transformedStudies);
         setTotalStudies(total);
       }
     } catch (err: any) {
       console.error('Failed to load studies:', err);
-      
+
       // Fallback to mock data with full search functionality
       const mockResponse = getMockStudies(params);
       const transformedMockStudies = mockResponse.items.map((study: any) => ({
         id: `ICD-${study.id || Math.random()}`,
         year: study.year || 2024,
         period: '2023-2024',
-        title: study.title ? study.title.charAt(0).toUpperCase() + study.title.slice(1).toLowerCase() : 'No title',
+        title: study.title
+          ? study.title.charAt(0).toUpperCase() +
+            study.title.slice(1).toLowerCase()
+          : 'No title',
         impact_areas: study.impact_areas || 'N/A',
         regions: study.regions || 'N/A',
         countries: study.countries || 'N/A',
         center: study.center || 'N/A',
         category: study.category || 'Other',
         contributors: study.authors?.join(', ') || 'N/A',
-        summary: study.description || 'No summary available'
+        summary: study.description || 'No summary available',
       }));
       setStudies(transformedMockStudies);
       setTotalStudies(mockResponse.total);
@@ -200,7 +214,15 @@ export const Dashboard: React.FC = () => {
     const paramsWithDebouncedQuery = { ...searchParams, q: debouncedQuery };
     fetchStudies(paramsWithDebouncedQuery);
     updateURL(paramsWithDebouncedQuery);
-  }, [debouncedQuery, searchParams.page, searchParams.pageSize, searchParams.sort, searchParams.category, fetchStudies, updateURL]);
+  }, [
+    debouncedQuery,
+    searchParams.page,
+    searchParams.pageSize,
+    searchParams.sort,
+    searchParams.category,
+    fetchStudies,
+    updateURL,
+  ]);
 
   const handleSearchChange = (value: string) => {
     setSearchParams(prev => ({ ...prev, q: value, page: 1 }));
@@ -234,10 +256,10 @@ export const Dashboard: React.FC = () => {
   };
 
   const handleSortChange = (sort: { field: string; dir: 'asc' | 'desc' }) => {
-    setSearchParams(prev => ({ 
-      ...prev, 
-      sort: `${sort.field}:${sort.dir}`, 
-      page: 1 
+    setSearchParams(prev => ({
+      ...prev,
+      sort: `${sort.field}:${sort.dir}`,
+      page: 1,
     }));
   };
 
@@ -246,35 +268,38 @@ export const Dashboard: React.FC = () => {
       q: '',
       page: 1,
       pageSize: 10,
-      sort: 'id:desc',  // Default sort by ID descending
-      category: ''
+      sort: 'id:desc', // Default sort by ID descending
+      category: '',
     });
   };
 
   const handleDownloadExcel = async () => {
     if (exporting) return;
-    
+
     let loadingToast: string | undefined;
-    
+
     try {
       setExporting(true);
-      
+
       // Start async export
       const authHeaders = await authService.getAuthHeaders();
-      const startResponse = await fetch(`${import.meta.env.VITE_API_BASE_URL}/api/reports/export/start?format=excel&limit=1000`, {
-        method: 'POST',
-        headers: {
-          'Accept': 'application/json',
-          ...authHeaders
+      const startResponse = await fetch(
+        `${import.meta.env.VITE_API_BASE_URL}/api/reports/export/start?format=excel&limit=1000`,
+        {
+          method: 'POST',
+          headers: {
+            Accept: 'application/json',
+            ...authHeaders,
+          },
         }
-      });
+      );
 
       if (!startResponse.ok) {
         throw new Error(`Failed to start export: ${startResponse.statusText}`);
       }
 
       const { job_id } = await startResponse.json();
-      
+
       // Show loading notification with progress
       loadingToast = toast.loading('Starting full report generation...', {
         duration: 0,
@@ -283,35 +308,46 @@ export const Dashboard: React.FC = () => {
       // Poll for completion
       const pollInterval = setInterval(async () => {
         try {
-          const statusResponse = await fetch(`${import.meta.env.VITE_API_BASE_URL}/api/reports/export/status/${job_id}`, {
-            headers: authHeaders
-          });
+          const statusResponse = await fetch(
+            `${import.meta.env.VITE_API_BASE_URL}/api/reports/export/status/${job_id}`,
+            {
+              headers: authHeaders,
+            }
+          );
 
           if (statusResponse.ok) {
             const status = await statusResponse.json();
-            
+
             // Update toast with progress
             if (loadingToast) {
               toast.dismiss(loadingToast);
-              loadingToast = toast.loading(`Generating full report... ${status.progress || 0}%`, {
-                duration: 0,
-              });
+              loadingToast = toast.loading(
+                `Generating full report... ${status.progress || 0}%`,
+                {
+                  duration: 0,
+                }
+              );
             }
 
             if (status.status === 'completed') {
               clearInterval(pollInterval);
-              
+
               // Download the file
-              const downloadResponse = await fetch(`${import.meta.env.VITE_API_BASE_URL}/api/reports/export/download/${job_id}`, {
-                headers: authHeaders
-              });
+              const downloadResponse = await fetch(
+                `${import.meta.env.VITE_API_BASE_URL}/api/reports/export/download/${job_id}`,
+                {
+                  headers: authHeaders,
+                }
+              );
 
               if (downloadResponse.ok) {
                 const blob = await downloadResponse.blob();
                 const url = window.URL.createObjectURL(blob);
                 const link = document.createElement('a');
                 link.href = url;
-                link.download = status.filename || `impact_compendium_report_${new Date().toISOString().split('T')[0]}.xlsx`;
+                link.download =
+                  status.filename ||
+                  `impact_compendium_report_${new Date().toISOString().split('T')[0]}.xlsx`;
                 document.body.appendChild(link);
                 link.click();
                 document.body.removeChild(link);
@@ -319,13 +355,16 @@ export const Dashboard: React.FC = () => {
 
                 // Show success message
                 if (loadingToast) toast.dismiss(loadingToast);
-                toast.success(`Full report downloaded successfully! (${status.record_count} studies)`, {
-                  duration: 5000,
-                });
+                toast.success(
+                  `Full report downloaded successfully! (${status.record_count} studies)`,
+                  {
+                    duration: 5000,
+                  }
+                );
               } else {
                 throw new Error('Failed to download report');
               }
-              
+
               setExporting(false);
             } else if (status.status === 'failed') {
               clearInterval(pollInterval);
@@ -344,27 +383,34 @@ export const Dashboard: React.FC = () => {
         if (exporting) {
           setExporting(false);
           if (loadingToast) toast.dismiss(loadingToast);
-          toast.error('Export timed out. Please try again.', { duration: 5000 });
+          toast.error('Export timed out. Please try again.', {
+            duration: 5000,
+          });
         }
       }, 300000);
-
     } catch (error) {
       console.error('Excel export error:', error);
-      
+
       // Dismiss loading toast
       if (loadingToast) {
         toast.dismiss(loadingToast);
       }
-      
+
       // Handle timeout specifically
       if (error instanceof Error && error.name === 'AbortError') {
-        toast.error('Export timed out. The report is too large. Try reducing the data or contact support.', {
-          duration: 8000,
-        });
+        toast.error(
+          'Export timed out. The report is too large. Try reducing the data or contact support.',
+          {
+            duration: 8000,
+          }
+        );
       } else {
-        toast.error(`Failed to download Excel report: ${error instanceof Error ? error.message : 'Unknown error'}`, {
-          duration: 5000,
-        });
+        toast.error(
+          `Failed to download Excel report: ${error instanceof Error ? error.message : 'Unknown error'}`,
+          {
+            duration: 5000,
+          }
+        );
       }
     } finally {
       setExporting(false);
@@ -411,11 +457,11 @@ export const Dashboard: React.FC = () => {
 
   const confirmDelete = async () => {
     if (!studyToDelete) return;
-    
+
     setDeleting(true);
     try {
       await studyAPI.delete(studyToDelete.id.toString());
-      
+
       // Refresh the studies list
       fetchStudies(searchParams);
     } catch (error) {
@@ -439,9 +485,23 @@ export const Dashboard: React.FC = () => {
               {loading ? 'Loading...' : `${totalStudies} studies found`}
             </p>
           </div>
-          <Button variant="secondary" onClick={() => fetchStudies(searchParams)} disabled={loading}>
-            <svg className="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+          <Button
+            variant="secondary"
+            onClick={() => fetchStudies(searchParams)}
+            disabled={loading}
+          >
+            <svg
+              className="w-4 h-4 mr-2"
+              fill="none"
+              stroke="currentColor"
+              viewBox="0 0 24 24"
+            >
+              <path
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                strokeWidth={2}
+                d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"
+              />
             </svg>
             Refresh
           </Button>
@@ -454,26 +514,38 @@ export const Dashboard: React.FC = () => {
               type="text"
               placeholder="Search by Study ID or Title..."
               value={searchParams.q}
-              onChange={(e) => handleSearchChange(e.target.value)}
+              onChange={e => handleSearchChange(e.target.value)}
               onKeyDown={handleSearchKeyDown}
               className="w-full px-4 py-2 pr-10 border border-gray-300 rounded-lg focus:ring-2 focus:ring-yellow-500 focus:border-transparent placeholder-gray-500"
-              style={{
-                '--ic-color-neutral': '#6b7280',
-                '--ic-color-mustard': '#eab308'
-              } as React.CSSProperties}
+              style={
+                {
+                  '--ic-color-neutral': '#6b7280',
+                  '--ic-color-mustard': '#eab308',
+                } as React.CSSProperties
+              }
             />
             {searchParams.q && (
               <button
                 onClick={handleSearchClear}
                 className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-400 hover:text-gray-600"
               >
-                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                <svg
+                  className="w-5 h-5"
+                  fill="none"
+                  stroke="currentColor"
+                  viewBox="0 0 24 24"
+                >
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    strokeWidth={2}
+                    d="M6 18L18 6M6 6l12 12"
+                  />
                 </svg>
               </button>
             )}
           </div>
-          
+
           <Button
             onClick={handleDownloadExcel}
             disabled={studies.length === 0 || exporting}
@@ -482,16 +554,41 @@ export const Dashboard: React.FC = () => {
           >
             {exporting ? (
               <>
-                <svg className="w-4 h-4 animate-spin" fill="none" viewBox="0 0 24 24">
-                  <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
-                  <path className="opacity-75" fill="currentColor" d="m4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                <svg
+                  className="w-4 h-4 animate-spin"
+                  fill="none"
+                  viewBox="0 0 24 24"
+                >
+                  <circle
+                    className="opacity-25"
+                    cx="12"
+                    cy="12"
+                    r="10"
+                    stroke="currentColor"
+                    strokeWidth="4"
+                  ></circle>
+                  <path
+                    className="opacity-75"
+                    fill="currentColor"
+                    d="m4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
+                  ></path>
                 </svg>
                 Generating Report...
               </>
             ) : (
               <>
-                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                <svg
+                  className="w-4 h-4"
+                  fill="none"
+                  stroke="currentColor"
+                  viewBox="0 0 24 24"
+                >
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    strokeWidth={2}
+                    d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"
+                  />
                 </svg>
                 Export Full Report
               </>
@@ -503,10 +600,20 @@ export const Dashboard: React.FC = () => {
         {error && (
           <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-4">
             <div className="flex items-center">
-              <svg className="w-5 h-5 text-yellow-400 mr-2" fill="currentColor" viewBox="0 0 20 20">
-                <path fillRule="evenodd" d="M8.257 3.099c.765-1.36 2.722-1.36 3.486 0l5.58 9.92c.75 1.334-.213 2.98-1.742 2.98H4.42c-1.53 0-2.493-1.646-1.743-2.98l5.58-9.92zM11 13a1 1 0 11-2 0 1 1 0 012 0zm-1-8a1 1 0 00-1 1v3a1 1 0 002 0V6a1 1 0 00-1-1z" clipRule="evenodd" />
+              <svg
+                className="w-5 h-5 text-yellow-400 mr-2"
+                fill="currentColor"
+                viewBox="0 0 20 20"
+              >
+                <path
+                  fillRule="evenodd"
+                  d="M8.257 3.099c.765-1.36 2.722-1.36 3.486 0l5.58 9.92c.75 1.334-.213 2.98-1.742 2.98H4.42c-1.53 0-2.493-1.646-1.743-2.98l5.58-9.92zM11 13a1 1 0 11-2 0 1 1 0 012 0zm-1-8a1 1 0 00-1 1v3a1 1 0 002 0V6a1 1 0 00-1-1z"
+                  clipRule="evenodd"
+                />
               </svg>
-              <span className="text-yellow-700">{error} (Showing sample data)</span>
+              <span className="text-yellow-700">
+                {error} (Showing sample data)
+              </span>
             </div>
           </div>
         )}
@@ -517,12 +624,21 @@ export const Dashboard: React.FC = () => {
         ) : studies.length === 0 ? (
           <EmptyState
             title="No studies found"
-            description={searchParams.q || searchParams.category ? 
-              "No studies match your current search criteria." : 
-              "No studies are available at the moment."
+            description={
+              searchParams.q || searchParams.category
+                ? 'No studies match your current search criteria.'
+                : 'No studies are available at the moment.'
             }
-            actionLabel={searchParams.q || searchParams.category ? "Clear filters" : undefined}
-            onAction={searchParams.q || searchParams.category ? handleClearFilters : undefined}
+            actionLabel={
+              searchParams.q || searchParams.category
+                ? 'Clear filters'
+                : undefined
+            }
+            onAction={
+              searchParams.q || searchParams.category
+                ? handleClearFilters
+                : undefined
+            }
           />
         ) : (
           <>
@@ -532,7 +648,7 @@ export const Dashboard: React.FC = () => {
               data={studies as any[]}
               onRowExpand={handleRowExpand}
               expandedRows={expandedRows}
-              expandRender={(row) => (
+              expandRender={row => (
                 <div className="p-4 bg-gray-50 border-t">
                   <div className="space-y-2">
                     <h4 className="font-medium text-gray-900">Summary</h4>
@@ -542,14 +658,18 @@ export const Dashboard: React.FC = () => {
                   </div>
                 </div>
               )}
-              onTitleClick={(row) => handleTitleClick(row as any)}
-              sort={searchParams.sort ? {
-                field: searchParams.sort.split(':')[0],
-                dir: searchParams.sort.split(':')[1] as 'asc' | 'desc'
-              } : undefined}
+              onTitleClick={row => handleTitleClick(row as any)}
+              sort={
+                searchParams.sort
+                  ? {
+                      field: searchParams.sort.split(':')[0],
+                      dir: searchParams.sort.split(':')[1] as 'asc' | 'desc',
+                    }
+                  : undefined
+              }
               onSortChange={handleSortChange}
-              onEdit={(row) => handleEditStudy(row as any)}
-              onDelete={(row) => handleDeleteStudy(row as any)}
+              onEdit={row => handleEditStudy(row as any)}
+              onDelete={row => handleDeleteStudy(row as any)}
             />
 
             {/* Pagination */}
@@ -578,37 +698,72 @@ export const Dashboard: React.FC = () => {
           <div className="bg-white rounded-lg p-6 max-w-md w-full mx-4 shadow-xl">
             <div className="flex items-center gap-3 mb-4">
               <div className="flex-shrink-0 w-10 h-10 bg-red-100 rounded-full flex items-center justify-center">
-                <svg className="w-6 h-6 text-red-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4c-.77-.833-1.964-.833-2.732 0L3.732 16.5c-.77.833.192 2.5 1.732 2.5z" />
+                <svg
+                  className="w-6 h-6 text-red-600"
+                  fill="none"
+                  stroke="currentColor"
+                  viewBox="0 0 24 24"
+                >
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    strokeWidth={2}
+                    d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4c-.77-.833-1.964-.833-2.732 0L3.732 16.5c-.77.833.192 2.5 1.732 2.5z"
+                  />
                 </svg>
               </div>
-              <h3 className="text-lg font-semibold text-gray-900">Delete Study</h3>
+              <h3 className="text-lg font-semibold text-gray-900">
+                Delete Study
+              </h3>
             </div>
             <p className="text-sm text-gray-600 mb-6 leading-relaxed">
-              Are you sure you want to delete <span className="font-medium">"{studyToDelete.title}"</span>? This action cannot be undone and all associated data will be permanently removed.
+              Are you sure you want to delete{' '}
+              <span className="font-medium">"{studyToDelete.title}"</span>? This
+              action cannot be undone and all associated data will be
+              permanently removed.
             </p>
             <div className="flex gap-3">
-              <Button 
-                onClick={confirmDelete} 
+              <Button
+                onClick={confirmDelete}
                 className="flex-1 bg-red-600 hover:bg-red-700 text-white font-medium py-3 flex items-center justify-center gap-2 transition-all duration-200"
                 disabled={deleting}
               >
-                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                <svg
+                  className="w-4 h-4"
+                  fill="none"
+                  stroke="currentColor"
+                  viewBox="0 0 24 24"
+                >
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    strokeWidth={2}
+                    d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"
+                  />
                 </svg>
                 {deleting ? 'Deleting...' : 'Delete Study'}
               </Button>
-              <Button 
-                variant="secondary" 
+              <Button
+                variant="secondary"
                 onClick={() => {
                   setShowDeleteConfirm(false);
                   setStudyToDelete(null);
-                }} 
+                }}
                 className="flex-1 font-medium py-3 flex items-center justify-center gap-2 transition-all duration-200"
                 disabled={deleting}
               >
-                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                <svg
+                  className="w-4 h-4"
+                  fill="none"
+                  stroke="currentColor"
+                  viewBox="0 0 24 24"
+                >
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    strokeWidth={2}
+                    d="M6 18L18 6M6 6l12 12"
+                  />
                 </svg>
                 Cancel
               </Button>

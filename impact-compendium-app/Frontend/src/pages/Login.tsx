@@ -39,25 +39,25 @@ export const Login: React.FC = () => {
 
     try {
       await login(email, password);
-      
+
       // Handle remember me functionality
       if (rememberMe) {
         localStorage.setItem('rememberedEmail', email);
       } else {
         localStorage.removeItem('rememberedEmail');
       }
-      
+
       // Redirect to main page after successful login
       navigate('/');
     } catch (err) {
       const errorMessage = err instanceof Error ? err.message : 'Login failed';
-      
+
       // Check if user needs to change password
       if (errorMessage === 'NEW_PASSWORD_REQUIRED') {
         setShowPasswordChange(true);
         return;
       }
-      
+
       setError(errorMessage);
     } finally {
       setLoading(false);
@@ -75,35 +75,31 @@ export const Login: React.FC = () => {
   return (
     <div className="min-h-screen bg-white flex flex-col lg:flex-row relative">
       {/* Background Image - Responsive */}
-      <div 
+      <div
         className="absolute inset-0 lg:left-[873.5px] bg-cover bg-center"
         style={{
           backgroundImage: `url('/background.jpg')`,
           backgroundSize: 'cover',
-          backgroundPosition: 'center'
+          backgroundPosition: 'center',
         }}
       >
         <div className="absolute inset-0 bg-gradient-to-br from-[rgba(139,69,19,0.6)] to-[rgba(101,67,33,0.7)]" />
       </div>
 
       {/* Left Panel - Login Form */}
-      <div 
+      <div
         className="w-full lg:w-[873.5px] flex flex-col justify-center items-center px-4 lg:px-0 py-8 lg:py-0 relative z-10"
         style={{
           backgroundImage: `url('/texture-bg.png')`,
           backgroundSize: 'cover',
           backgroundPosition: 'center',
-          backgroundRepeat: 'no-repeat'
+          backgroundRepeat: 'no-repeat',
         }}
       >
         <div className="w-full max-w-[448px] space-y-8">
           {/* Logo Section */}
           <div className="flex items-center justify-center">
-            <img 
-              src="/logo.svg" 
-              alt="Impact Compendium Logo" 
-              className="h-8"
-            />
+            <img src="/logo.svg" alt="Impact Compendium Logo" className="h-8" />
           </div>
 
           {/* Header Section */}
@@ -126,7 +122,7 @@ export const Login: React.FC = () => {
               <input
                 type="email"
                 value={email}
-                onChange={(e) => setEmail(e.target.value)}
+                onChange={e => setEmail(e.target.value)}
                 placeholder="you@organization.org"
                 className="w-full h-[44px] px-3 py-1 bg-[#F3F3F5] border border-[#E5E5E5] rounded-[10px] font-inter font-normal text-[14px] leading-[17px] tracking-[-0.150391px] text-[#717182] placeholder:text-[#717182]"
                 data-testid="email-input"
@@ -142,9 +138,9 @@ export const Login: React.FC = () => {
               </label>
               <div className="relative">
                 <input
-                  type={showPassword ? "text" : "password"}
+                  type={showPassword ? 'text' : 'password'}
                   value={password}
-                  onChange={(e) => setPassword(e.target.value)}
+                  onChange={e => setPassword(e.target.value)}
                   placeholder="Enter your password"
                   className="w-full h-[44px] px-3 py-1 pr-10 bg-[#F3F3F5] border border-[#E5E5E5] rounded-[10px] font-inter font-normal text-[14px] leading-[17px] tracking-[-0.150391px] text-[#717182] placeholder:text-[#717182]"
                   data-testid="password-input"
@@ -156,16 +152,41 @@ export const Login: React.FC = () => {
                   onClick={() => setShowPassword(!showPassword)}
                   className="absolute right-3 top-1/2 transform -translate-y-1/2 text-[#717182] hover:text-[#333333]"
                   data-testid="toggle-password"
-                  aria-label={showPassword ? "Hide password" : "Show password"}
+                  aria-label={showPassword ? 'Hide password' : 'Show password'}
                 >
                   {showPassword ? (
-                    <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13.875 18.825A10.05 10.05 0 0112 19c-4.478 0-8.268-2.943-9.543-7a9.97 9.97 0 011.563-3.029m5.858.908a3 3 0 114.243 4.243M9.878 9.878l4.242 4.242M9.878 9.878L3 3m6.878 6.878L21 21" />
+                    <svg
+                      className="w-5 h-5"
+                      fill="none"
+                      stroke="currentColor"
+                      viewBox="0 0 24 24"
+                    >
+                      <path
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                        strokeWidth={2}
+                        d="M13.875 18.825A10.05 10.05 0 0112 19c-4.478 0-8.268-2.943-9.543-7a9.97 9.97 0 011.563-3.029m5.858.908a3 3 0 114.243 4.243M9.878 9.878l4.242 4.242M9.878 9.878L3 3m6.878 6.878L21 21"
+                      />
                     </svg>
                   ) : (
-                    <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
+                    <svg
+                      className="w-5 h-5"
+                      fill="none"
+                      stroke="currentColor"
+                      viewBox="0 0 24 24"
+                    >
+                      <path
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                        strokeWidth={2}
+                        d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"
+                      />
+                      <path
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                        strokeWidth={2}
+                        d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"
+                      />
                     </svg>
                   )}
                 </button>
@@ -179,12 +200,15 @@ export const Login: React.FC = () => {
                   type="checkbox"
                   id="remember"
                   checked={rememberMe}
-                  onChange={(e) => setRememberMe(e.target.checked)}
+                  onChange={e => setRememberMe(e.target.checked)}
                   className="w-4 h-4"
                   data-testid="remember-checkbox"
                   aria-label="Remember me"
                 />
-                <label htmlFor="remember" className="font-inter font-normal text-[13px] leading-5 tracking-[-0.0761719px] text-[#777777]">
+                <label
+                  htmlFor="remember"
+                  className="font-inter font-normal text-[13px] leading-5 tracking-[-0.0761719px] text-[#777777]"
+                >
                   Remember me
                 </label>
               </div>
@@ -219,7 +243,10 @@ export const Login: React.FC = () => {
           <div className="flex flex-col gap-3 text-center">
             <p className="font-inter font-normal text-[12px] leading-[19px] text-[#999999]">
               Need help? Contact PRMS technical support at{' '}
-              <a href="mailto:prms-tech-support@cgiar.org" className="text-[#F07E28] hover:underline">
+              <a
+                href="mailto:prms-tech-support@cgiar.org"
+                className="text-[#F07E28] hover:underline"
+              >
                 prms-tech-support@cgiar.org
               </a>
             </p>

@@ -2,7 +2,6 @@ import React, { useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { FormLayout } from '../../layouts/FormLayout';
 import { AppLayout } from '../../layouts/AppLayout';
-import { ProgressStepper } from '../../components/ui/ProgressStepper';
 import { StudyContextHeader } from '../../components/ui/StudyContextHeader';
 import { Input } from '../../components/ui/Input';
 import { Button } from '../../components/ui/Button';
@@ -10,13 +9,12 @@ import { Card } from '../../components/ui/Card';
 import { SuccessModal } from '../../components/ui/SuccessModal';
 import { ConfirmationModal } from '../../components/ui/ConfirmationModal';
 import { Notification } from '../../components/ui/Notification';
-import { studyAPI } from '../../services/api';
 import { authService } from '../../services/auth';
 
 const steps = [
   { id: 1, label: 'Step 1', completed: true },
   { id: 2, label: 'Step 2', completed: true },
-  { id: 3, label: 'Step 3' }
+  { id: 3, label: 'Step 3' },
 ];
 
 interface Indicator {
@@ -30,7 +28,7 @@ export const CreateStudyStep3: React.FC = () => {
   const navigate = useNavigate();
   const { id } = useParams();
   const isEditMode = !!id;
-  
+
   // Load saved data immediately and synchronously
   const getSavedData = () => {
     const savedData = localStorage.getItem('studyFormStep3');
@@ -69,7 +67,7 @@ export const CreateStudyStep3: React.FC = () => {
       const loadStudyData = async () => {
         try {
           setMappingData(true);
-          
+
           // Check if we have saved data in localStorage first
           const savedData = localStorage.getItem('studyFormStep3');
           if (savedData) {
@@ -80,22 +78,26 @@ export const CreateStudyStep3: React.FC = () => {
               return; // Use localStorage data instead of API data
             }
           }
-          
+
           // If no localStorage data, load from API
           const numericId = id.startsWith('ICD-') ? id.replace('ICD-', '') : id;
-          const response = await fetch(`${import.meta.env.VITE_API_BASE_URL}/api/studies/${numericId}`);
-          
+          const response = await fetch(
+            `${import.meta.env.VITE_API_BASE_URL}/api/studies/${numericId}`
+          );
+
           if (response.ok) {
             const apiResponse = await response.json();
             const studyData = apiResponse.data || apiResponse;
-            
+
             if (studyData.indicators && studyData.indicators.length > 0) {
-              const mappedIndicators = studyData.indicators.map((indicator: any, index: number) => ({
-                id: (index + 1).toString(),
-                indicatorMeasured: indicator.indicator_measure || '',
-                unitOfMeasure: indicator.unit_measure || '',
-                resultReported: indicator.result_reported || ''
-              }));
+              const mappedIndicators = studyData.indicators.map(
+                (indicator: any, index: number) => ({
+                  id: (index + 1).toString(),
+                  indicatorMeasured: indicator.indicator_measure || '',
+                  unitOfMeasure: indicator.unit_measure || '',
+                  resultReported: indicator.result_reported || '',
+                })
+              );
               setIndicators(mappedIndicators);
             }
           }
@@ -107,25 +109,34 @@ export const CreateStudyStep3: React.FC = () => {
       };
       loadStudyData();
     }
-    
+
     const timer = setTimeout(() => setLoading(false), 100);
     return () => clearTimeout(timer);
   }, [isEditMode, id]);
 
-  const handleIndicatorChange = (id: string, field: keyof Indicator, value: string) => {
-    setIndicators(prev => prev.map(indicator => 
-      indicator.id === id ? { ...indicator, [field]: value } : indicator
-    ));
+  const handleIndicatorChange = (
+    id: string,
+    field: keyof Indicator,
+    value: string
+  ) => {
+    setIndicators(prev =>
+      prev.map(indicator =>
+        indicator.id === id ? { ...indicator, [field]: value } : indicator
+      )
+    );
   };
 
   const addIndicator = () => {
     const newId = (indicators.length + 1).toString();
-    setIndicators(prev => [...prev, { 
-      id: newId, 
-      indicatorMeasured: '', 
-      unitOfMeasure: '', 
-      resultReported: '' 
-    }]);
+    setIndicators(prev => [
+      ...prev,
+      {
+        id: newId,
+        indicatorMeasured: '',
+        unitOfMeasure: '',
+        resultReported: '',
+      },
+    ]);
   };
 
   const removeIndicator = (id: string) => {
@@ -135,7 +146,9 @@ export const CreateStudyStep3: React.FC = () => {
   };
 
   const duplicateIndicator = (id: string) => {
-    const indicatorToDuplicate = indicators.find(indicator => indicator.id === id);
+    const indicatorToDuplicate = indicators.find(
+      indicator => indicator.id === id
+    );
     if (indicatorToDuplicate) {
       const newId = (indicators.length + 1).toString();
       const duplicated = { ...indicatorToDuplicate, id: newId };
@@ -143,7 +156,11 @@ export const CreateStudyStep3: React.FC = () => {
     }
   };
 
-  const showNotification = (type: 'success' | 'error' | 'info', title: string, message: string) => {
+  const showNotification = (
+    type: 'success' | 'error' | 'info',
+    title: string,
+    message: string
+  ) => {
     setNotification({ type, title, message, show: true });
   };
 
@@ -154,7 +171,7 @@ export const CreateStudyStep3: React.FC = () => {
   const handleFinish = async () => {
     setIsSubmitting(true);
     setSaveProgress(0);
-    
+
     // Animated progress for better UX
     const progressInterval = setInterval(() => {
       setSaveProgress(prev => {
@@ -165,14 +182,22 @@ export const CreateStudyStep3: React.FC = () => {
         return prev + 10;
       });
     }, 200);
-    
-    showNotification('info', 'Saving Study', 'Please wait while we save your study to the database...');
-    
+
+    showNotification(
+      'info',
+      'Saving Study',
+      'Please wait while we save your study to the database...'
+    );
+
     try {
       // Get all form data from localStorage
-      const step1Data = JSON.parse(localStorage.getItem('studyFormStep1') || '{}');
-      const step2Data = JSON.parse(localStorage.getItem('studyFormStep2') || '{}');
-      
+      const step1Data = JSON.parse(
+        localStorage.getItem('studyFormStep1') || '{}'
+      );
+      const step2Data = JSON.parse(
+        localStorage.getItem('studyFormStep2') || '{}'
+      );
+
       // Prepare complete study data according to backend schema
       const completeStudyData = {
         // Step 1 data
@@ -186,30 +211,38 @@ export const CreateStudyStep3: React.FC = () => {
         periodEnd: step1Data.periodEnd,
         interventionType: step1Data.interventionType?.toString() || '',
         interventionDetails: step1Data.interventionDetails,
-        
+
         // Step 2 data
         primaryCGIARImpactArea: step2Data.primaryCGIARImpactArea || '',
-        secondaryCGIARImpactAreas: Array.isArray(step2Data.secondaryCGIARImpactArea) ? step2Data.secondaryCGIARImpactArea.map(String) : [step2Data.secondaryCGIARImpactArea].filter(Boolean).map(String),
+        secondaryCGIARImpactAreas: Array.isArray(
+          step2Data.secondaryCGIARImpactArea
+        )
+          ? step2Data.secondaryCGIARImpactArea.map(String)
+          : [step2Data.secondaryCGIARImpactArea].filter(Boolean).map(String),
         countries: (step2Data.countryOfStudy || []).map(String),
         regions: (step2Data.cgiarRegions || []).map(String),
         cropProductType: (step2Data.cropProductType || []).map(String),
         keywords: (step2Data.keywords || []).map(String),
-        contributingInitiatives: (step2Data.contributingInitiatives || []).map(String),
+        contributingInitiatives: (step2Data.contributingInitiatives || []).map(
+          String
+        ),
         contributingCenters: (step2Data.contributingCenters || []).map(String),
-        
+
         // Step 3 data
         indicators: indicators.map(indicator => ({
           indicatorMeasure: indicator.indicatorMeasured,
           unitMeasure: indicator.unitOfMeasure,
-          resultReported: indicator.resultReported
-        }))
+          resultReported: indicator.resultReported,
+        })),
       };
 
       // Get auth headers (with local development bypass)
-      const isLocalDev = import.meta.env.VITE_API_BASE_URL?.includes('localhost');
+      const isLocalDev = import.meta.env.VITE_API_BASE_URL?.includes(
+        'localhost'
+      );
       let authHeaders = {};
       let userEmail = 'testuser@example.com';
-      
+
       if (!isLocalDev) {
         authHeaders = await authService.getAuthHeaders();
         const currentUser = authService.getCurrentUser();
@@ -217,58 +250,74 @@ export const CreateStudyStep3: React.FC = () => {
       }
 
       // Call the complete save endpoint
-      const response = await fetch(`${import.meta.env.VITE_API_BASE_URL}/api/studies/complete`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'X-User-Email': userEmail,
-          ...authHeaders
-        },
-        body: JSON.stringify(completeStudyData),
-      });
-      
+      const response = await fetch(
+        `${import.meta.env.VITE_API_BASE_URL}/api/studies/complete`,
+        {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'X-User-Email': userEmail,
+            ...authHeaders,
+          },
+          body: JSON.stringify(completeStudyData),
+        }
+      );
+
       if (!response.ok) {
-        const errorData = await response.json().catch(() => ({ detail: 'Unknown error' }));
-        throw new Error(errorData.detail || errorData.message || 'Failed to save study');
+        const errorData = await response
+          .json()
+          .catch(() => ({ detail: 'Unknown error' }));
+        throw new Error(
+          errorData.detail || errorData.message || 'Failed to save study'
+        );
       }
-      
-      const result = await response.json();
-      
+
+      // const _result = await response.json();
+
       // Complete progress
       clearInterval(progressInterval);
       setSaveProgress(100);
-      
+
       // Clear localStorage
       localStorage.removeItem('studyFormStep1');
       localStorage.removeItem('studyFormStep2');
       localStorage.removeItem('studyFormStep3');
-      
+
       // Show success notification
-      showNotification('success', 'Study Saved Successfully!', `Study ${completeStudyData.studyId} has been saved to the Impact Compendium database.`);
-      
+      showNotification(
+        'success',
+        'Study Saved Successfully!',
+        `Study ${completeStudyData.studyId} has been saved to the Impact Compendium database.`
+      );
+
       // Show success modal after a brief delay
       setTimeout(() => {
         hideNotification();
         setShowSuccessModal(true);
-        
+
         // Auto redirect after showing modal (shorter time)
         setTimeout(() => {
           navigate('/studies?sort=id%3Adesc');
         }, 1500);
       }, 1500);
-      
+
       // Keep isSubmitting true until redirect to prevent multiple clicks
       // isSubmitting will be set to false in finally block after redirect
-      
     } catch (error: any) {
       console.error('Failed to save study:', error);
       clearInterval(progressInterval);
       setSaveProgress(0);
-      
+
       // Show user-friendly error notification
-      const errorMessage = error?.message || 'An unexpected error occurred while saving your study.';
-      showNotification('error', 'Save Failed', `${errorMessage} Please check your data and try again.`);
-      
+      const errorMessage =
+        error?.message ||
+        'An unexpected error occurred while saving your study.';
+      showNotification(
+        'error',
+        'Save Failed',
+        `${errorMessage} Please check your data and try again.`
+      );
+
       // Only set isSubmitting to false on error
       setIsSubmitting(false);
     }
@@ -283,25 +332,38 @@ export const CreateStudyStep3: React.FC = () => {
   const handleGoBack = () => {
     // Save current form data before going back
     localStorage.setItem('studyFormStep3', JSON.stringify({ indicators }));
-    const backPath = isEditMode ? `/studies/edit/${id}/step-2` : '/studies/new/step-2';
+    const backPath = isEditMode
+      ? `/studies/edit/${id}/step-2`
+      : '/studies/new/step-2';
     navigate(backPath);
   };
 
   const handleSaveDraft = async () => {
     try {
-      showNotification('info', 'Saving Draft', 'Saving your progress locally...');
-      
+      showNotification(
+        'info',
+        'Saving Draft',
+        'Saving your progress locally...'
+      );
+
       // Save to localStorage for now (simple approach)
       localStorage.setItem('studyFormStep3', JSON.stringify({ indicators }));
-      
+
       // Show success notification
       setTimeout(() => {
-        showNotification('success', 'Draft Saved', 'Your progress has been saved locally and will be available when you return.');
+        showNotification(
+          'success',
+          'Draft Saved',
+          'Your progress has been saved locally and will be available when you return.'
+        );
       }, 500);
-      
     } catch (error: any) {
       console.error('Failed to save draft:', error);
-      showNotification('error', 'Draft Save Failed', 'Failed to save draft. Please try again.');
+      showNotification(
+        'error',
+        'Draft Save Failed',
+        'Failed to save draft. Please try again.'
+      );
     }
   };
 
@@ -314,7 +376,7 @@ export const CreateStudyStep3: React.FC = () => {
     localStorage.removeItem('studyFormStep1');
     localStorage.removeItem('studyFormStep2');
     localStorage.removeItem('studyFormStep3');
-    
+
     // Navigate to dashboard
     navigate('/dashboard');
   };
@@ -323,19 +385,24 @@ export const CreateStudyStep3: React.FC = () => {
     setShowCloseConfirm(false);
   };
 
-  const pageTitle = isEditMode ? "Edit study form" : "Create new study form";
+  const pageTitle = isEditMode ? 'Edit study form' : 'Create new study form';
 
   if (loading || mappingData) {
     return (
       <AppLayout title={pageTitle} showAddButton={false}>
         <div className="space-y-6">
-          <h1 className="text-2xl font-bold text-[var(--ic-color-text)]">{pageTitle}</h1>
+          <h1 className="text-2xl font-bold text-[var(--ic-color-text)]">
+            {pageTitle}
+          </h1>
           <Card>
             <div className="flex items-center justify-center py-12">
               <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
               <span className="ml-3 text-gray-600">
-                {mappingData ? 'Loading study data...' : 
-                 isEditMode ? 'Loading study data...' : 'Loading form...'}
+                {mappingData
+                  ? 'Loading study data...'
+                  : isEditMode
+                    ? 'Loading study data...'
+                    : 'Loading form...'}
               </span>
             </div>
           </Card>
@@ -354,7 +421,7 @@ export const CreateStudyStep3: React.FC = () => {
   }
 
   return (
-    <FormLayout 
+    <FormLayout
       title={pageTitle}
       onBack={handleGoBack}
       onNext={handleFinish}
@@ -384,12 +451,16 @@ export const CreateStudyStep3: React.FC = () => {
               <div className="w-16 h-16 bg-blue-100 rounded-full flex items-center justify-center mx-auto mb-4">
                 <div className="animate-spin rounded-full h-8 w-8 border-3 border-blue-600 border-t-transparent"></div>
               </div>
-              <h3 className="text-xl font-semibold text-gray-900 mb-2">Saving Your Study</h3>
-              <p className="text-gray-600 mb-4">Please wait while we save your study to the database...</p>
-              
+              <h3 className="text-xl font-semibold text-gray-900 mb-2">
+                Saving Your Study
+              </h3>
+              <p className="text-gray-600 mb-4">
+                Please wait while we save your study to the database...
+              </p>
+
               {/* Progress Bar */}
               <div className="w-full bg-gray-200 rounded-full h-2 mb-2">
-                <div 
+                <div
                   className="bg-blue-600 h-2 rounded-full transition-all duration-300 ease-out"
                   style={{ width: `${saveProgress}%` }}
                 ></div>
@@ -401,10 +472,12 @@ export const CreateStudyStep3: React.FC = () => {
       )}
 
       <div className="space-y-6">
-        <h1 className="text-2xl font-bold text-[var(--ic-color-text)]">{pageTitle}</h1>
+        <h1 className="text-2xl font-bold text-[var(--ic-color-text)]">
+          {pageTitle}
+        </h1>
 
         {/* Study Context Header */}
-        <StudyContextHeader 
+        <StudyContextHeader
           studyId={step1Data.studyId}
           title={step1Data.title}
           currentStep={3}
@@ -414,10 +487,23 @@ export const CreateStudyStep3: React.FC = () => {
         <div className="space-y-6">
           {/* Add Indicator Button */}
           <div className="flex justify-end">
-            <Button onClick={addIndicator} className="flex items-center space-x-2">
+            <Button
+              onClick={addIndicator}
+              className="flex items-center space-x-2"
+            >
               <span>Add indicator</span>
-              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
+              <svg
+                className="w-4 h-4"
+                fill="none"
+                stroke="currentColor"
+                viewBox="0 0 24 24"
+              >
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  strokeWidth={2}
+                  d="M12 4v16m8-8H4"
+                />
               </svg>
             </Button>
           </div>
@@ -427,19 +513,46 @@ export const CreateStudyStep3: React.FC = () => {
             <Card className="text-center py-12">
               <div className="flex flex-col items-center space-y-4">
                 <div className="w-16 h-16 bg-gray-100 rounded-full flex items-center justify-center">
-                  <svg className="w-8 h-8 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />
+                  <svg
+                    className="w-8 h-8 text-gray-400"
+                    fill="none"
+                    stroke="currentColor"
+                    viewBox="0 0 24 24"
+                  >
+                    <path
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      strokeWidth={2}
+                      d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"
+                    />
                   </svg>
                 </div>
                 <div className="space-y-2">
-                  <h3 className="text-lg font-medium text-gray-900">No indicators added yet</h3>
+                  <h3 className="text-lg font-medium text-gray-900">
+                    No indicators added yet
+                  </h3>
                   <p className="text-gray-500 max-w-md">
-                    Add indicators to measure the impact and results of your study. Click the "Add indicator" button above to get started.
+                    Add indicators to measure the impact and results of your
+                    study. Click the "Add indicator" button above to get
+                    started.
                   </p>
                 </div>
-                <Button onClick={addIndicator} className="flex items-center space-x-2 mt-4">
-                  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
+                <Button
+                  onClick={addIndicator}
+                  className="flex items-center space-x-2 mt-4"
+                >
+                  <svg
+                    className="w-4 h-4"
+                    fill="none"
+                    stroke="currentColor"
+                    viewBox="0 0 24 24"
+                  >
+                    <path
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      strokeWidth={2}
+                      d="M12 4v16m8-8H4"
+                    />
                   </svg>
                   <span>Add your first indicator</span>
                 </Button>
@@ -448,64 +561,102 @@ export const CreateStudyStep3: React.FC = () => {
           ) : (
             /* Indicator Cards */
             indicators.map((indicator, index) => (
-            <Card key={indicator.id} className="relative">
-              <div className="space-y-4">
-                <div className="flex items-center justify-between">
-                  <h3 className="text-lg font-semibold text-green-600">
-                    Indicator #{index + 1}
-                  </h3>
-                  
-                  {indicators.length > 1 && (
-                    <div className="flex items-center space-x-2">
-                      <Button
-                        variant="ghost"
-                        size="sm"
-                        onClick={() => duplicateIndicator(indicator.id)}
-                        className="text-gray-500 hover:text-gray-700"
-                      >
-                        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z" />
-                        </svg>
-                      </Button>
-                      <Button
-                        variant="ghost"
-                        size="sm"
-                        onClick={() => removeIndicator(indicator.id)}
-                        className="text-red-500 hover:text-red-700"
-                      >
-                        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
-                        </svg>
-                      </Button>
-                    </div>
-                  )}
-                </div>
+              <Card key={indicator.id} className="relative">
+                <div className="space-y-4">
+                  <div className="flex items-center justify-between">
+                    <h3 className="text-lg font-semibold text-green-600">
+                      Indicator #{index + 1}
+                    </h3>
 
-                <div className="grid grid-cols-2 gap-4">
+                    {indicators.length > 1 && (
+                      <div className="flex items-center space-x-2">
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          onClick={() => duplicateIndicator(indicator.id)}
+                          className="text-gray-500 hover:text-gray-700"
+                        >
+                          <svg
+                            className="w-4 h-4"
+                            fill="none"
+                            stroke="currentColor"
+                            viewBox="0 0 24 24"
+                          >
+                            <path
+                              strokeLinecap="round"
+                              strokeLinejoin="round"
+                              strokeWidth={2}
+                              d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z"
+                            />
+                          </svg>
+                        </Button>
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          onClick={() => removeIndicator(indicator.id)}
+                          className="text-red-500 hover:text-red-700"
+                        >
+                          <svg
+                            className="w-4 h-4"
+                            fill="none"
+                            stroke="currentColor"
+                            viewBox="0 0 24 24"
+                          >
+                            <path
+                              strokeLinecap="round"
+                              strokeLinejoin="round"
+                              strokeWidth={2}
+                              d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"
+                            />
+                          </svg>
+                        </Button>
+                      </div>
+                    )}
+                  </div>
+
+                  <div className="grid grid-cols-2 gap-4">
+                    <Input
+                      label="Indicator measured"
+                      placeholder="Enter value"
+                      value={indicator.indicatorMeasured}
+                      onChange={e =>
+                        handleIndicatorChange(
+                          indicator.id,
+                          'indicatorMeasured',
+                          e.target.value
+                        )
+                      }
+                    />
+
+                    <Input
+                      label="Unit of measure"
+                      placeholder="Enter value"
+                      value={indicator.unitOfMeasure}
+                      onChange={e =>
+                        handleIndicatorChange(
+                          indicator.id,
+                          'unitOfMeasure',
+                          e.target.value
+                        )
+                      }
+                    />
+                  </div>
+
                   <Input
-                    label="Indicator measured"
+                    label="Result reported"
                     placeholder="Enter value"
-                    value={indicator.indicatorMeasured}
-                    onChange={(e) => handleIndicatorChange(indicator.id, 'indicatorMeasured', e.target.value)}
-                  />
-                  
-                  <Input
-                    label="Unit of measure"
-                    placeholder="Enter value"
-                    value={indicator.unitOfMeasure}
-                    onChange={(e) => handleIndicatorChange(indicator.id, 'unitOfMeasure', e.target.value)}
+                    value={indicator.resultReported}
+                    onChange={e =>
+                      handleIndicatorChange(
+                        indicator.id,
+                        'resultReported',
+                        e.target.value
+                      )
+                    }
                   />
                 </div>
-
-                <Input
-                  label="Result reported"
-                  placeholder="Enter value"
-                  value={indicator.resultReported}
-                  onChange={(e) => handleIndicatorChange(indicator.id, 'resultReported', e.target.value)}
-                />
-              </div>
-            </Card>
-          ))
+              </Card>
+            ))
           )}
         </div>
       </div>

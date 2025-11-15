@@ -16,14 +16,18 @@ interface EditUserModalProps {
   onSubmit: (username: string, enabled: boolean) => Promise<void>;
 }
 
-export const EditUserModal: React.FC<EditUserModalProps> = ({ user, onClose, onSubmit }) => {
+export const EditUserModal: React.FC<EditUserModalProps> = ({
+  user,
+  onClose,
+  onSubmit,
+}) => {
   const [enabled, setEnabled] = useState(user.enabled);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    
+
     try {
       setLoading(true);
       setError(null);
@@ -66,7 +70,9 @@ export const EditUserModal: React.FC<EditUserModalProps> = ({ user, onClose, onS
               disabled
               className="w-full px-3 py-2 border border-gray-300 rounded-md bg-gray-50 text-gray-500"
             />
-            <p className="text-xs text-gray-500 mt-1">Email cannot be changed</p>
+            <p className="text-xs text-gray-500 mt-1">
+              Email cannot be changed
+            </p>
           </div>
 
           <div>
@@ -86,21 +92,37 @@ export const EditUserModal: React.FC<EditUserModalProps> = ({ user, onClose, onS
               type="checkbox"
               id="enabled"
               checked={enabled}
-              onChange={(e) => setEnabled(e.target.checked)}
+              onChange={e => setEnabled(e.target.checked)}
               className="h-4 w-4 text-[var(--ic-color-primary)] focus:ring-[var(--ic-color-primary)] border-gray-300 rounded"
             />
-            <label htmlFor="enabled" className="ml-2 block text-sm text-gray-700">
+            <label
+              htmlFor="enabled"
+              className="ml-2 block text-sm text-gray-700"
+            >
               User account is enabled
             </label>
           </div>
 
           <div className="bg-gray-50 p-3 rounded-md">
-            <h4 className="text-sm font-medium text-gray-700 mb-2">User Information</h4>
+            <h4 className="text-sm font-medium text-gray-700 mb-2">
+              User Information
+            </h4>
             <div className="space-y-1 text-xs text-gray-600">
-              <p><strong>Status:</strong> {user.status}</p>
-              <p><strong>Created:</strong> {new Date(user.created_date).toLocaleDateString()}</p>
-              <p><strong>Last Modified:</strong> {new Date(user.last_modified_date).toLocaleDateString()}</p>
-              <p><strong>MFA:</strong> {user.mfa_enabled ? 'Enabled' : 'Disabled'}</p>
+              <p>
+                <strong>Status:</strong> {user.status}
+              </p>
+              <p>
+                <strong>Created:</strong>{' '}
+                {new Date(user.created_date).toLocaleDateString()}
+              </p>
+              <p>
+                <strong>Last Modified:</strong>{' '}
+                {new Date(user.last_modified_date).toLocaleDateString()}
+              </p>
+              <p>
+                <strong>MFA:</strong>{' '}
+                {user.mfa_enabled ? 'Enabled' : 'Disabled'}
+              </p>
             </div>
           </div>
 

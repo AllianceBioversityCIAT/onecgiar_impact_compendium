@@ -43,6 +43,9 @@ import './aws-config';
 // Authentication Context - Provides auth state throughout the app
 import { AuthProvider } from './contexts/AuthContext';
 
+// Environment Banner - Shows testing environment indicator
+import { EnvironmentBanner } from './components/ui/EnvironmentBanner';
+
 // Route Protection Component
 import { ProtectedRoute } from './components/ProtectedRoute';
 
@@ -71,6 +74,7 @@ import { CreateStudyStep3 } from './pages/CreateStudy/Step3';
 function App(): JSX.Element {
   return (
     <Router future={{ v7_startTransition: true, v7_relativeSplatPath: true }}>
+      <EnvironmentBanner />
       <Toaster
         position="top-right"
         toastOptions={{

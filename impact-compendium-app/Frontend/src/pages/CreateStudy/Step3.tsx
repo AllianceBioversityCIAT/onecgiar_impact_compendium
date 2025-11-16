@@ -5,7 +5,7 @@ import { AppLayout } from '../../layouts/AppLayout';
 import { StudyContextHeader } from '../../components/ui/StudyContextHeader';
 import { Input } from '../../components/ui/Input';
 import { Button } from '../../components/ui/Button';
-import { Card } from '../../components/ui/Card';
+import { Card } from '../../components/ui/card';
 import { SuccessModal } from '../../components/ui/SuccessModal';
 import { ConfirmationModal } from '../../components/ui/ConfirmationModal';
 import { Notification } from '../../components/ui/Notification';

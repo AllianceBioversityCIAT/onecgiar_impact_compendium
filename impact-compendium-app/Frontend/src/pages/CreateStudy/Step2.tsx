@@ -4,7 +4,7 @@ import { FormLayout } from '../../layouts/FormLayout';
 import { StudyContextHeader } from '../../components/ui/StudyContextHeader';
 import { Select } from '../../components/ui/Select';
 import { MultiSelect } from '../../components/ui/MultiSelect';
-import { Card } from '../../components/ui/Card';
+import { Card } from '../../components/ui/card';
 import { ConfirmationModal } from '../../components/ui/ConfirmationModal';
 import { getReferenceData } from '../../services/api';
 

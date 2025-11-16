@@ -5,7 +5,7 @@ import { AppLayout } from '../../layouts/AppLayout';
 import { Input } from '../../components/ui/Input';
 import { Select } from '../../components/ui/Select';
 import { Textarea } from '../../components/ui/Textarea';
-import { Card } from '../../components/ui/Card';
+import { Card } from '../../components/ui/card';
 import { SearchableSelect } from '../../components/ui/SearchableSelect';
 import { ConfirmationModal } from '../../components/ui/ConfirmationModal';
 import { getReferenceData } from '../../services/api';

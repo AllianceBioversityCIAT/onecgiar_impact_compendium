@@ -5,7 +5,7 @@ export { Textarea } from './Textarea';
 export { DatePicker } from './DatePicker';
 export { Badge } from './Badge';
 export { Chip } from './Chip';
-export { Card } from './Card';
+export { Card } from './card';
 export { Table } from './Table';
 export { ProgressStepper } from './ProgressStepper';
 export { HeaderBar } from './HeaderBar';

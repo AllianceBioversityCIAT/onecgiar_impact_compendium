@@ -38,11 +38,11 @@ export const Login: React.FC = () => {
     setError('');
 
     try {
-      await login(email, password);
+      await login(email.toLowerCase(), password);
 
       // Handle remember me functionality
       if (rememberMe) {
-        localStorage.setItem('rememberedEmail', email);
+        localStorage.setItem('rememberedEmail', email.toLowerCase());
       } else {
         localStorage.removeItem('rememberedEmail');
       }

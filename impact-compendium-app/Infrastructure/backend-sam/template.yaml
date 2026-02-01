@@ -32,10 +32,23 @@ Resources:
       StageName: !Ref Environment
       Name: !Sub "${ProjectName}-backend-api-${Environment}"
       Description: Impact Compendium FastAPI Backend
+      # CORS is handled by FastAPI/Lambda - no mock integration needed
+      GatewayResponses:
+        DEFAULT_4XX:
+          ResponseParameters:
+            Headers:
+              Access-Control-Allow-Origin: "'*'"
+              Access-Control-Allow-Headers: "'*'"
+              Access-Control-Allow-Methods: "'GET,POST,PUT,DELETE,OPTIONS'"
+        DEFAULT_5XX:
+          ResponseParameters:
+            Headers:
+              Access-Control-Allow-Origin: "'*'"
+              Access-Control-Allow-Headers: "'*'"
+              Access-Control-Allow-Methods: "'GET,POST,PUT,DELETE,OPTIONS'"
       BinaryMediaTypes:
         - "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
         - "application/octet-stream"
-        - "*/*"
 
   ImpactCompendiumFunction:
     Type: AWS::Serverless::Function
@@ -44,12 +57,7 @@ Resources:
       CodeUri: ../../Backend/
       Handler: main.handler
       Description: Impact Compendium FastAPI Backend
-      VpcConfig:
-        SecurityGroupIds:
-          - sg-065091b3c3dee0244  # Lambda security group (existing)
-        SubnetIds:
-          - subnet-066e86ea668685ccd  # Private subnet 1 (existing)
-          - subnet-093ac733fb9254274  # Private subnet 2 (existing)
+      # Lambda runs outside VPC - connects to publicly accessible RDS
       Environment:
         Variables:
           STAGE: !Ref Environment
@@ -65,7 +73,6 @@ Resources:
             Fn::ImportValue: !Sub "${ProjectName}-${Environment}-cognito-client-id"
           COGNITO_REGION: !Ref AWS::Region
       Policies:
-        - VPCAccessPolicy: {}  # Required for VPC Lambda functions
         - Version: '2012-10-17'
           Statement:
             - Effect: Allow

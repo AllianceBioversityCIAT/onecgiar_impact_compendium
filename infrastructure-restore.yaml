@@ -77,7 +77,51 @@ Resources:
         - Key: Environment
           Value: !Ref Environment
 
-  # Route Tables (Public - routes to Internet Gateway)
+  # Public Subnets for NAT Gateway
+  PublicSubnet1:
+    Type: AWS::EC2::Subnet
+    Properties:
+      VpcId: !Ref ImpactVPC
+      CidrBlock: 10.0.10.0/24
+      AvailabilityZone: !Select [0, !GetAZs ""]
+      MapPublicIpOnLaunch: true
+      Tags:
+        - Key: Name
+          Value: !Sub "${ProjectName}-public-1-${Environment}"
+        - Key: Project
+          Value: !Ref ProjectName
+        - Key: Environment
+          Value: !Ref Environment
+
+  # NAT Gateway
+  NATGateway:
+    Type: AWS::EC2::NatGateway
+    Properties:
+      AllocationId: !GetAtt EIPForNAT.AllocationId
+      SubnetId: !Ref PublicSubnet1
+      Tags:
+        - Key: Name
+          Value: !Sub "${ProjectName}-nat-${Environment}"
+        - Key: Project
+          Value: !Ref ProjectName
+        - Key: Environment
+          Value: !Ref Environment
+
+  # Elastic IP for NAT Gateway
+  EIPForNAT:
+    Type: AWS::EC2::EIP
+    DependsOn: AttachGateway
+    Properties:
+      Domain: vpc
+      Tags:
+        - Key: Name
+          Value: !Sub "${ProjectName}-eip-${Environment}"
+        - Key: Project
+          Value: !Ref ProjectName
+        - Key: Environment
+          Value: !Ref Environment
+
+  # Route Tables
   PublicRouteTable:
     Type: AWS::EC2::RouteTable
     Properties:
@@ -85,6 +129,18 @@ Resources:
       Tags:
         - Key: Name
           Value: !Sub "${ProjectName}-public-rt-${Environment}"
+        - Key: Project
+          Value: !Ref ProjectName
+        - Key: Environment
+          Value: !Ref Environment
+
+  PrivateRouteTable:
+    Type: AWS::EC2::RouteTable
+    Properties:
+      VpcId: !Ref ImpactVPC
+      Tags:
+        - Key: Name
+          Value: !Sub "${ProjectName}-private-rt-${Environment}"
         - Key: Project
           Value: !Ref ProjectName
         - Key: Environment
@@ -99,37 +155,80 @@ Resources:
       DestinationCidrBlock: 0.0.0.0/0
       GatewayId: !Ref InternetGateway
 
-  # Route Table Associations - Subnets route through Internet Gateway
-  Subnet1RouteTableAssociation:
+  PrivateRoute:
+    Type: AWS::EC2::Route
+    Properties:
+      RouteTableId: !Ref PrivateRouteTable
+      DestinationCidrBlock: 0.0.0.0/0
+      NatGatewayId: !Ref NATGateway
+
+  # Route Table Associations
+  PublicSubnetRouteTableAssociation:
+    Type: AWS::EC2::SubnetRouteTableAssociation
+    Properties:
+      SubnetId: !Ref PublicSubnet1
+      RouteTableId: !Ref PublicRouteTable
+
+  PrivateSubnetRouteTableAssociation1:
     Type: AWS::EC2::SubnetRouteTableAssociation
     Properties:
       SubnetId: !Ref PrivateSubnet1
-      RouteTableId: !Ref PublicRouteTable
+      RouteTableId: !Ref PrivateRouteTable
 
-  Subnet2RouteTableAssociation:
+  PrivateSubnetRouteTableAssociation2:
     Type: AWS::EC2::SubnetRouteTableAssociation
     Properties:
       SubnetId: !Ref PrivateSubnet2
-      RouteTableId: !Ref PublicRouteTable
+      RouteTableId: !Ref PrivateRouteTable
 
   # Security Groups
   DatabaseSecurityGroup:
     Type: AWS::EC2::SecurityGroup
     Properties:
       GroupName: !Sub "${ProjectName}-db-sg-${Environment}"
-      GroupDescription: Security group for RDS database - allows MySQL access from Lambda (AWS IPs)
+      GroupDescription: Security group for RDS database
       VpcId: !Ref ImpactVPC
-      SecurityGroupIngress:
-        - IpProtocol: tcp
-          FromPort: 3306
-          ToPort: 3306
-          CidrIp: 0.0.0.0/0
-          Description: Allow MySQL access from Lambda functions (running outside VPC on AWS IPs)
       Tags:
         - Key: Project
           Value: !Ref ProjectName
         - Key: Environment
           Value: !Ref Environment
+
+  LambdaSecurityGroup:
+    Type: AWS::EC2::SecurityGroup
+    Properties:
+      GroupName: !Sub "${ProjectName}-lambda-sg-${Environment}"
+      GroupDescription: Security group for Lambda functions
+      VpcId: !Ref ImpactVPC
+      SecurityGroupEgress:
+        - IpProtocol: tcp
+          FromPort: 443
+          ToPort: 443
+          CidrIp: 0.0.0.0/0
+      Tags:
+        - Key: Project
+          Value: !Ref ProjectName
+        - Key: Environment
+          Value: !Ref Environment
+
+  # Security Group Rules
+  DatabaseSecurityGroupIngress:
+    Type: AWS::EC2::SecurityGroupIngress
+    Properties:
+      GroupId: !Ref DatabaseSecurityGroup
+      IpProtocol: tcp
+      FromPort: 3306
+      ToPort: 3306
+      SourceSecurityGroupId: !Ref LambdaSecurityGroup
+
+  LambdaSecurityGroupEgress:
+    Type: AWS::EC2::SecurityGroupEgress
+    Properties:
+      GroupId: !Ref LambdaSecurityGroup
+      IpProtocol: tcp
+      FromPort: 3306
+      ToPort: 3306
+      DestinationSecurityGroupId: !Ref DatabaseSecurityGroup
 
   # DB Subnet Group
   DBSubnetGroup:
@@ -181,7 +280,6 @@ Resources:
       VPCSecurityGroups:
         - !Ref DatabaseSecurityGroup
       DBSubnetGroupName: !Ref DBSubnetGroup
-      PubliclyAccessible: true
       BackupRetentionPeriod: 1
       MultiAZ: false
       StorageEncrypted: false
@@ -217,8 +315,6 @@ Resources:
         - email
       UsernameAttributes:
         - email
-      UsernameConfiguration:
-        CaseSensitive: false
       EmailConfiguration:
         EmailSendingAccount: COGNITO_DEFAULT
       VerificationMessageTemplate:
@@ -259,7 +355,7 @@ Resources:
                 
                 <div style="text-align: center;">
                   <p style="color: #999; font-size: 12px; margin: 5px 0;">
-                    © 2025 CGIAR System Organization
+                    ? 2025 CGIAR System Organization
                   </p>
                   <p style="color: #999; font-size: 12px; margin: 5px 0;">
                     Transforming food, land, and water systems in a climate crisis
@@ -310,7 +406,7 @@ Resources:
                   
                   <div style="text-align: center;">
                     <p style="color: #999; font-size: 12px; margin: 5px 0;">
-                      © {current_year} CGIAR System Organization
+                      ? {current_year} CGIAR System Organization
                     </p>
                     <p style="color: #999; font-size: 12px; margin: 5px 0;">
                       Transforming food, land, and water systems in a climate crisis
@@ -332,7 +428,6 @@ Resources:
       UserPoolId: !Ref ImpactUserPool
       GenerateSecret: false
       ExplicitAuthFlows:
-        - ALLOW_USER_SRP_AUTH
         - ALLOW_ADMIN_USER_PASSWORD_AUTH
         - ALLOW_USER_PASSWORD_AUTH
         - ALLOW_REFRESH_TOKEN_AUTH
@@ -358,29 +453,11 @@ Resources:
         - Key: Environment
           Value: !Ref Environment
 
-  FrontendBucketPolicy:
-    Type: AWS::S3::BucketPolicy
-    Properties:
-      Bucket: !Ref FrontendBucket
-      PolicyDocument:
-        Statement:
-          - Sid: PublicReadGetObject
-            Effect: Allow
-            Principal: '*'
-            Action: 's3:GetObject'
-            Resource: !Sub '${FrontendBucket.Arn}/*'
-
   # CloudFront Distribution
   ImpactCloudFrontDistribution:
     Type: AWS::CloudFront::Distribution
     Properties:
       DistributionConfig:
-        Aliases:
-          - !Ref DomainName
-        ViewerCertificate:
-          AcmCertificateArn: arn:aws:acm:us-east-1:569113802249:certificate/c8eba900-5bfe-40e6-af92-779a44b53a70
-          SslSupportMethod: sni-only
-          MinimumProtocolVersion: TLSv1.2_2021
         Origins:
           - Id: S3Origin
             DomainName: !GetAtt FrontendBucket.RegionalDomainName
@@ -392,14 +469,9 @@ Resources:
           CachePolicyId: 658327ea-f89d-4fab-a63d-7e88639e58f6
         DefaultRootObject: index.html
         CustomErrorResponses:
-          - ErrorCode: 403
-            ResponseCode: "200"
-            ResponsePagePath: /index.html
-            ErrorCachingMinTTL: 300
           - ErrorCode: 404
-            ResponseCode: "200"
+            ResponseCode: 200
             ResponsePagePath: /index.html
-            ErrorCachingMinTTL: 300
         Enabled: true
         PriceClass: PriceClass_100
       Tags:
@@ -415,17 +487,23 @@ Outputs:
     Export:
       Name: !Sub "${ProjectName}-${Environment}-vpc-id"
 
-  Subnet1Id:
-    Description: Subnet 1 ID
+  LambdaSecurityGroupId:
+    Description: Lambda Security Group ID
+    Value: !Ref LambdaSecurityGroup
+    Export:
+      Name: !Sub "${ProjectName}-${Environment}-lambda-sg-id"
+
+  PrivateSubnet1Id:
+    Description: Private Subnet 1 ID
     Value: !Ref PrivateSubnet1
     Export:
-      Name: !Sub "${ProjectName}-${Environment}-subnet-1"
+      Name: !Sub "${ProjectName}-${Environment}-private-subnet-1"
 
-  Subnet2Id:
-    Description: Subnet 2 ID
+  PrivateSubnet2Id:
+    Description: Private Subnet 2 ID
     Value: !Ref PrivateSubnet2
     Export:
-      Name: !Sub "${ProjectName}-${Environment}-subnet-2"
+      Name: !Sub "${ProjectName}-${Environment}-private-subnet-2"
 
   DatabaseEndpoint:
     Description: RDS database endpoint

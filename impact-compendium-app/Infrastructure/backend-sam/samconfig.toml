@@ -62,9 +62,5 @@ region = "us-east-1"
 profile = "IBD-DEV"
 parameter_overrides = [
     "Environment=prod",
-    "ProjectName=impact-compendium",
-    "VpcId=vpc-05c6a7862fd875623",
-    "SecurityGroupId=sg-065091b3c3dee0244",
-    "SubnetId1=subnet-093ac733fb9254274",
-    "SubnetId2=subnet-066e86ea668685ccd"
+    "ProjectName=impact-compendium"
 ]

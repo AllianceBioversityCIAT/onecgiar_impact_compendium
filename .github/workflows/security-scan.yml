@@ -32,53 +32,52 @@ jobs:
         with:
           node-version: '20'
 
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.9'
+
       - name: Install Snyk CLI
         run: npm install -g snyk
 
-      - name: Install server dependencies
+      - name: Install backend dependencies
         working-directory: ./impact-compendium-app/Backend
         run: |
-          # Install dependencies for server project
-          if [ -f package-lock.json ]; then
-            npm ci
-          else
-            npm install
-          fi
+          pip install -r requirements.txt
 
-      - name: Install client dependencies
-        working-directory: .impact-compendium-app/Frontend
+      - name: Install frontend dependencies
+        working-directory: ./impact-compendium-app/Frontend
         run: |
-          # Install dependencies for client project
           if [ -f package-lock.json ]; then
             npm ci
           else
             npm install
           fi
 
-      - name: Run Snyk test - Server (JSON report)
-        id: snyk-server-json
+      - name: Run Snyk test - Backend (JSON report)
+        id: snyk-backend-json
         working-directory: ./impact-compendium-app/Backend
         env:
           SNYK_TOKEN: ${{ secrets.SNYK_TOKEN }}
         run: |
-          OUTPUT_FILE="${GITHUB_WORKSPACE}/snyk-server.json"
-          snyk test --json-file-output="${OUTPUT_FILE}" --file=package.json || true
+          OUTPUT_FILE="${GITHUB_WORKSPACE}/snyk-backend.json"
+          snyk test --json-file-output="${OUTPUT_FILE}" --file=requirements.txt || true
           
           if [ -f "${OUTPUT_FILE}" ]; then
             echo "report_exists=true" >> $GITHUB_OUTPUT
-            echo "Snyk server scan completed"
+            echo "Snyk backend scan completed"
           else
             echo "report_exists=false" >> $GITHUB_OUTPUT
           fi
 
-      - name: Run Snyk test - Server (SARIF report)
-        id: snyk-server-sarif
+      - name: Run Snyk test - Backend (SARIF report)
+        id: snyk-backend-sarif
         working-directory: ./impact-compendium-app/Backend
         env:
           SNYK_TOKEN: ${{ secrets.SNYK_TOKEN }}
         run: |
-          OUTPUT_FILE="${GITHUB_WORKSPACE}/snyk-server.sarif"
-          snyk test --sarif-file-output="${OUTPUT_FILE}" --file=package.json || true
+          OUTPUT_FILE="${GITHUB_WORKSPACE}/snyk-backend.sarif"
+          snyk test --sarif-file-output="${OUTPUT_FILE}" --file=requirements.txt || true
           
           if [ -f "${OUTPUT_FILE}" ]; then
             echo "sarif_exists=true" >> $GITHUB_OUTPUT
@@ -86,29 +85,29 @@ jobs:
             echo "sarif_exists=false" >> $GITHUB_OUTPUT
           fi
 
-      - name: Run Snyk test - Client (JSON report)
-        id: snyk-client-json
-        working-directory: .impact-compendium-app/Frontend
+      - name: Run Snyk test - Frontend (JSON report)
+        id: snyk-frontend-json
+        working-directory: ./impact-compendium-app/Frontend
         env:
           SNYK_TOKEN: ${{ secrets.SNYK_TOKEN }}
         run: |
-          OUTPUT_FILE="${GITHUB_WORKSPACE}/snyk-client.json"
+          OUTPUT_FILE="${GITHUB_WORKSPACE}/snyk-frontend.json"
           snyk test --json-file-output="${OUTPUT_FILE}" --file=package.json || true
           
           if [ -f "${OUTPUT_FILE}" ]; then
             echo "report_exists=true" >> $GITHUB_OUTPUT
-            echo "Snyk client scan completed"
+            echo "Snyk frontend scan completed"
           else
             echo "report_exists=false" >> $GITHUB_OUTPUT
           fi
 
-      - name: Run Snyk test - Client (SARIF report)
-        id: snyk-client-sarif
-        working-directory: .impact-compendium-app/Frontend
+      - name: Run Snyk test - Frontend (SARIF report)
+        id: snyk-frontend-sarif
+        working-directory: ./impact-compendium-app/Frontend
         env:
           SNYK_TOKEN: ${{ secrets.SNYK_TOKEN }}
         run: |
-          OUTPUT_FILE="${GITHUB_WORKSPACE}/snyk-client.sarif"
+          OUTPUT_FILE="${GITHUB_WORKSPACE}/snyk-frontend.sarif"
           snyk test --sarif-file-output="${OUTPUT_FILE}" --file=package.json || true
           
           if [ -f "${OUTPUT_FILE}" ]; then
@@ -147,10 +146,10 @@ jobs:
           S3_BASE_PREFIX="${S3_PREFIX}/${REPO_NAME}/${BRANCH_NAME_SANITIZED}/${TIMESTAMP}-${RUN_ID}"
           
           UPLOADED_FILES=""
-          echo "server_json_key=" >> $GITHUB_OUTPUT
-          echo "server_sarif_key=" >> $GITHUB_OUTPUT
-          echo "client_json_key=" >> $GITHUB_OUTPUT
-          echo "client_sarif_key=" >> $GITHUB_OUTPUT
+          echo "backend_json_key=" >> $GITHUB_OUTPUT
+          echo "backend_sarif_key=" >> $GITHUB_OUTPUT
+          echo "frontend_json_key=" >> $GITHUB_OUTPUT
+          echo "frontend_sarif_key=" >> $GITHUB_OUTPUT
           
           upload_file() {
             LOCAL_FILE="$1"
@@ -168,39 +167,39 @@ jobs:
             fi
           }
           
-          SERVER_JSON_FILE="${GITHUB_WORKSPACE}/snyk-server.json"
-          if [ -f "${SERVER_JSON_FILE}" ]; then
-            SERVER_JSON_KEY="${S3_BASE_PREFIX}/server/snyk-server.json"
-            if upload_file "${SERVER_JSON_FILE}" "${SERVER_JSON_KEY}" "Server JSON"; then
-              echo "server_json_key=${SERVER_JSON_KEY}" >> $GITHUB_OUTPUT
-              UPLOADED_FILES="${UPLOADED_FILES}Server JSON, "
+          BACKEND_JSON_FILE="${GITHUB_WORKSPACE}/snyk-backend.json"
+          if [ -f "${BACKEND_JSON_FILE}" ]; then
+            BACKEND_JSON_KEY="${S3_BASE_PREFIX}/backend/snyk-backend.json"
+            if upload_file "${BACKEND_JSON_FILE}" "${BACKEND_JSON_KEY}" "Backend JSON"; then
+              echo "backend_json_key=${BACKEND_JSON_KEY}" >> $GITHUB_OUTPUT
+              UPLOADED_FILES="${UPLOADED_FILES}Backend JSON, "
             fi
           fi
           
-          SERVER_SARIF_FILE="${GITHUB_WORKSPACE}/snyk-server.sarif"
-          if [ -f "${SERVER_SARIF_FILE}" ]; then
-            SERVER_SARIF_KEY="${S3_BASE_PREFIX}/server/snyk-server.sarif"
-            if upload_file "${SERVER_SARIF_FILE}" "${SERVER_SARIF_KEY}" "Server SARIF"; then
-              echo "server_sarif_key=${SERVER_SARIF_KEY}" >> $GITHUB_OUTPUT
-              UPLOADED_FILES="${UPLOADED_FILES}Server SARIF, "
+          BACKEND_SARIF_FILE="${GITHUB_WORKSPACE}/snyk-backend.sarif"
+          if [ -f "${BACKEND_SARIF_FILE}" ]; then
+            BACKEND_SARIF_KEY="${S3_BASE_PREFIX}/backend/snyk-backend.sarif"
+            if upload_file "${BACKEND_SARIF_FILE}" "${BACKEND_SARIF_KEY}" "Backend SARIF"; then
+              echo "backend_sarif_key=${BACKEND_SARIF_KEY}" >> $GITHUB_OUTPUT
+              UPLOADED_FILES="${UPLOADED_FILES}Backend SARIF, "
             fi
           fi
           
-          CLIENT_JSON_FILE="${GITHUB_WORKSPACE}/snyk-client.json"
-          if [ -f "${CLIENT_JSON_FILE}" ]; then
-            CLIENT_JSON_KEY="${S3_BASE_PREFIX}/client/snyk-client.json"
-            if upload_file "${CLIENT_JSON_FILE}" "${CLIENT_JSON_KEY}" "Client JSON"; then
-              echo "client_json_key=${CLIENT_JSON_KEY}" >> $GITHUB_OUTPUT
-              UPLOADED_FILES="${UPLOADED_FILES}Client JSON, "
+          FRONTEND_JSON_FILE="${GITHUB_WORKSPACE}/snyk-frontend.json"
+          if [ -f "${FRONTEND_JSON_FILE}" ]; then
+            FRONTEND_JSON_KEY="${S3_BASE_PREFIX}/frontend/snyk-frontend.json"
+            if upload_file "${FRONTEND_JSON_FILE}" "${FRONTEND_JSON_KEY}" "Frontend JSON"; then
+              echo "frontend_json_key=${FRONTEND_JSON_KEY}" >> $GITHUB_OUTPUT
+              UPLOADED_FILES="${UPLOADED_FILES}Frontend JSON, "
             fi
           fi
           
-          CLIENT_SARIF_FILE="${GITHUB_WORKSPACE}/snyk-client.sarif"
-          if [ -f "${CLIENT_SARIF_FILE}" ]; then
-            CLIENT_SARIF_KEY="${S3_BASE_PREFIX}/client/snyk-client.sarif"
-            if upload_file "${CLIENT_SARIF_FILE}" "${CLIENT_SARIF_KEY}" "Client SARIF"; then
-              echo "client_sarif_key=${CLIENT_SARIF_KEY}" >> $GITHUB_OUTPUT
-              UPLOADED_FILES="${UPLOADED_FILES}Client SARIF, "
+          FRONTEND_SARIF_FILE="${GITHUB_WORKSPACE}/snyk-frontend.sarif"
+          if [ -f "${FRONTEND_SARIF_FILE}" ]; then
+            FRONTEND_SARIF_KEY="${S3_BASE_PREFIX}/frontend/snyk-frontend.sarif"
+            if upload_file "${FRONTEND_SARIF_FILE}" "${FRONTEND_SARIF_KEY}" "Frontend SARIF"; then
+              echo "frontend_sarif_key=${FRONTEND_SARIF_KEY}" >> $GITHUB_OUTPUT
+              UPLOADED_FILES="${UPLOADED_FILES}Frontend SARIF, "
             fi
           fi
           
@@ -216,7 +215,7 @@ jobs:
 
       - name: Generate pre-signed S3 URLs
         id: presign-urls
-        if: always() && !cancelled() && (steps.upload-s3.outputs.server_json_key != '' || steps.upload-s3.outputs.client_json_key != '')
+        if: always() && !cancelled() && (steps.upload-s3.outputs.backend_json_key != '' || steps.upload-s3.outputs.frontend_json_key != '')
         env:
           AWS_SECURITY_ACCESS_KEY_ID: ${{ secrets.AWS_SECURITY_ACCESS_KEY_ID }}
           AWS_SECURITY_SECRET_ACCESS: ${{ secrets.AWS_SECURITY_SECRET_ACCESS }}
@@ -225,32 +224,32 @@ jobs:
           EXPIRY_SECONDS=604800
           S3_BUCKET="${{ steps.upload-s3.outputs.s3_bucket }}"
           
-          if [ -n "${{ steps.upload-s3.outputs.server_json_key }}" ]; then
-            SERVER_JSON_URL=$(aws s3 presign "s3://${S3_BUCKET}/${{ steps.upload-s3.outputs.server_json_key }}" --expires-in ${EXPIRY_SECONDS})
-            echo "server_json_url=${SERVER_JSON_URL}" >> $GITHUB_OUTPUT
+          if [ -n "${{ steps.upload-s3.outputs.backend_json_key }}" ]; then
+            BACKEND_JSON_URL=$(aws s3 presign "s3://${S3_BUCKET}/${{ steps.upload-s3.outputs.backend_json_key }}" --expires-in ${EXPIRY_SECONDS})
+            echo "backend_json_url=${BACKEND_JSON_URL}" >> $GITHUB_OUTPUT
           fi
           
-          if [ -n "${{ steps.upload-s3.outputs.server_sarif_key }}" ]; then
-            SERVER_SARIF_URL=$(aws s3 presign "s3://${S3_BUCKET}/${{ steps.upload-s3.outputs.server_sarif_key }}" --expires-in ${EXPIRY_SECONDS})
-            echo "server_sarif_url=${SERVER_SARIF_URL}" >> $GITHUB_OUTPUT
+          if [ -n "${{ steps.upload-s3.outputs.backend_sarif_key }}" ]; then
+            BACKEND_SARIF_URL=$(aws s3 presign "s3://${S3_BUCKET}/${{ steps.upload-s3.outputs.backend_sarif_key }}" --expires-in ${EXPIRY_SECONDS})
+            echo "backend_sarif_url=${BACKEND_SARIF_URL}" >> $GITHUB_OUTPUT
           fi
           
-          if [ -n "${{ steps.upload-s3.outputs.client_json_key }}" ]; then
-            CLIENT_JSON_URL=$(aws s3 presign "s3://${S3_BUCKET}/${{ steps.upload-s3.outputs.client_json_key }}" --expires-in ${EXPIRY_SECONDS})
-            echo "client_json_url=${CLIENT_JSON_URL}" >> $GITHUB_OUTPUT
+          if [ -n "${{ steps.upload-s3.outputs.frontend_json_key }}" ]; then
+            FRONTEND_JSON_URL=$(aws s3 presign "s3://${S3_BUCKET}/${{ steps.upload-s3.outputs.frontend_json_key }}" --expires-in ${EXPIRY_SECONDS})
+            echo "frontend_json_url=${FRONTEND_JSON_URL}" >> $GITHUB_OUTPUT
           fi
           
-          if [ -n "${{ steps.upload-s3.outputs.client_sarif_key }}" ]; then
-            CLIENT_SARIF_URL=$(aws s3 presign "s3://${S3_BUCKET}/${{ steps.upload-s3.outputs.client_sarif_key }}" --expires-in ${EXPIRY_SECONDS})
-            echo "client_sarif_url=${CLIENT_SARIF_URL}" >> $GITHUB_OUTPUT
+          if [ -n "${{ steps.upload-s3.outputs.frontend_sarif_key }}" ]; then
+            FRONTEND_SARIF_URL=$(aws s3 presign "s3://${S3_BUCKET}/${{ steps.upload-s3.outputs.frontend_sarif_key }}" --expires-in ${EXPIRY_SECONDS})
+            echo "frontend_sarif_url=${FRONTEND_SARIF_URL}" >> $GITHUB_OUTPUT
           fi
 
       - name: Send Slack notification
         if: always() && !cancelled() && steps.upload-s3.outputs.repo_name != ''
         env:
           SLACK_WEBHOOK_URL: ${{ secrets.SLACK_VULNERABILITY_WEBHOOK_URL }}
-          SERVER_JSON_URL: ${{ steps.presign-urls.outputs.server_json_url }}
-          CLIENT_JSON_URL: ${{ steps.presign-urls.outputs.client_json_url }}
+          BACKEND_JSON_URL: ${{ steps.presign-urls.outputs.backend_json_url }}
+          FRONTEND_JSON_URL: ${{ steps.presign-urls.outputs.frontend_json_url }}
         run: |
           if [ -z "$SLACK_WEBHOOK_URL" ]; then
             echo "⚠️ Slack webhook not configured, skipping notification."
@@ -266,20 +265,20 @@ jobs:
           # Clean up trailing comma and space from uploaded files
           UPLOADED_FILES_CLEAN=$(echo "$UPLOADED_FILES" | sed 's/, $//')
           
-          # Build download links for server and client reports
-          SERVER_LINK=""
-          CLIENT_LINK=""
+          # Build download links for backend and frontend reports
+          BACKEND_LINK=""
+          FRONTEND_LINK=""
           
-          if [ -n "$SERVER_JSON_URL" ]; then
-            SERVER_LINK="<${SERVER_JSON_URL}|Server Report>"
+          if [ -n "$BACKEND_JSON_URL" ]; then
+            BACKEND_LINK="<${BACKEND_JSON_URL}|Backend Report>"
           fi
           
-          if [ -n "$CLIENT_JSON_URL" ]; then
-            CLIENT_LINK="<${CLIENT_JSON_URL}|Client Report>"
+          if [ -n "$FRONTEND_JSON_URL" ]; then
+            FRONTEND_LINK="<${FRONTEND_JSON_URL}|Frontend Report>"
           fi
           
           # Determine scan status
-          if [ "${{ steps.snyk-server-json.outputs.report_exists }}" = "true" ] || [ "${{ steps.snyk-client-json.outputs.report_exists }}" = "true" ]; then
+          if [ "${{ steps.snyk-backend-json.outputs.report_exists }}" = "true" ] || [ "${{ steps.snyk-frontend-json.outputs.report_exists }}" = "true" ]; then
             STATUS_EMOJI="✅"
             STATUS_TEXT="completed"
           else
@@ -324,13 +323,13 @@ jobs:
           )
           
           # Add download links section if reports were uploaded
-          if [ -n "$SERVER_LINK" ] || [ -n "$CLIENT_LINK" ]; then
+          if [ -n "$BACKEND_LINK" ] || [ -n "$FRONTEND_LINK" ]; then
             DOWNLOAD_TEXT="*📥 Download Reports (valid for 7 days):*"
-            if [ -n "$SERVER_LINK" ]; then
-              DOWNLOAD_TEXT="${DOWNLOAD_TEXT}\n• Server: ${SERVER_LINK}"
+            if [ -n "$BACKEND_LINK" ]; then
+              DOWNLOAD_TEXT="${DOWNLOAD_TEXT}\n• Backend: ${BACKEND_LINK}"
             fi
-            if [ -n "$CLIENT_LINK" ]; then
-              DOWNLOAD_TEXT="${DOWNLOAD_TEXT}\n• Client: ${CLIENT_LINK}"
+            if [ -n "$FRONTEND_LINK" ]; then
+              DOWNLOAD_TEXT="${DOWNLOAD_TEXT}\n• Frontend: ${FRONTEND_LINK}"
             fi
             
             DOWNLOAD_SECTION=$(cat <<EOF

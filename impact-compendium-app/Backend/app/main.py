@@ -128,20 +128,6 @@ app.add_middleware(
 )
 
 
-# Add explicit OPTIONS handler for all routes
-@app.options("/{full_path:path}")
-async def options_handler(full_path: str):
-    return JSONResponse(
-        content={"message": "OK"},
-        headers={
-            "Access-Control-Allow-Origin": "*",
-            "Access-Control-Allow-Methods": "GET, POST, PUT, DELETE, OPTIONS",
-            "Access-Control-Allow-Headers": "*",
-            "Access-Control-Max-Age": "3600",
-        },
-    )
-
-
 @app.middleware("http")
 async def log_requests(request: Request, call_next):
     """
@@ -161,6 +147,20 @@ async def log_requests(request: Request, call_next):
 
     # Log incoming request
     logger.info(f"Request: {request.method} {request.url}")
+
+    if request.method == "OPTIONS":
+        response = JSONResponse(
+            content={"message": "OK"},
+            headers={
+                "Access-Control-Allow-Origin": "*",
+                "Access-Control-Allow-Methods": "GET, POST, PUT, DELETE, OPTIONS",
+                "Access-Control-Allow-Headers": "*",
+                "Access-Control-Max-Age": "3600",
+            },
+        )
+        process_time = time.time() - start_time
+        logger.info(f"Response: {response.status_code} - {process_time:.3f}s")
+        return response
 
     # Process request
     response = await call_next(request)

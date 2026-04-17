@@ -27,7 +27,10 @@ INFRA_EXISTS=$(aws cloudformation describe-stacks \
     --query 'Stacks[0].StackStatus' \
     --output text 2>/dev/null)
 
-if [ "$INFRA_EXISTS" = "CREATE_COMPLETE" ] || [ "$INFRA_EXISTS" = "UPDATE_COMPLETE" ]; then
+if [ "$INFRA_EXISTS" = "CREATE_COMPLETE" ] || [ "$INFRA_EXISTS" = "UPDATE_COMPLETE" ] || [ "$INFRA_EXISTS" = "UPDATE_ROLLBACK_COMPLETE" ]; then
+    # UPDATE_ROLLBACK_COMPLETE is a terminal "exists" state — the stack is intact
+    # at the prior version after a failed update was rolled back. Treat it as
+    # "exists" so we don't try create-stack and fail with AlreadyExistsException.
     echo "✅ Infrastructure already exists (Status: $INFRA_EXISTS)"
     echo "   Using existing infrastructure with CloudFormation exports"
     echo "   Available resources: VPC, RDS, Cognito, S3, CloudFront"
@@ -74,13 +77,20 @@ BACKEND_EXISTS=$(aws cloudformation describe-stacks \
     --query 'Stacks[0].StackStatus' \
     --output text 2>/dev/null)
 
-if [ "$BACKEND_EXISTS" = "CREATE_COMPLETE" ] || [ "$BACKEND_EXISTS" = "UPDATE_COMPLETE" ]; then
+if [ "$BACKEND_EXISTS" = "CREATE_COMPLETE" ] || [ "$BACKEND_EXISTS" = "UPDATE_COMPLETE" ] || [ "$BACKEND_EXISTS" = "UPDATE_ROLLBACK_COMPLETE" ]; then
     echo "✅ Backend already exists (Status: $BACKEND_EXISTS)"
     echo "   Updating backend deployment..."
-    
+
     cd backend-sam
-    sam build --profile IBD-DEV
-    
+
+    # Pre-clean .aws-sam to avoid the stale-cache hang. Use `mv` rather than `rm`
+    # — stale build dirs can be mode 700 and rm may be silently denied; mv works.
+    if [ -d ".aws-sam" ]; then
+        mv .aws-sam ".aws-sam.OLD-$(date +%s)"
+    fi
+
+    sam build --use-container --profile IBD-DEV
+
     sam deploy \
         --stack-name "$BACKEND_STACK_NAME" \
         --parameter-overrides \
@@ -94,9 +104,13 @@ else
     echo "🚀 Deploying new backend..."
     cd backend-sam
 
+    if [ -d ".aws-sam" ]; then
+        mv .aws-sam ".aws-sam.OLD-$(date +%s)"
+    fi
+
     # Build SAM application
     echo "Building SAM application..."
-    sam build --profile IBD-DEV
+    sam build --use-container --profile IBD-DEV
 
     if [ $? -ne 0 ]; then
         echo "❌ SAM build failed!"

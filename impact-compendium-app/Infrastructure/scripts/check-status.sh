@@ -70,8 +70,10 @@ fi
 echo ""
 
 # Show URLs if both stacks exist
-if [ "$INFRA_STATUS" = "CREATE_COMPLETE" ] || [ "$INFRA_STATUS" = "UPDATE_COMPLETE" ]; then
-    if [ "$BACKEND_STATUS" = "CREATE_COMPLETE" ] || [ "$BACKEND_STATUS" = "UPDATE_COMPLETE" ]; then
+# UPDATE_ROLLBACK_COMPLETE is a terminal "exists" state (stack reverted to prior
+# good version after a failed update), so include it here.
+if [ "$INFRA_STATUS" = "CREATE_COMPLETE" ] || [ "$INFRA_STATUS" = "UPDATE_COMPLETE" ] || [ "$INFRA_STATUS" = "UPDATE_ROLLBACK_COMPLETE" ]; then
+    if [ "$BACKEND_STATUS" = "CREATE_COMPLETE" ] || [ "$BACKEND_STATUS" = "UPDATE_COMPLETE" ] || [ "$BACKEND_STATUS" = "UPDATE_ROLLBACK_COMPLETE" ]; then
         echo "🌐 Application URLs:"
         
         API_URL=$(aws cloudformation describe-stacks \
@@ -96,14 +98,15 @@ fi
 echo ""
 
 # Deployment recommendation
-if [ "$INFRA_STATUS" != "CREATE_COMPLETE" ] && [ "$INFRA_STATUS" != "UPDATE_COMPLETE" ]; then
+if [ "$INFRA_STATUS" != "CREATE_COMPLETE" ] && [ "$INFRA_STATUS" != "UPDATE_COMPLETE" ] && [ "$INFRA_STATUS" != "UPDATE_ROLLBACK_COMPLETE" ]; then
     echo "💡 Recommendation: Run ./scripts/deploy-complete.sh $ENVIRONMENT"
-elif [ "$BACKEND_STATUS" != "CREATE_COMPLETE" ] && [ "$BACKEND_STATUS" != "UPDATE_COMPLETE" ]; then
+elif [ "$BACKEND_STATUS" != "CREATE_COMPLETE" ] && [ "$BACKEND_STATUS" != "UPDATE_COMPLETE" ] && [ "$BACKEND_STATUS" != "UPDATE_ROLLBACK_COMPLETE" ]; then
     echo "💡 Recommendation: Run ./scripts/deploy-complete.sh $ENVIRONMENT (backend only)"
 else
     echo "💡 All components deployed. Use:"
+    echo "   - ./scripts/deploy-backend.sh  $ENVIRONMENT (backend code only — preferred)"
     echo "   - ./scripts/deploy-frontend.sh $ENVIRONMENT (frontend updates)"
-    echo "   - ./scripts/deploy-complete.sh $ENVIRONMENT (full update)"
+    echo "   - ./scripts/deploy-complete.sh $ENVIRONMENT (full update — touches infra check)"
 fi
 
 # Emergency options for failed states

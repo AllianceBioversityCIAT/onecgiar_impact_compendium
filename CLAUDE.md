@@ -80,6 +80,7 @@ onecgiar_impact_compendium/
 ## Reference Docs (in repo)
 
 - [`impact-compendium-app/CLAUDE.md`](impact-compendium-app/CLAUDE.md) — child guide with per-tier (Backend / Frontend / Infrastructure) layout, commands, and conventions.
+- [`impact-compendium-app/Infrastructure/CLAUDE.md`](impact-compendium-app/Infrastructure/CLAUDE.md) — deploy scripts, stack topology, SAM/CloudFormation gotchas (stale `.aws-sam`, `UPDATE_ROLLBACK_COMPLETE`, BinaryMediaTypes/`Accept`).
 - `specs/architecture/impact_compendium_technical_spec.md` — full technical spec.
 - `specs/data/impact.erd` + `impact.png` — DB ERD.
 - `specs/infrastructure/igad_sam_architecture_*.md` — SAM architecture proposal/docs.

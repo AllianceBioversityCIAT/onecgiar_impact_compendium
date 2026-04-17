@@ -11,6 +11,7 @@ import { studyAPI } from '../services/api';
 import { authService } from '../services/auth';
 import { useDebouncedValue } from '../hooks/useDebouncedValue';
 import { getMockStudies } from '../mocks/studies';
+import { parseFilename } from '../utils/http';
 
 interface Study {
   id: string; // Changed to string to support ICD-001 format
@@ -276,142 +277,68 @@ export const Dashboard: React.FC = () => {
   const handleDownloadExcel = async () => {
     if (exporting) return;
 
-    let loadingToast: string | undefined;
+    setExporting(true);
+    const loadingToast = toast.loading('Generating full report…', {
+      duration: 0,
+    });
 
     try {
-      setExporting(true);
-
-      // Start async export
       const authHeaders = await authService.getAuthHeaders();
-      const startResponse = await fetch(
-        `${import.meta.env.VITE_API_BASE_URL}/api/reports/export/start?format=excel&limit=1000`,
+      const response = await fetch(
+        `${import.meta.env.VITE_API_BASE_URL}/api/reports/export?format=excel&limit=1000`,
         {
-          method: 'POST',
+          method: 'GET',
           headers: {
-            Accept: 'application/json',
             ...authHeaders,
+            // Required so API Gateway decodes the base64-encoded Lambda body
+            // against BinaryMediaTypes; with */* it leaks through as text.
+            Accept:
+              'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
           },
         }
       );
 
-      if (!startResponse.ok) {
-        throw new Error(`Failed to start export: ${startResponse.statusText}`);
+      const contentType = response.headers.get('content-type') ?? '';
+      if (!response.ok || !contentType.includes('spreadsheetml')) {
+        let detail = response.statusText;
+
+        try {
+          const errorBody = await response.json();
+          detail = errorBody.detail ?? errorBody.error ?? detail;
+        } catch {
+          // Ignore non-JSON error bodies and fall back to status text.
+        }
+
+        throw new Error(detail);
       }
 
-      const { job_id } = await startResponse.json();
+      const blob = await response.blob();
+      const filename =
+        parseFilename(response.headers.get('content-disposition')) ??
+        `impact_compendium_full_report_${new Date().toISOString().split('T')[0]}.xlsx`;
 
-      // Show loading notification with progress
-      loadingToast = toast.loading('Starting full report generation...', {
-        duration: 0,
+      const url = URL.createObjectURL(blob);
+      const link = document.createElement('a');
+      link.href = url;
+      link.download = filename;
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      URL.revokeObjectURL(url);
+
+      toast.dismiss(loadingToast);
+      toast.success('Full report downloaded successfully!', {
+        duration: 5000,
       });
-
-      // Poll for completion
-      const pollInterval = setInterval(async () => {
-        try {
-          const statusResponse = await fetch(
-            `${import.meta.env.VITE_API_BASE_URL}/api/reports/export/status/${job_id}`,
-            {
-              headers: authHeaders,
-            }
-          );
-
-          if (statusResponse.ok) {
-            const status = await statusResponse.json();
-
-            // Update toast with progress
-            if (loadingToast) {
-              toast.dismiss(loadingToast);
-              loadingToast = toast.loading(
-                `Generating full report... ${status.progress || 0}%`,
-                {
-                  duration: 0,
-                }
-              );
-            }
-
-            if (status.status === 'completed') {
-              clearInterval(pollInterval);
-
-              // Download the file
-              const downloadResponse = await fetch(
-                `${import.meta.env.VITE_API_BASE_URL}/api/reports/export/download/${job_id}`,
-                {
-                  headers: authHeaders,
-                }
-              );
-
-              if (downloadResponse.ok) {
-                const blob = await downloadResponse.blob();
-                const url = window.URL.createObjectURL(blob);
-                const link = document.createElement('a');
-                link.href = url;
-                link.download =
-                  status.filename ||
-                  `impact_compendium_report_${new Date().toISOString().split('T')[0]}.xlsx`;
-                document.body.appendChild(link);
-                link.click();
-                document.body.removeChild(link);
-                window.URL.revokeObjectURL(url);
-
-                // Show success message
-                if (loadingToast) toast.dismiss(loadingToast);
-                toast.success(
-                  `Full report downloaded successfully! (${status.record_count} studies)`,
-                  {
-                    duration: 5000,
-                  }
-                );
-              } else {
-                throw new Error('Failed to download report');
-              }
-
-              setExporting(false);
-            } else if (status.status === 'failed') {
-              clearInterval(pollInterval);
-              throw new Error(status.error || 'Export failed');
-            }
-          }
-        } catch (pollError) {
-          clearInterval(pollInterval);
-          throw pollError;
-        }
-      }, 2000); // Poll every 2 seconds
-
-      // Set timeout for polling (5 minutes max)
-      setTimeout(() => {
-        clearInterval(pollInterval);
-        if (exporting) {
-          setExporting(false);
-          if (loadingToast) toast.dismiss(loadingToast);
-          toast.error('Export timed out. Please try again.', {
-            duration: 5000,
-          });
-        }
-      }, 300000);
     } catch (error) {
       console.error('Excel export error:', error);
-
-      // Dismiss loading toast
-      if (loadingToast) {
-        toast.dismiss(loadingToast);
-      }
-
-      // Handle timeout specifically
-      if (error instanceof Error && error.name === 'AbortError') {
-        toast.error(
-          'Export timed out. The report is too large. Try reducing the data or contact support.',
-          {
-            duration: 8000,
-          }
-        );
-      } else {
-        toast.error(
-          `Failed to download Excel report: ${error instanceof Error ? error.message : 'Unknown error'}`,
-          {
-            duration: 5000,
-          }
-        );
-      }
+      toast.dismiss(loadingToast);
+      toast.error(
+        `Export failed: ${error instanceof Error ? error.message : 'Unknown error'}`,
+        {
+          duration: 5000,
+        }
+      );
     } finally {
       setExporting(false);
     }

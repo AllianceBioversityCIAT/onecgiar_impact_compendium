@@ -126,6 +126,7 @@ credentials.json
 *.zip
 *.tar.gz
 *.tgz
+full_report*.xlsx
 
 # CDK
 cdk.out/
@@ -152,6 +153,7 @@ cognito-test-deployment.yaml
 packaged-template.yaml
 packaged.yaml
 .aws-sam.bak/
+impact-compendium-app/Infrastructure/backend-sam/.aws-sam.OLD-*/
 
 # Frontend Build
 node_modules/

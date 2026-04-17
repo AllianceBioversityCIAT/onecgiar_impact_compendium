@@ -1,5 +1,4 @@
 import React, { useState, useEffect, useCallback } from 'react';
-import { toast } from 'react-hot-toast';
 import { AppLayout } from '../layouts/AppLayout';
 import { Table } from '../components/ui/Table';
 import { Button } from '../components/ui/Button';
@@ -8,10 +7,9 @@ import { TableSkeleton } from '../components/ui/TableSkeleton';
 import { EmptyState } from '../components/ui/EmptyState';
 import { StudyDetailsPanel } from './StudyDetailsPanel';
 import { studyAPI } from '../services/api';
-import { authService } from '../services/auth';
 import { useDebouncedValue } from '../hooks/useDebouncedValue';
 import { getMockStudies } from '../mocks/studies';
-import { parseFilename } from '../utils/http';
+import { downloadXlsx } from '../utils/exportHelpers';
 
 interface Study {
   id: string; // Changed to string to support ICD-001 format
@@ -274,74 +272,30 @@ export const Dashboard: React.FC = () => {
     });
   };
 
-  const handleDownloadExcel = async () => {
+  const handleDownloadSummary = async () => {
     if (exporting) return;
 
-    setExporting(true);
-    const loadingToast = toast.loading('Generating full report…', {
-      duration: 0,
+    await downloadXlsx({
+      setExporting,
+      url: `${import.meta.env.VITE_API_BASE_URL}/api/reports/export?format=excel&limit=1000`,
+      loadingMessage: 'Generating summary…',
+      successMessage: 'Summary downloaded successfully!',
+      fallbackFilename: () =>
+        `impact_compendium_summary_${new Date().toISOString().split('T')[0]}.xlsx`,
     });
+  };
 
-    try {
-      const authHeaders = await authService.getAuthHeaders();
-      const response = await fetch(
-        `${import.meta.env.VITE_API_BASE_URL}/api/reports/export?format=excel&limit=1000`,
-        {
-          method: 'GET',
-          headers: {
-            ...authHeaders,
-            // Required so API Gateway decodes the base64-encoded Lambda body
-            // against BinaryMediaTypes; with */* it leaks through as text.
-            Accept:
-              'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
-          },
-        }
-      );
+  const handleDownloadFullReport = async () => {
+    if (exporting) return;
 
-      const contentType = response.headers.get('content-type') ?? '';
-      if (!response.ok || !contentType.includes('spreadsheetml')) {
-        let detail = response.statusText;
-
-        try {
-          const errorBody = await response.json();
-          detail = errorBody.detail ?? errorBody.error ?? detail;
-        } catch {
-          // Ignore non-JSON error bodies and fall back to status text.
-        }
-
-        throw new Error(detail);
-      }
-
-      const blob = await response.blob();
-      const filename =
-        parseFilename(response.headers.get('content-disposition')) ??
-        `impact_compendium_full_report_${new Date().toISOString().split('T')[0]}.xlsx`;
-
-      const url = URL.createObjectURL(blob);
-      const link = document.createElement('a');
-      link.href = url;
-      link.download = filename;
-      document.body.appendChild(link);
-      link.click();
-      document.body.removeChild(link);
-      URL.revokeObjectURL(url);
-
-      toast.dismiss(loadingToast);
-      toast.success('Full report downloaded successfully!', {
-        duration: 5000,
-      });
-    } catch (error) {
-      console.error('Excel export error:', error);
-      toast.dismiss(loadingToast);
-      toast.error(
-        `Export failed: ${error instanceof Error ? error.message : 'Unknown error'}`,
-        {
-          duration: 5000,
-        }
-      );
-    } finally {
-      setExporting(false);
-    }
+    await downloadXlsx({
+      setExporting,
+      url: `${import.meta.env.VITE_API_BASE_URL}/api/reports/export/full?format=excel&limit=1000`,
+      loadingMessage: 'Generating full report…',
+      successMessage: 'Full report downloaded successfully!',
+      fallbackFilename: () =>
+        `impact_compendium_full_report_${new Date().toISOString().split('T')[0]}.xlsx`,
+    });
   };
 
   const handleRowExpand = (row: any) => {
@@ -473,54 +427,109 @@ export const Dashboard: React.FC = () => {
             )}
           </div>
 
-          <Button
-            onClick={handleDownloadExcel}
-            disabled={studies.length === 0 || exporting}
-            variant="secondary"
-            className="flex items-center gap-2 !bg-green-600 hover:!bg-green-700 !text-white !border-green-600 hover:!border-green-700 disabled:!bg-gray-400 disabled:!border-gray-400"
-          >
-            {exporting ? (
-              <>
-                <svg
-                  className="w-4 h-4 animate-spin"
-                  fill="none"
-                  viewBox="0 0 24 24"
-                >
-                  <circle
-                    className="opacity-25"
-                    cx="12"
-                    cy="12"
-                    r="10"
+          <div className="flex gap-3">
+            <Button
+              onClick={handleDownloadSummary}
+              disabled={studies.length === 0 || exporting}
+              variant="secondary"
+              title="Download a high-level summary of all studies (basic fields only)"
+              aria-label="Download a high-level summary of all studies (basic fields only)"
+              className="flex items-center gap-2"
+            >
+              {exporting ? (
+                <>
+                  <svg
+                    className="w-4 h-4 animate-spin"
+                    fill="none"
+                    viewBox="0 0 24 24"
+                  >
+                    <circle
+                      className="opacity-25"
+                      cx="12"
+                      cy="12"
+                      r="10"
+                      stroke="currentColor"
+                      strokeWidth="4"
+                    ></circle>
+                    <path
+                      className="opacity-75"
+                      fill="currentColor"
+                      d="m4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
+                    ></path>
+                  </svg>
+                  Exporting...
+                </>
+              ) : (
+                <>
+                  <svg
+                    className="w-4 h-4"
+                    fill="none"
                     stroke="currentColor"
-                    strokeWidth="4"
-                  ></circle>
-                  <path
-                    className="opacity-75"
-                    fill="currentColor"
-                    d="m4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
-                  ></path>
-                </svg>
-                Generating Report...
-              </>
-            ) : (
-              <>
-                <svg
-                  className="w-4 h-4"
-                  fill="none"
-                  stroke="currentColor"
-                  viewBox="0 0 24 24"
-                >
-                  <path
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                    strokeWidth={2}
-                    d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"
-                  />
-                </svg>
-                Export Full Report
-              </>
-            )}
-          </Button>
+                    viewBox="0 0 24 24"
+                  >
+                    <path
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      strokeWidth={2}
+                      d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"
+                    />
+                  </svg>
+                  Export Summary
+                </>
+              )}
+            </Button>
+
+            <Button
+              onClick={handleDownloadFullReport}
+              disabled={studies.length === 0 || exporting}
+              variant="primary"
+              title="Download every field for each study, including all multi-value sections (countries, regions, indicators, etc.)"
+              aria-label="Download every field for each study, including all multi-value sections (countries, regions, indicators, etc.)"
+              className="flex items-center gap-2 !bg-green-600 hover:!bg-green-700 !text-white disabled:!bg-gray-400"
+            >
+              {exporting ? (
+                <>
+                  <svg
+                    className="w-4 h-4 animate-spin"
+                    fill="none"
+                    viewBox="0 0 24 24"
+                  >
+                    <circle
+                      className="opacity-25"
+                      cx="12"
+                      cy="12"
+                      r="10"
+                      stroke="currentColor"
+                      strokeWidth="4"
+                    ></circle>
+                    <path
+                      className="opacity-75"
+                      fill="currentColor"
+                      d="m4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
+                    ></path>
+                  </svg>
+                  Exporting...
+                </>
+              ) : (
+                <>
+                  <svg
+                    className="w-4 h-4"
+                    fill="none"
+                    stroke="currentColor"
+                    viewBox="0 0 24 24"
+                  >
+                    <path
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      strokeWidth={2}
+                      d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"
+                    />
+                  </svg>
+                  Export Full Report
+                </>
+              )}
+            </Button>
+          </div>
         </div>
 
         {/* Error Message */}

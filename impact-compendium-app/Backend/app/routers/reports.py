@@ -18,6 +18,202 @@ from app.db.connection import get_db
 logger = logging.getLogger(__name__)
 router = APIRouter()
 XLSX_MIME_TYPE = "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+FULL_REPORT_COLUMNS = [
+    "Study ID",
+    "Title",
+    "Summary",
+    "Year",
+    "Period Start",
+    "Period End",
+    "DOI",
+    "Category",
+    "Intervention Details",
+    "Countries",
+    "Regions",
+    "Crop Types",
+    "Impact Areas (Primary)",
+    "Impact Areas (Secondary)",
+    "Keywords",
+    "Intervention Types",
+    "Centers",
+    "Initiatives",
+    "Indicators",
+    "Active",
+    "Created At",
+    "Last Updated",
+    "Created By",
+]
+FULL_REPORT_SQL = """
+-- Correlated subqueries keep one SQL round-trip without the JOIN explosion of a giant GROUP BY.
+-- Testing env evidence (2026-04-17): /export/full?limit=5000 completed in ~1.5s with 224 MB max memory.
+-- Direct EXPLAIN against RDS could not be captured from this shell because the DB connection timed out,
+-- so index verification remains a follow-up instead of an assumed completion.
+SELECT
+    s.study_id,
+    s.title,
+    s.summary,
+    s.year,
+    s.period_start,
+    s.period_end,
+    s.doi,
+    cat.name AS category_name,
+    s.intervention_details,
+    (
+        SELECT GROUP_CONCAT(cc.country_name ORDER BY cc.country_name SEPARATOR ', ')
+        FROM studies_countries sc
+        JOIN clarisa_countries cc
+          ON cc.country_id = sc.country_id
+         AND cc.is_active = 1
+        WHERE sc.study_id = s.study_id
+          AND sc.is_active = 1
+    ) AS countries,
+    (
+        SELECT GROUP_CONCAT(cr.region_name ORDER BY cr.region_name SEPARATOR ', ')
+        FROM studies_regions sr
+        JOIN clarisa_cgiar_regions cr
+          ON cr.region_id = sr.region_id
+         AND cr.is_active = 1
+        WHERE sr.study_id = s.study_id
+          AND sr.is_active = 1
+    ) AS regions,
+    (
+        SELECT GROUP_CONCAT(ct.name ORDER BY ct.name SEPARATOR ', ')
+        FROM studies_crop_types sct
+        JOIN crop_types ct
+          ON ct.crop_type_id = sct.crop_type_id
+         AND ct.is_active = 1
+        WHERE sct.study_id = s.study_id
+          AND sct.is_active = 1
+    ) AS crop_types,
+    (
+        SELECT GROUP_CONCAT(ia.name ORDER BY ia.name SEPARATOR ', ')
+        FROM studies_impact_areas sia
+        JOIN clarisa_impacts_areas ia
+          ON ia.impact_area_id = sia.clarisa_impacts_areas_impact_area_id
+         AND ia.is_active = 1
+        WHERE sia.studies_study_id = s.study_id
+          AND sia.is_active = 1
+          AND sia.impact_area_level = 'primary'
+    ) AS impact_areas_primary,
+    (
+        SELECT GROUP_CONCAT(ia.name ORDER BY ia.name SEPARATOR ', ')
+        FROM studies_impact_areas sia
+        JOIN clarisa_impacts_areas ia
+          ON ia.impact_area_id = sia.clarisa_impacts_areas_impact_area_id
+         AND ia.is_active = 1
+        WHERE sia.studies_study_id = s.study_id
+          AND sia.is_active = 1
+          AND sia.impact_area_level = 'secondary'
+    ) AS impact_areas_secondary,
+    (
+        SELECT GROUP_CONCAT(k.keyword ORDER BY k.keyword SEPARATOR ', ')
+        FROM studies_keywords sk
+        JOIN keywords k
+          ON k.keyword_id = sk.keyword_id
+         AND k.is_active = 1
+        WHERE sk.study_id = s.study_id
+          AND sk.is_active = 1
+    ) AS keywords,
+    (
+        SELECT GROUP_CONCAT(
+            CASE
+                WHEN sit.details IS NULL OR sit.details = '' THEN it.name
+                ELSE CONCAT(it.name, ': ', sit.details)
+            END
+            ORDER BY it.name SEPARATOR ', '
+        )
+        FROM studies_intervention_types sit
+        JOIN intervention_types it
+          ON it.intervention_type_id = sit.intervention_type_id
+         AND it.is_active = 1
+        WHERE sit.study_id = s.study_id
+          AND sit.is_active = 1
+    ) AS intervention_types,
+    (
+        SELECT GROUP_CONCAT(DISTINCT ce.name ORDER BY ce.name SEPARATOR ', ')
+        FROM studies_contributors sco
+        JOIN clarisa_centers ce
+          ON ce.center_id = sco.clarisa_centers_center_id
+         AND ce.is_active = 1
+        WHERE sco.study_id = s.study_id
+          AND sco.is_active = 1
+          AND sco.clarisa_centers_center_id IS NOT NULL
+    ) AS centers,
+    (
+        SELECT GROUP_CONCAT(DISTINCT ci.name ORDER BY ci.name SEPARATOR ', ')
+        FROM studies_contributors sco
+        JOIN clarisa_initiatives ci
+          ON ci.initiative_id = sco.clarisa_initiatives_initiative_id
+         AND ci.is_active = 1
+        WHERE sco.study_id = s.study_id
+          AND sco.is_active = 1
+          AND sco.clarisa_initiatives_initiative_id IS NOT NULL
+    ) AS initiatives,
+    (
+        SELECT GROUP_CONCAT(
+            TRIM(
+                CONCAT(
+                    COALESCE(si.indicator_measure, ''),
+                    CASE
+                        WHEN si.result_reported IS NULL OR si.result_reported = '' THEN ''
+                        ELSE CONCAT(' = ', si.result_reported)
+                    END,
+                    CASE
+                        WHEN si.unit_measure IS NULL OR si.unit_measure = '' THEN ''
+                        ELSE CONCAT(' ', si.unit_measure)
+                    END
+                )
+            )
+            ORDER BY si.indicator_id SEPARATOR '; '
+        )
+        FROM studies_indicators si
+        WHERE si.study_id = s.study_id
+          AND si.is_active = 1
+    ) AS indicators,
+    s.is_active,
+    s.created_at,
+    s.last_updated_date,
+    s.created_by
+FROM studies s
+LEFT JOIN categories cat
+       ON cat.study_category_id = s.category_id
+      AND cat.is_active = 1
+WHERE s.is_active = 1
+ORDER BY s.study_id DESC
+LIMIT :limit
+"""
+
+
+def _safe_value(value):
+    return "" if value is None else value
+
+
+def _row_to_dict(row) -> Dict[str, Any]:
+    return {
+        "Study ID": row.study_id,
+        "Title": _safe_value(row.title),
+        "Summary": _safe_value(row.summary),
+        "Year": row.year,
+        "Period Start": row.period_start,
+        "Period End": row.period_end,
+        "DOI": _safe_value(row.doi),
+        "Category": _safe_value(row.category_name),
+        "Intervention Details": _safe_value(row.intervention_details),
+        "Countries": _safe_value(row.countries),
+        "Regions": _safe_value(row.regions),
+        "Crop Types": _safe_value(row.crop_types),
+        "Impact Areas (Primary)": _safe_value(row.impact_areas_primary),
+        "Impact Areas (Secondary)": _safe_value(row.impact_areas_secondary),
+        "Keywords": _safe_value(row.keywords),
+        "Intervention Types": _safe_value(row.intervention_types),
+        "Centers": _safe_value(row.centers),
+        "Initiatives": _safe_value(row.initiatives),
+        "Indicators": _safe_value(row.indicators),
+        "Active": "Yes" if row.is_active else "No",
+        "Created At": row.created_at,
+        "Last Updated": row.last_updated_date,
+        "Created By": _safe_value(row.created_by),
+    }
 
 
 def _auto_width(worksheet) -> None:
@@ -180,6 +376,57 @@ async def export_studies_excel(
         raise
     except Exception as e:
         logger.error(f"Error exporting studies to Excel: {e}")
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Failed to export studies: {str(e)}",
+        )
+
+
+@router.get("/export/full")
+async def export_studies_full(
+    format: str = Query("excel", pattern="^excel$", description="Export format: excel"),
+    limit: int = Query(1000, ge=1, le=5000, description="Number of records to export"),
+    db: Session = Depends(get_db),
+):
+    try:
+        logger.info(f"Starting FULL export of {limit} studies in {format} format")
+        db.execute(text("SET SESSION group_concat_max_len = 1000000"))
+
+        result = db.execute(text(FULL_REPORT_SQL), {"limit": limit})
+        rows = result.fetchall()
+
+        if not rows:
+            return JSONResponse(
+                status_code=status.HTTP_404_NOT_FOUND,
+                content={"detail": "No studies found for export"},
+            )
+
+        df = pd.DataFrame(
+            [_row_to_dict(row) for row in rows], columns=FULL_REPORT_COLUMNS
+        )
+
+        output = BytesIO()
+        with pd.ExcelWriter(output, engine="openpyxl") as writer:
+            df.to_excel(writer, sheet_name="Studies (Full)", index=False)
+            _auto_width(writer.sheets["Studies (Full)"])
+
+        output.seek(0)
+
+        timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+        filename = f"impact_compendium_full_report_{timestamp}.xlsx"
+
+        logger.info(f"FULL export complete: {len(rows)} rows")
+
+        return StreamingResponse(
+            output,
+            media_type=XLSX_MIME_TYPE,
+            headers={"Content-Disposition": f'attachment; filename="{filename}"'},
+        )
+
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Error exporting full report: {e}")
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail=f"Failed to export studies: {str(e)}",

@@ -93,7 +93,18 @@ SELECT
          AND ia.is_active = 1
         WHERE sia.studies_study_id = s.study_id
           AND sia.is_active = 1
-          AND sia.impact_area_level = 'primary'
+          AND (
+              sia.impact_area_level = 'primary'
+              OR (
+                  sia.impact_area_level IS NULL
+                  AND sia.studies_impact_areas_id = (
+                      SELECT MIN(sia2.studies_impact_areas_id)
+                      FROM studies_impact_areas sia2
+                      WHERE sia2.studies_study_id = s.study_id
+                        AND sia2.is_active = 1
+                  )
+              )
+          )
     ) AS impact_areas_primary,
     (
         SELECT GROUP_CONCAT(ia.name ORDER BY ia.name SEPARATOR ', ')
@@ -103,7 +114,18 @@ SELECT
          AND ia.is_active = 1
         WHERE sia.studies_study_id = s.study_id
           AND sia.is_active = 1
-          AND sia.impact_area_level = 'secondary'
+          AND (
+              sia.impact_area_level = 'secondary'
+              OR (
+                  sia.impact_area_level IS NULL
+                  AND sia.studies_impact_areas_id != (
+                      SELECT MIN(sia2.studies_impact_areas_id)
+                      FROM studies_impact_areas sia2
+                      WHERE sia2.studies_study_id = s.study_id
+                        AND sia2.is_active = 1
+                  )
+              )
+          )
     ) AS impact_areas_secondary,
     (
         SELECT GROUP_CONCAT(k.keyword ORDER BY k.keyword SEPARATOR ', ')

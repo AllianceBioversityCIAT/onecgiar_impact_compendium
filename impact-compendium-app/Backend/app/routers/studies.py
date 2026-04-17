@@ -100,6 +100,13 @@ def get_study_related_data(session, study_id):
             FROM studies_impact_areas sia
             JOIN clarisa_impacts_areas cia ON sia.clarisa_impacts_areas_impact_area_id = cia.impact_area_id
             WHERE sia.studies_study_id = :study_id AND cia.is_active = 1
+            ORDER BY
+                CASE
+                    WHEN sia.impact_area_level = 'primary' THEN 0
+                    WHEN sia.impact_area_level = 'secondary' THEN 1
+                    ELSE 2
+                END,
+                sia.studies_impact_areas_id
         """
         )
         impact_areas_result = session.execute(
@@ -318,8 +325,8 @@ async def list_studies(
             SELECT s.study_id, s.title, s.year, s.summary, s.category_id, s.doi, c.name as category_name
             FROM studies s 
             LEFT JOIN categories c ON s.category_id = c.study_category_id 
-            {direct_where_clause.replace('WHERE', 'WHERE s.')} 
-            {order_clause.replace('study_id', 's.study_id').replace('year', 's.year').replace('title', 's.title')} 
+            {direct_where_clause.replace("WHERE", "WHERE s.")} 
+            {order_clause.replace("study_id", "s.study_id").replace("year", "s.year").replace("title", "s.title")} 
             LIMIT :limit OFFSET :skip
         """
         )
@@ -772,7 +779,7 @@ async def update_study(
                 update_query = text(
                     f"""
                     UPDATE studies 
-                    SET {', '.join(update_fields)}, last_updated_date = NOW()
+                    SET {", ".join(update_fields)}, last_updated_date = NOW()
                     WHERE study_id = :study_id
                 """
                 )
@@ -1005,7 +1012,7 @@ async def update_complete_study(
                 try:
                     db.execute(
                         text(
-                            "INSERT INTO studies_impact_areas (studies_study_id, clarisa_impacts_areas_impact_area_id) VALUES (:study_id, :impact_area_id)"
+                            "INSERT INTO studies_impact_areas (studies_study_id, clarisa_impacts_areas_impact_area_id, impact_area_level) VALUES (:study_id, :impact_area_id, 'primary')"
                         ),
                         {"study_id": numeric_id, "impact_area_id": db_impact_id},
                     )
@@ -1021,7 +1028,7 @@ async def update_complete_study(
                     try:
                         db.execute(
                             text(
-                                "INSERT INTO studies_impact_areas (studies_study_id, clarisa_impacts_areas_impact_area_id) VALUES (:study_id, :impact_area_id)"
+                                "INSERT INTO studies_impact_areas (studies_study_id, clarisa_impacts_areas_impact_area_id, impact_area_level) VALUES (:study_id, :impact_area_id, 'secondary')"
                             ),
                             {"study_id": numeric_id, "impact_area_id": db_impact_id},
                         )
@@ -1291,7 +1298,7 @@ async def save_complete_study(
                 try:
                     db.execute(
                         text(
-                            "INSERT INTO studies_impact_areas (studies_study_id, clarisa_impacts_areas_impact_area_id) VALUES (:study_id, :impact_area_id)"
+                            "INSERT INTO studies_impact_areas (studies_study_id, clarisa_impacts_areas_impact_area_id, impact_area_level) VALUES (:study_id, :impact_area_id, 'primary')"
                         ),
                         {
                             "study_id": study_data.studyId,
@@ -1310,7 +1317,7 @@ async def save_complete_study(
                     try:
                         db.execute(
                             text(
-                                "INSERT INTO studies_impact_areas (studies_study_id, clarisa_impacts_areas_impact_area_id) VALUES (:study_id, :impact_area_id)"
+                                "INSERT INTO studies_impact_areas (studies_study_id, clarisa_impacts_areas_impact_area_id, impact_area_level) VALUES (:study_id, :impact_area_id, 'secondary')"
                             ),
                             {
                                 "study_id": study_data.studyId,

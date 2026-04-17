@@ -142,6 +142,8 @@ Test details in `Frontend/TESTING.md`.
 
 ## Infrastructure (`Infrastructure/`)
 
+> **Detail** lives in [`Infrastructure/CLAUDE.md`](Infrastructure/CLAUDE.md) — stack topology, scripts (when to use which), SAM template specifics, and the SAM/CloudFormation gotchas (stale `.aws-sam`, `UPDATE_ROLLBACK_COMPLETE` handling, BinaryMediaTypes/`Accept` negotiation). Read it before deploying or modifying scripts.
+
 ### Layout
 ```
 Infrastructure/

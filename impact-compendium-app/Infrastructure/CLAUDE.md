@@ -71,6 +71,17 @@ Lambda runs **outside the VPC** — RDS must be publicly accessible (commit `36b
 
 Always invoke deploy with `--config-env testing` or `--config-env production`. The `[default]` block is the build profile; the env block selects the right stack name + parameter overrides.
 
+## Prerequisites Before Any Deploy
+
+| Prerequisite | Why | How to check |
+|---|---|---|
+| **Docker daemon running** | `sam build --use-container` mounts the source into the official `public.ecr.aws/sam/build-python3.9` image. Without a running daemon the build fails immediately with `Error: Running AWS SAM projects locally requires Docker`. | `docker info` returns the daemon info (not an error). On macOS: open Docker Desktop and wait for the whale icon to go steady. |
+| AWS CLI configured with profile `IBD-DEV` | All scripts pass `--profile IBD-DEV`. | `aws sts get-caller-identity --profile IBD-DEV` returns your identity. |
+| Network access to AWS (us-east-1) | CloudFormation, S3, Lambda, CloudFront APIs. | The above `aws sts` call. |
+| Python 3.9+ on the host | Only needed when running `sam build` **without** `--use-container` (not recommended). With `--use-container` the container supplies 3.9. | `python3 --version`. |
+
+`deploy-backend.sh` runs a preflight check and refuses to proceed if Docker isn't reachable — the script prints a one-line fix hint instead of hanging for minutes.
+
 ## Gotchas (Hard-Won)
 
 ### 1. `sam build` hangs at `--base-dir … adjusting uri ../../Backend/`
@@ -107,6 +118,43 @@ Pre-existing template lint warning, **not** fatal — `sam build`/`deploy` still
 
 ### 5. `sam build` without `--use-container` uses the host Python
 The host's `python3` may not match the Lambda runtime (3.9), producing wheels that fail at runtime (e.g. `cryptography`, `pandas`). Always `--use-container` for deploys; reserve host build for quick local iteration.
+
+### 6. SQLAlchemy ORM models are stale relative to the real MySQL schema
+**Source of truth is `specs/data/dump-TEST-impact_compendium-202511151703.sql`, not `Backend/app/models/`.** The ORM models drift from the real DB in several places:
+
+| ORM model claims | Real DB has |
+|---|---|
+| `studies.id` as PK | `studies.study_id` |
+| `studies.updated_at` | `studies.last_updated_date` (+ a misnamed `last_updated_by datetime`) |
+| `study_categories` table, PK `id` | `categories` table, PK `study_category_id` |
+| `studies_indicators.indicator_name`, `indicator_value`, `unit`, `methodology` | `studies_indicators.indicator_measure`, `unit_measure`, `result_reported` |
+| `studies_contributors.contributor_name`, `role` | Doesn't exist — only `clarisa_centers_center_id`, `clarisa_initiatives_initiative_id` |
+| `studies_impact_areas (study_id, impact_area_id)` | `studies_impact_areas (studies_study_id, clarisa_impacts_areas_impact_area_id, impact_area_level)` |
+| `study_intervention_types` (singular `study`) | `studies_intervention_types` (plural) + extra `details` column |
+| `narratives` has `study_id` | **No `study_id` FK at all** — keyed by `section_key` (UNIQUE). These are page-level section narratives, not per-study notes |
+
+**Implication:** new SQL in `Backend/app/routers/*.py` must use **raw SQL against the real schema** (the pattern used in `reports.py` and `studies.py`). The ORM will compile-run but produces wrong column references at runtime. Fixing the ORM is its own work item — tracked separately; do not assume it's safe to use.
+
+**How to check a field:** open the dump, `/^CREATE TABLE \`<table>\``, and use the column names from there.
+
+### 7. Frontend `aws s3 sync --delete` can serve broken pages for 5–15 min
+Vite emits hashed asset names (`index-<hash>.js`, `index-<hash>.css`). A deploy does:
+1. Upload new `index.html` + new hashed assets.
+2. **Delete the old hashed assets** (via `--delete`).
+3. Invalidate CloudFront.
+
+During the invalidation window, a browser with a **cached old `index.html`** (referencing the old hashes) will 404 on the deleted assets → the page renders **without CSS/JS** (default browser styles, unstyled forms — looks broken, the data may still load if the JS eventually loads elsewhere).
+
+**User-facing fix:** hard-reload (`Cmd+Shift+R` / `Ctrl+F5`) to bypass browser cache.
+
+**Root fix (not yet applied):** `deploy-frontend.sh` should upload `index.html` with `Cache-Control: no-cache, must-revalidate` so browsers always revalidate it, while hashed assets keep their long `max-age`. Two-pass upload:
+```bash
+aws s3 sync dist/ s3://$S3_BUCKET/ --delete \
+    --exclude index.html --cache-control "public, max-age=31536000, immutable"
+aws s3 cp dist/index.html s3://$S3_BUCKET/index.html \
+    --cache-control "no-cache, must-revalidate"
+```
+Once that lands, the stale-cache window disappears: the browser always fetches fresh `index.html`, which references current asset hashes.
 
 ## Standard Backend Deploy Flow (for code-only changes)
 

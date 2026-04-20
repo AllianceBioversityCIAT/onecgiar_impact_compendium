@@ -41,7 +41,21 @@ SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
 SAM_DIR="$SCRIPT_DIR/../backend-sam"
 cd "$SAM_DIR"
 
+# Sanity: Docker daemon must be reachable — sam build --use-container needs it.
+# Without this, `sam build` either errors out immediately or hangs silently
+# depending on the SAM CLI version.
+echo "🐳 Verifying Docker daemon is running..."
+if ! docker info >/dev/null 2>&1; then
+    echo "❌ Docker is not running (or the CLI cannot reach the daemon)."
+    echo "   Start Docker Desktop (macOS: open -a Docker) and wait for the whale"
+    echo "   icon to stop animating, then re-run this script."
+    echo "   Verify manually with:  docker info"
+    exit 1
+fi
+echo "✅ Docker daemon reachable"
+
 # Sanity: caller identity
+echo ""
 echo "🔐 Verifying AWS caller identity..."
 aws sts get-caller-identity --profile "$PROFILE" --query '{Account:Account,Arn:Arn}' --output table
 

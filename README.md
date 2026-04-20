@@ -36,7 +36,10 @@ cd impact-compendium-app
 
 Requires `Backend/.env` (copy from `Backend/.env.example`) with `DB_HOST/USER/PASSWORD/NAME/PORT`. The script creates a Python venv, installs deps, tests the DB connection, then starts uvicorn + vite.
 
-**Prerequisites**: Node.js ≥16, Python ≥3.9, npm, Docker (for `sam build --use-container`), AWS CLI configured with the `IBD-DEV` profile.
+**Prerequisites**:
+- Node.js ≥16, npm, Python ≥3.9.
+- **Docker Desktop running** — required for any backend deploy (`sam build --use-container`). Start Docker Desktop and wait for the whale icon to stabilize before running `deploy-backend.sh` or `deploy-complete.sh`. `deploy-backend.sh` runs a preflight check and aborts with a clear hint if Docker isn't reachable.
+- AWS CLI configured with the `IBD-DEV` profile (`aws sts get-caller-identity --profile IBD-DEV` should work).
 
 ## Deployment
 

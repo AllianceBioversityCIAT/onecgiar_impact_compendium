@@ -1,0 +1,24 @@
+# Cache directories
+.mypy_cache
+.pytest_cache
+__pycache__
+
+# Dev/test files
+tests
+.env
+.env.example
+.flake8
+.gitignore
+pyproject.toml
+requirements-dev.txt
+debug_study_570.py
+lint.sh
+LINTING.md
+Makefile
+architecture
+scripts
+
+# Other
+*.pyc
+.git
+package-lock.json

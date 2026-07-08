@@ -1,0 +1,163 @@
+**Prompt: Generate Frontend UI (React) Directly From Images — No Figma MCP**
+
+ROLE: Senior Frontend Engineer + UI System Designer  
+INTENT: Build the Impact Compendium frontend **without Figma MCP**, using only the provided images as the source of truth. Produce design tokens, global styles, React components, and pages that faithfully reproduce the visuals.
+
+INPUT ASSETS (reference only; do not attempt to open Figma):
+- Logo: `specs/images/logo.png`
+- Dashboard table: `specs/images/Table_main_page.png`
+- Forms: `specs/images/Form_new_study_1.png`, `specs/images/Form_new_study_1_validations.png`, `specs/images/Form_new_study_2.png`, `specs/images/Form_new_study_3.png`
+- ERD (for naming/context only): `specs/data/impact.png`
+
+TARGET OUTPUT PATH (create files):
+```
+impact-compendium-app/Frontend/
+  src/
+    styles/
+      design-tokens.css
+      global.css
+    layouts/
+      AppLayout.tsx
+    components/ui/
+      Button.tsx
+      Input.tsx
+      Select.tsx
+      Textarea.tsx
+      DatePicker.tsx
+      Badge.tsx
+      Chip.tsx
+      Card.tsx
+      Tabs.tsx
+      Table.tsx
+      SlideOver.tsx
+      ProgressStepper.tsx
+      Sidebar.tsx
+      HeaderBar.tsx
+    pages/
+      Login.tsx
+      Dashboard.tsx
+      Studies.tsx
+      CreateStudy/
+        Step1.tsx
+        Step2.tsx
+        Step3.tsx
+      StudyDetailsPanel.tsx
+    services/api.ts
+    main.tsx
+  public/
+    logo.svg
+    logo.png
+    icons/ (any SVGs you derive)
+  README.design-from-images.md
+```
+
+====================================================================
+1) DESIGN TOKENS (from images)
+====================================================================
+Create `src/styles/design-tokens.css` with CSS variables inferred from the images:
+```css
+:root{
+  /* Brand */
+  --ic-color-primary:#FFC84F; /* buttons, accents */
+  --ic-color-accent:#F07E28;  /* hovers, emphasis */
+  --ic-color-gold:#D19F2A;
+  --ic-color-amber:#B96A28;
+  --ic-color-mustard:#DC9700; /* focus outline */
+  --ic-color-neutral:#777777; /* labels, placeholders */
+  --ic-surface:#FFFFFF;       /* cards */
+  --ic-surface-muted:#FAFAFA; /* page bg */
+  --ic-border:#E0E0E0;        /* dividers */
+  --ic-error:#B00020;         /* validation */
+
+  /* Typography */
+  --ic-font-family: Inter, system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial, "Apple Color Emoji","Segoe UI Emoji";
+  --ic-fs-12:12px; --ic-fs-14:14px; --ic-fs-16:16px; --ic-fs-18:18px; --ic-fs-20:20px; --ic-fs-24:24px;
+  --ic-fw-regular:400; --ic-fw-medium:500; --ic-fw-semibold:600; --ic-fw-bold:700;
+
+  /* Elevation & Radius */
+  --ic-radius-6:6px; --ic-radius-8:8px; --ic-radius-10:10px; --ic-radius-12:12px;
+  --ic-shadow-1:0 2px 10px rgba(0,0,0,.08);
+  --ic-shadow-2:0 8px 20px rgba(0,0,0,.12);
+
+  /* Spacing */
+  --ic-space-4:4px; --ic-space-8:8px; --ic-space-12:12px; --ic-space-16:16px; --ic-space-24:24px; --ic-space-32:32px;
+
+  /* Z-index */
+  --ic-z-header:100; --ic-z-sidebar:90; --ic-z-modal:200; --ic-z-slideover:180;
+}
+```
+Add `src/styles/global.css` to import tokens and set base styles (body font, background `#FAFAFA`, focus outline using `--ic-color-mustard`).
+
+====================================================================
+2) LAYOUT & NAV (from dashboard image)
+====================================================================
+`src/layouts/AppLayout.tsx` implements a **left sidebar (260px)** and **top header (64px)**:
+- Sidebar background `var(--ic-color-primary)`; logo lockup at top with 24px padding; nav items: Dashboard, Studies, Indicators, Settings. Active item uses a deeper amber background.
+- Header shows: page title (deep amber), search input (placeholder “Search studies…”), and **Add Study** primary button.
+- Content area: white card with 24px padding.
+
+`components/ui/Sidebar.tsx` & `HeaderBar.tsx` must match spacing and colors in the images and apply the **sidebar logo optimization** (24px padding, 16px icon–text gap, text color black on yellow).
+
+====================================================================
+3) COMPONENTS (visual parity with images)
+====================================================================
+- **Button.tsx**: variants `primary` (yellow bg, black text), `secondary` (white bg, border), `ghost`.
+- **Input/Select/Textarea/DatePicker**: white bg, light border; focus border `--ic-color-primary`; error state border `--ic-error` + helper text.
+- **Badge.tsx**: pill colors for categories → Impact (red #E85C5C), Outcome (green #56C596), Impact Outcome Story (blue #4A6CF7), Other (purple #A97FE8).
+- **Chip.tsx**: contributor/region chips in muted yellow.
+- **Card.tsx**: white surface + `--ic-shadow-1`.
+- **Tabs.tsx** (Step1): two tabs **General Info** / **Intervention**.
+- **Table.tsx**: sticky header, striped rows (#FFFFFF / #FFF9F0), hover `#FFF3D6`, expandable Title row (inline summary), sortable YEAR & CATEGORY, search bar in header.
+- **SlideOver.tsx**: right panel (max 540px) with header (title + badge + year), body sections (Summary, Indicators, Contributors, Geography, Impact Areas, DOI link), footer buttons.
+- **ProgressStepper.tsx**: 3 steps with active step in deep amber; place in form header.
+
+====================================================================
+4) PAGES (recreate screens from images)
+====================================================================
+- **Login.tsx**: centered card 400×420, logo centered top, title “Impact Compendium Database”, 2 inputs, primary **Log In** button; forgot password link (neutral gray).
+- **Dashboard.tsx**: sidebar+header shell; content contains **All Studies** title, filter chips, 
+  and the **Table** component with columns: ID, Title, Year, Period, Category, Contributors, Regions, Impact Areas. Integrate search and expand/collapse behavior.
+- **Studies.tsx**: same table view with pagination label “1–10 of N results”.
+- **CreateStudy/Step1.tsx**: two tabs. Fields per images: Study ID, Title*, Summary*, Year*, Link/DOI, Category*, Period Start/End*, Intervention Type*, Intervention Details*. Show validation state as in `Form_new_study_1_validations.png`.
+- **CreateStudy/Step2.tsx**: two-column layout. Left: Crops/Product Type (multi), Impact Areas (primary single + secondary multi). Right: Contributors (Initiatives multi, Centers multi), Geography (Countries multi, Regions auto from countries). 
+- **CreateStudy/Step3.tsx**: dynamic **Indicator card** list → Indicator Name*, Custom Label, Unit*, Result*, Baseline, Target, Disaggregation (multi), Data Source. Actions: Add, Duplicate, Delete.
+- **StudyDetailsPanel.tsx**: uses SlideOver; fields mirror the table + summary.
+
+All pages desktop base 1440px; tablet collapses sidebar to icons; mobile converts table to cards.
+
+====================================================================
+5) ACCESSIBILITY & INTERACTION
+====================================================================
+- Keyboard focus: visible outline `--ic-color-mustard`.
+- Buttons and inputs min height 44px. Label every form control.
+- SlideOver opens/closes with 200–250ms transition.
+- Debounce search input (300ms) before firing `onChange` callback (no API call by default).
+
+====================================================================
+6) SERVICES & ROUTING
+====================================================================
+- `services/api.ts`: export `API.baseURL = import.meta.env.VITE_API_BASE_URL || "http://localhost:8000"` and helpers `apiGet/apiPost`.
+- `main.tsx`: set up routes: `/login`, `/`, `/studies`, `/studies/new/step-1`, `/studies/new/step-2`, `/studies/new/step-3`.
+- `AppLayout` wraps all routes except `/login`.
+
+====================================================================
+7) README
+====================================================================
+Generate `README.design-from-images.md` with:
+- How images informed tokens and components
+- How to run locally with Vite
+- Where to wire API calls later
+- Notes on responsive breakpoints and a11y
+
+====================================================================
+VALIDATION CRITERIA
+====================================================================
+- Visual parity: spacing, colors, pill badges, hover states, and table layout match images.
+- Logo lockup is clean across Login, Header, Sidebar (per optimization rules).
+- Forms show validation feedback consistent with `Form_new_study_1_validations.png`.
+- Table supports expand/collapse on Title and includes search bar.
+
+====================================================================
+OUTPUT
+====================================================================
+Write all files to the specified paths. If placeholder content is needed (icons, sample data), include minimal SVGs and mock arrays in components for demo only. Do not introduce any Figma-specific code.

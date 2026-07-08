@@ -1,0 +1,16 @@
+from sqlalchemy import Column, ForeignKey, Integer, String, Text
+from sqlalchemy.orm import relationship
+
+from app.db.connection import Base
+
+
+class Narrative(Base):
+    __tablename__ = "narratives"
+
+    id = Column(Integer, primary_key=True, index=True)
+    study_id = Column(Integer, ForeignKey("studies.id"), nullable=False)
+    title = Column(String(500))
+    content = Column(Text)
+
+    # Relationships
+    study = relationship("Study", back_populates="narratives")

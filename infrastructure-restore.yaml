@@ -1,0 +1,536 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Description: Impact Compendium - Infrastructure Only (VPC, RDS, Cognito, S3, CloudFront)
+
+Parameters:
+  Environment:
+    Type: String
+    Default: testing
+  ProjectName:
+    Type: String
+    Default: impact-compendium
+  DomainName:
+    Type: String
+    Default: test-impact-admin.prms.cgiar.org
+    Description: Domain name for email links (e.g., test-impact-admin.prms.cgiar.org for testing, impact-admin.prms.cgiar.org for production)
+
+Resources:
+  # VPC
+  ImpactVPC:
+    Type: AWS::EC2::VPC
+    Properties:
+      CidrBlock: 10.0.0.0/16
+      EnableDnsHostnames: true
+      EnableDnsSupport: true
+      Tags:
+        - Key: Name
+          Value: !Sub "${ProjectName}-vpc-${Environment}"
+        - Key: Project
+          Value: !Ref ProjectName
+        - Key: Environment
+          Value: !Ref Environment
+
+  # Internet Gateway
+  InternetGateway:
+    Type: AWS::EC2::InternetGateway
+    Properties:
+      Tags:
+        - Key: Name
+          Value: !Sub "${ProjectName}-igw-${Environment}"
+        - Key: Project
+          Value: !Ref ProjectName
+        - Key: Environment
+          Value: !Ref Environment
+
+  # Attach Internet Gateway
+  AttachGateway:
+    Type: AWS::EC2::VPCGatewayAttachment
+    Properties:
+      VpcId: !Ref ImpactVPC
+      InternetGatewayId: !Ref InternetGateway
+
+  # Private Subnets
+  PrivateSubnet1:
+    Type: AWS::EC2::Subnet
+    Properties:
+      VpcId: !Ref ImpactVPC
+      CidrBlock: 10.0.1.0/24
+      AvailabilityZone: !Select [0, !GetAZs ""]
+      Tags:
+        - Key: Name
+          Value: !Sub "${ProjectName}-private-1-${Environment}"
+        - Key: Project
+          Value: !Ref ProjectName
+        - Key: Environment
+          Value: !Ref Environment
+
+  PrivateSubnet2:
+    Type: AWS::EC2::Subnet
+    Properties:
+      VpcId: !Ref ImpactVPC
+      CidrBlock: 10.0.2.0/24
+      AvailabilityZone: !Select [1, !GetAZs ""]
+      Tags:
+        - Key: Name
+          Value: !Sub "${ProjectName}-private-2-${Environment}"
+        - Key: Project
+          Value: !Ref ProjectName
+        - Key: Environment
+          Value: !Ref Environment
+
+  # Public Subnets for NAT Gateway
+  PublicSubnet1:
+    Type: AWS::EC2::Subnet
+    Properties:
+      VpcId: !Ref ImpactVPC
+      CidrBlock: 10.0.10.0/24
+      AvailabilityZone: !Select [0, !GetAZs ""]
+      MapPublicIpOnLaunch: true
+      Tags:
+        - Key: Name
+          Value: !Sub "${ProjectName}-public-1-${Environment}"
+        - Key: Project
+          Value: !Ref ProjectName
+        - Key: Environment
+          Value: !Ref Environment
+
+  # NAT Gateway
+  NATGateway:
+    Type: AWS::EC2::NatGateway
+    Properties:
+      AllocationId: !GetAtt EIPForNAT.AllocationId
+      SubnetId: !Ref PublicSubnet1
+      Tags:
+        - Key: Name
+          Value: !Sub "${ProjectName}-nat-${Environment}"
+        - Key: Project
+          Value: !Ref ProjectName
+        - Key: Environment
+          Value: !Ref Environment
+
+  # Elastic IP for NAT Gateway
+  EIPForNAT:
+    Type: AWS::EC2::EIP
+    DependsOn: AttachGateway
+    Properties:
+      Domain: vpc
+      Tags:
+        - Key: Name
+          Value: !Sub "${ProjectName}-eip-${Environment}"
+        - Key: Project
+          Value: !Ref ProjectName
+        - Key: Environment
+          Value: !Ref Environment
+
+  # Route Tables
+  PublicRouteTable:
+    Type: AWS::EC2::RouteTable
+    Properties:
+      VpcId: !Ref ImpactVPC
+      Tags:
+        - Key: Name
+          Value: !Sub "${ProjectName}-public-rt-${Environment}"
+        - Key: Project
+          Value: !Ref ProjectName
+        - Key: Environment
+          Value: !Ref Environment
+
+  PrivateRouteTable:
+    Type: AWS::EC2::RouteTable
+    Properties:
+      VpcId: !Ref ImpactVPC
+      Tags:
+        - Key: Name
+          Value: !Sub "${ProjectName}-private-rt-${Environment}"
+        - Key: Project
+          Value: !Ref ProjectName
+        - Key: Environment
+          Value: !Ref Environment
+
+  # Routes
+  PublicRoute:
+    Type: AWS::EC2::Route
+    DependsOn: AttachGateway
+    Properties:
+      RouteTableId: !Ref PublicRouteTable
+      DestinationCidrBlock: 0.0.0.0/0
+      GatewayId: !Ref InternetGateway
+
+  PrivateRoute:
+    Type: AWS::EC2::Route
+    Properties:
+      RouteTableId: !Ref PrivateRouteTable
+      DestinationCidrBlock: 0.0.0.0/0
+      NatGatewayId: !Ref NATGateway
+
+  # Route Table Associations
+  PublicSubnetRouteTableAssociation:
+    Type: AWS::EC2::SubnetRouteTableAssociation
+    Properties:
+      SubnetId: !Ref PublicSubnet1
+      RouteTableId: !Ref PublicRouteTable
+
+  PrivateSubnetRouteTableAssociation1:
+    Type: AWS::EC2::SubnetRouteTableAssociation
+    Properties:
+      SubnetId: !Ref PrivateSubnet1
+      RouteTableId: !Ref PrivateRouteTable
+
+  PrivateSubnetRouteTableAssociation2:
+    Type: AWS::EC2::SubnetRouteTableAssociation
+    Properties:
+      SubnetId: !Ref PrivateSubnet2
+      RouteTableId: !Ref PrivateRouteTable
+
+  # Security Groups
+  DatabaseSecurityGroup:
+    Type: AWS::EC2::SecurityGroup
+    Properties:
+      GroupName: !Sub "${ProjectName}-db-sg-${Environment}"
+      GroupDescription: Security group for RDS database
+      VpcId: !Ref ImpactVPC
+      Tags:
+        - Key: Project
+          Value: !Ref ProjectName
+        - Key: Environment
+          Value: !Ref Environment
+
+  LambdaSecurityGroup:
+    Type: AWS::EC2::SecurityGroup
+    Properties:
+      GroupName: !Sub "${ProjectName}-lambda-sg-${Environment}"
+      GroupDescription: Security group for Lambda functions
+      VpcId: !Ref ImpactVPC
+      SecurityGroupEgress:
+        - IpProtocol: tcp
+          FromPort: 443
+          ToPort: 443
+          CidrIp: 0.0.0.0/0
+      Tags:
+        - Key: Project
+          Value: !Ref ProjectName
+        - Key: Environment
+          Value: !Ref Environment
+
+  # Security Group Rules
+  DatabaseSecurityGroupIngress:
+    Type: AWS::EC2::SecurityGroupIngress
+    Properties:
+      GroupId: !Ref DatabaseSecurityGroup
+      IpProtocol: tcp
+      FromPort: 3306
+      ToPort: 3306
+      SourceSecurityGroupId: !Ref LambdaSecurityGroup
+
+  LambdaSecurityGroupEgress:
+    Type: AWS::EC2::SecurityGroupEgress
+    Properties:
+      GroupId: !Ref LambdaSecurityGroup
+      IpProtocol: tcp
+      FromPort: 3306
+      ToPort: 3306
+      DestinationSecurityGroupId: !Ref DatabaseSecurityGroup
+
+  # DB Subnet Group
+  DBSubnetGroup:
+    Type: AWS::RDS::DBSubnetGroup
+    Properties:
+      DBSubnetGroupName: !Sub "${ProjectName}-db-subnet-${Environment}"
+      DBSubnetGroupDescription: Subnet group for Impact Compendium RDS
+      SubnetIds:
+        - !Ref PrivateSubnet1
+        - !Ref PrivateSubnet2
+      Tags:
+        - Key: Project
+          Value: !Ref ProjectName
+        - Key: Environment
+          Value: !Ref Environment
+
+  # Database Password Secret
+  DatabasePasswordSecret:
+    Type: AWS::SecretsManager::Secret
+    Properties:
+      Name: !Sub "${ProjectName}/${Environment}/db-password"
+      Description: Database password for Impact Compendium
+      GenerateSecretString:
+        SecretStringTemplate: '{"username": "admin"}'
+        GenerateStringKey: "password"
+        PasswordLength: 16
+        ExcludeCharacters: '"@/\'
+      Tags:
+        - Key: Project
+          Value: !Ref ProjectName
+        - Key: Environment
+          Value: !Ref Environment
+
+  # RDS MySQL Instance
+  ImpactDatabase:
+    Type: AWS::RDS::DBInstance
+    DeletionPolicy: Snapshot
+    UpdateReplacePolicy: Snapshot
+    Properties:
+      DBInstanceIdentifier: !Sub "${ProjectName}-db-${Environment}"
+      DBInstanceClass: db.t3.micro
+      Engine: mysql
+      EngineVersion: "8.0.43"
+      AllocatedStorage: 20
+      StorageType: gp2
+      DBName: impact_compendium
+      MasterUsername: admin
+      MasterUserPassword: !Sub "{{resolve:secretsmanager:${ProjectName}/${Environment}/db-password:SecretString:password}}"
+      VPCSecurityGroups:
+        - !Ref DatabaseSecurityGroup
+      DBSubnetGroupName: !Ref DBSubnetGroup
+      BackupRetentionPeriod: 1
+      MultiAZ: false
+      StorageEncrypted: false
+      Tags:
+        - Key: Project
+          Value: !Ref ProjectName
+        - Key: Environment
+          Value: !Ref Environment
+
+  # SSM Parameter for Database URL
+  DatabaseUrlParameter:
+    Type: AWS::SSM::Parameter
+    Properties:
+      Name: !Sub "/${ProjectName}/${Environment}/database-url"
+      Type: String
+      Value: !Sub "mysql://admin:{{resolve:secretsmanager:${ProjectName}/${Environment}/db-password:SecretString:password}}@${ImpactDatabase.Endpoint.Address}:3306/impact_compendium"
+      Tags:
+        Project: !Ref ProjectName
+        Environment: !Ref Environment
+
+  # Cognito User Pool
+  ImpactUserPool:
+    Type: AWS::Cognito::UserPool
+    Properties:
+      UserPoolName: !Sub "${ProjectName}-users-${Environment}"
+      Policies:
+        PasswordPolicy:
+          MinimumLength: 8
+          RequireUppercase: true
+          RequireNumbers: true
+          RequireSymbols: true
+      AutoVerifiedAttributes:
+        - email
+      UsernameAttributes:
+        - email
+      EmailConfiguration:
+        EmailSendingAccount: COGNITO_DEFAULT
+      VerificationMessageTemplate:
+        DefaultEmailOption: CONFIRM_WITH_CODE
+        EmailMessage: !Sub |
+          <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px; background-color: #f8f9fa;">
+            <div style="background-color: white; padding: 30px; border-radius: 8px; box-shadow: 0 2px 4px rgba(0,0,0,0.1);">
+              <div style="text-align: center; margin-bottom: 30px;">
+                <h1 style="color: #2c5530; margin: 0; font-size: 28px;">Password Reset Request</h1>
+                <div style="width: 60px; height: 3px; background-color: #7cb342; margin: 15px auto;"></div>
+              </div>
+              
+              <p style="color: #333; font-size: 16px; line-height: 1.6; margin-bottom: 20px;">
+                A password reset has been requested for your CGIAR Impact Compendium account.
+              </p>
+              
+              <div style="background-color: #f1f8e9; padding: 20px; border-radius: 6px; margin: 20px 0;">
+                <h3 style="color: #2c5530; margin: 0 0 15px 0; font-size: 18px;">Your Reset Code:</h3>
+                <p style="margin: 8px 0; color: #333; font-size: 24px; font-weight: bold; text-align: center; background: #fff; padding: 15px; border-radius: 4px; letter-spacing: 2px;">{####}</p>
+              </div>
+              
+              <div style="text-align: center; margin: 30px 0;">
+                <a href="https://${DomainName}/reset-password" style="background-color: #2c5530; color: white; padding: 12px 30px; text-decoration: none; border-radius: 6px; font-weight: bold; display: inline-block;">
+                  Reset Your Password
+                </a>
+              </div>
+              
+              <div style="background-color: #fff3e0; padding: 15px; border-radius: 6px; margin: 20px 0; border-left: 4px solid #ff9800;">
+                <p style="margin: 0; color: #e65100; font-size: 14px;">
+                  <strong>Security Notice:</strong> If you did not request this password reset, please ignore this email. This code will expire in 24 hours.
+                </p>
+              </div>
+              
+              <div style="border-top: 1px solid #e0e0e0; padding-top: 20px; margin-top: 30px;">
+                <p style="color: #666; font-size: 14px; line-height: 1.5; margin-bottom: 15px;">
+                  Need help? Contact our support team or visit the Impact Compendium help center.
+                </p>
+                
+                <div style="text-align: center;">
+                  <p style="color: #999; font-size: 12px; margin: 5px 0;">
+                    ? 2025 CGIAR System Organization
+                  </p>
+                  <p style="color: #999; font-size: 12px; margin: 5px 0;">
+                    Transforming food, land, and water systems in a climate crisis
+                  </p>
+                </div>
+              </div>
+            </div>
+          </div>
+        EmailSubject: "CGIAR Impact Compendium - Password Reset Code"
+      AdminCreateUserConfig:
+        AllowAdminCreateUserOnly: false
+        UnusedAccountValidityDays: 7
+        InviteMessageTemplate:
+          EmailMessage: !Sub |
+            <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px; background-color: #f8f9fa;">
+              <div style="background-color: white; padding: 30px; border-radius: 8px; box-shadow: 0 2px 4px rgba(0,0,0,0.1);">
+                <div style="text-align: center; margin-bottom: 30px;">
+                  <h1 style="color: #2c5530; margin: 0; font-size: 28px;">Welcome to Impact Compendium</h1>
+                  <div style="width: 60px; height: 3px; background-color: #7cb342; margin: 15px auto;"></div>
+                </div>
+                
+                <p style="color: #333; font-size: 16px; line-height: 1.6; margin-bottom: 20px;">
+                  Your account has been successfully created for the CGIAR Impact Compendium platform.
+                </p>
+                
+                <div style="background-color: #f1f8e9; padding: 20px; border-radius: 6px; margin: 20px 0;">
+                  <h3 style="color: #2c5530; margin: 0 0 15px 0; font-size: 18px;">Your Login Details:</h3>
+                  <p style="margin: 8px 0; color: #333;"><strong>Username:</strong> {username}</p>
+                  <p style="margin: 8px 0; color: #333;"><strong>Temporary Password:</strong> {####}</p>
+                </div>
+                
+                <div style="background-color: #fff3e0; padding: 15px; border-radius: 6px; margin: 20px 0; border-left: 4px solid #ff9800;">
+                  <p style="margin: 0; color: #e65100; font-size: 14px;">
+                    <strong>Important:</strong> You will be required to change your password on first login for security purposes.
+                  </p>
+                </div>
+                
+                <div style="text-align: center; margin: 30px 0;">
+                  <a href="https://${DomainName}" style="background-color: #2c5530; color: white; padding: 12px 30px; text-decoration: none; border-radius: 6px; font-weight: bold; display: inline-block;">
+                    Access Impact Compendium
+                  </a>
+                </div>
+                
+                <div style="border-top: 1px solid #e0e0e0; padding-top: 20px; margin-top: 30px;">
+                  <p style="color: #666; font-size: 14px; line-height: 1.5; margin-bottom: 15px;">
+                    The Impact Compendium is CGIAR's comprehensive platform for documenting and sharing research impact evidence across our global initiatives.
+                  </p>
+                  
+                  <div style="text-align: center;">
+                    <p style="color: #999; font-size: 12px; margin: 5px 0;">
+                      ? {current_year} CGIAR System Organization
+                    </p>
+                    <p style="color: #999; font-size: 12px; margin: 5px 0;">
+                      Transforming food, land, and water systems in a climate crisis
+                    </p>
+                  </div>
+                </div>
+              </div>
+            </div>
+          EmailSubject: "Welcome to CGIAR Impact Compendium - Account Created"
+      UserPoolTags:
+        Project: !Ref ProjectName
+        Environment: !Ref Environment
+
+  # Cognito User Pool Client
+  ImpactUserPoolClient:
+    Type: AWS::Cognito::UserPoolClient
+    Properties:
+      ClientName: !Sub "${ProjectName}-client-${Environment}"
+      UserPoolId: !Ref ImpactUserPool
+      GenerateSecret: false
+      ExplicitAuthFlows:
+        - ALLOW_ADMIN_USER_PASSWORD_AUTH
+        - ALLOW_USER_PASSWORD_AUTH
+        - ALLOW_REFRESH_TOKEN_AUTH
+
+  # S3 Bucket for Frontend
+  FrontendBucket:
+    Type: AWS::S3::Bucket
+    DeletionPolicy: Retain
+    UpdateReplacePolicy: Retain
+    Properties:
+      BucketName: !Sub "${ProjectName}-frontend-${Environment}-${AWS::AccountId}"
+      WebsiteConfiguration:
+        IndexDocument: index.html
+        ErrorDocument: index.html
+      PublicAccessBlockConfiguration:
+        BlockPublicAcls: false
+        BlockPublicPolicy: false
+        IgnorePublicAcls: false
+        RestrictPublicBuckets: false
+      Tags:
+        - Key: Project
+          Value: !Ref ProjectName
+        - Key: Environment
+          Value: !Ref Environment
+
+  # CloudFront Distribution
+  ImpactCloudFrontDistribution:
+    Type: AWS::CloudFront::Distribution
+    Properties:
+      DistributionConfig:
+        Origins:
+          - Id: S3Origin
+            DomainName: !GetAtt FrontendBucket.RegionalDomainName
+            S3OriginConfig:
+              OriginAccessIdentity: ""
+        DefaultCacheBehavior:
+          TargetOriginId: S3Origin
+          ViewerProtocolPolicy: redirect-to-https
+          CachePolicyId: 658327ea-f89d-4fab-a63d-7e88639e58f6
+        DefaultRootObject: index.html
+        CustomErrorResponses:
+          - ErrorCode: 404
+            ResponseCode: 200
+            ResponsePagePath: /index.html
+        Enabled: true
+        PriceClass: PriceClass_100
+      Tags:
+        - Key: Project
+          Value: !Ref ProjectName
+        - Key: Environment
+          Value: !Ref Environment
+
+Outputs:
+  VpcId:
+    Description: VPC ID
+    Value: !Ref ImpactVPC
+    Export:
+      Name: !Sub "${ProjectName}-${Environment}-vpc-id"
+
+  LambdaSecurityGroupId:
+    Description: Lambda Security Group ID
+    Value: !Ref LambdaSecurityGroup
+    Export:
+      Name: !Sub "${ProjectName}-${Environment}-lambda-sg-id"
+
+  PrivateSubnet1Id:
+    Description: Private Subnet 1 ID
+    Value: !Ref PrivateSubnet1
+    Export:
+      Name: !Sub "${ProjectName}-${Environment}-private-subnet-1"
+
+  PrivateSubnet2Id:
+    Description: Private Subnet 2 ID
+    Value: !Ref PrivateSubnet2
+    Export:
+      Name: !Sub "${ProjectName}-${Environment}-private-subnet-2"
+
+  DatabaseEndpoint:
+    Description: RDS database endpoint
+    Value: !GetAtt ImpactDatabase.Endpoint.Address
+    Export:
+      Name: !Sub "${ProjectName}-${Environment}-db-endpoint"
+
+  CognitoUserPoolId:
+    Description: Cognito User Pool ID
+    Value: !Ref ImpactUserPool
+    Export:
+      Name: !Sub "${ProjectName}-${Environment}-cognito-pool-id"
+
+  CognitoClientId:
+    Description: Cognito User Pool Client ID
+    Value: !Ref ImpactUserPoolClient
+    Export:
+      Name: !Sub "${ProjectName}-${Environment}-cognito-client-id"
+
+  S3BucketName:
+    Description: S3 bucket name for frontend
+    Value: !Ref FrontendBucket
+    Export:
+      Name: !Sub "${ProjectName}-${Environment}-s3-bucket"
+
+  CloudFrontUrl:
+    Description: CloudFront distribution URL
+    Value: !Sub "https://${ImpactCloudFrontDistribution.DomainName}"
+    Export:
+      Name: !Sub "${ProjectName}-${Environment}-cloudfront-url"

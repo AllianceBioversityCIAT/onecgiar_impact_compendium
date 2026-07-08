@@ -1,0 +1,609 @@
+**Prompt 1: Login Page – Impact Compendium Database**
+
+**Role:** Senior Product Designer  
+**Objective:** Design a clean, modern, centered login page for the Impact Compendium Database using the provided color palette and logo.
+
+---
+
+### Style & Branding
+- Primary color: `#FFC84F`  
+- Accent colors: `#F07E28`, `#D19F2A`, `#B96A28`, `#DC9700`, `#777777`  
+- Background: soft gradient from `#FFF8E1` (top) to `#FFFFFF` (bottom).  
+- Typography: **Inter** or **Nunito Sans**, medium weight, dark gray text.
+- Logo: use `logo.svg` centered at the top of the card.
+
+---
+
+### Layout
+- Centered vertical card layout, aligned both vertically and horizontally within the viewport.
+- Card dimensions: 400px width, 420px height.
+- Card background: white with subtle drop shadow (0px 2px 10px rgba(0,0,0,0.08)), rounded corners (12px).
+
+---
+
+### Content Hierarchy
+1. **Logo section:** top center, with 32px margin from top of card.
+2. **Title:** text below logo → *Impact Compendium Database* (font size 20px, color `#B96A28`).
+3. **Form fields:** two stacked text fields:  
+   - Username / Email  
+   - Password (masked input)
+   Each field has rounded corners (6px), border color `#DADADA`, focus border `#FFC84F`.
+4. **Primary button:** yellow (`#FFC84F`), label **Log In**, black text, bold, rounded (8px).  
+   - Hover: darken yellow slightly (`#DC9700`).  
+5. **Footer link:** small text *“Forgot password?”* below button, color `#777777`, hover underline.
+
+---
+
+### Responsiveness
+- Centered card scales down to 90% width on mobile (<600px).
+- Font sizes scale down to 16px for inputs and 14px for footer link.
+
+---
+
+### Notes
+- Optional success animation: brief fade-in transition of the dashboard upon login.
+- Keep layout minimalist and clean — no additional illustrations or background images.
+- Add Alliance/CGIAR branding consistency (yellow focus color, rounded UI components).
+
+-------------------------------------------------------------------------------------------
+-------------------------------------------------------------------------------------------
+
+**Prompt 2: Dashboard – Impact Compendium Database**
+
+**Role:** Senior Product Designer  
+**Objective:** Design a data-driven dashboard for the Impact Compendium Database with a sidebar navigation, dynamic table, and consistent CGIAR-inspired color palette.
+
+---
+
+### Branding & Style
+- Use the official color palette:
+  - Primary Yellow: `#FFC84F`
+  - Accent Orange: `#F07E28`
+  - Gold: `#D19F2A`
+  - Deep Amber: `#B96A28`
+  - Mustard: `#DC9700`
+  - Neutral Gray: `#777777`
+- Background: very light neutral (`#FAFAFA`).
+- Typography: **Inter** or **Nunito Sans**, 14–16px body text, dark gray.
+- Rounded corners (8px), subtle drop shadows for cards and modals.
+
+---
+
+### Layout Structure (1440px Desktop Base)
+
+#### **1. Sidebar Navigation (Left Fixed Panel)**
+- Width: 240px, background color: `#FFC84F` (primary yellow).
+- Logo (`logo.svg`) top-left, 24px padding.
+- Navigation items (vertical stack, left aligned):
+  - Dashboard 🏠
+  - Studies 📄
+  - Indicators 📊
+  - Settings ⚙️
+- Each nav item has icon + label, active state highlighted with deep amber `#B96A28` background and white text.
+- Hover: darken yellow slightly (`#DC9700`).
+
+#### **2. Top Header Bar**
+- Height: 64px, white background, subtle shadow.
+- Left: Page title → **Impact Compendium Database** (20px, bold, `#B96A28`).
+- Right: **Search bar** (placeholder: *Search studies...*), and **Add Study +** button.
+- Add Study button → yellow (`#FFC84F`), bold text, rounded (8px), hover `#DC9700`.
+- Top-right corner: circular user avatar or initials dropdown (for account actions).
+
+#### **3. Main Content Area**
+- Positioned to the right of the sidebar, filling remaining space.
+- Content card: white background, rounded corners, padding 24px.
+- Title row: *“All Studies”* with filter chips for quick access by category.
+
+##### **Table Design (Data from ERD)**
+Columns:
+1. ID  
+2. Title  
+3. Year  
+4. Period (start–end)  
+5. Category (Impact Study, Outcome Study, etc.)  
+6. Contributors (Initiatives & Centers)  
+7. Regions  
+8. Impact Areas  
+
+Each column header: bold, uppercase, color `#777777`.
+Rows alternate background (#FFFFFF / #FFF9F0), hover effect (#FFF3D6).
+
+Category tags (pill style):
+- Impact Study → Red (#E85C5C)
+- Outcome Study → Green (#56C596)
+- Impact Outcome Story → Blue (#4A6CF7)
+- Other → Purple (#A97FE8)
+
+Contributors shown as rounded pills (initiative or center acronym).
+
+#### **4. Table Controls**
+- Search (top-right), Sort by dropdown (Year, Category, Title), and Filter by Category/Initiative.
+- Pagination bottom center → *“1–10 of 35 results”* with next/previous arrows.
+
+---
+
+### **Interactivity & Future Scalability**
+- Clicking a row opens a **slide-over panel** (right side) showing detailed study info (summary, indicators, initiatives, regions).
+- Add Study button routes to multi-step form (Steps 1–3).
+- Include subtle loading animation for data refresh.
+
+---
+
+### **Responsiveness**
+- Sidebar collapses to icon-only version on tablet (1024px).
+- On mobile, sidebar becomes top hamburger menu.
+- Table converts to card-based list view.
+
+---
+
+### **Visual Tone**
+Professional, warm, and aligned with CGIAR branding — heavy use of yellows and oranges balanced by neutral whites and grays. Data should feel approachable but structured, reflecting impact analysis professionalism.
+
+-------------------------------------------------------------------------------------------
+-------------------------------------------------------------------------------------------
+
+**Prompt 3: Form – Step 1 (Study Information & Intervention)**
+
+**Role:** Senior Product Designer  
+**Objective:** Create Step 1 of a 3‑step wizard for creating a Study in the Impact Compendium Database. Optimize UX using tabs and contextual guidance. Align field structure with the ERD (studies, study_intervention_types, categories) and use the brand palette.
+
+---
+
+### Branding & System
+- Colors:
+  - Primary: `#FFC84F`
+  - Accent: `#F07E28`
+  - Gold: `#D19F2A`
+  - Deep Amber: `#B96A28`
+  - Mustard (hover/focus): `#DC9700`
+  - Neutral: `#777777`
+- Typography: **Inter** or **Nunito Sans** (16px base; 20px section titles).
+- Components: rounded corners (8–12px), subtle shadows, white surfaces on very light background `#FAFAFA`.
+- Logo: place `logo.svg` in the header (left), consistent with Dashboard.
+
+---
+
+### Global Layout
+- Canvas: 1440px desktop base.
+- Header bar (white) with title **Create New Study** and a compact progress indicator (● ● ●) → Step 1 active (filled in `#B96A28`).
+- Page body uses a **two‑tab card**:
+  - **Tab A: General Info** (default)
+  - **Tab B: Intervention**
+- Sticky footer with **Back** (disabled on Step 1) and **Next →** (primary) aligned right; footer uses white background, top border `#EFEFEF`.
+- Autosave banner beneath header (muted) → “Draft saved at 12:45”.
+
+---
+
+### Tab A — General Info
+**Card container** with 24px padding, 16px gaps.
+
+**Fields (reflecting ERD: `studies`)**
+1. **Study Key / ID** (text or read‑only generated)  
+   - Helper: “Unique identifier, can be auto‑generated.”
+2. **Title** (text, required)  
+   - Placeholder: “Short, descriptive study title.”
+3. **Summary** (multiline, 3–5 lines, required)
+4. **Year of Report** (numeric or year picker, default current year, required)
+5. **Link or DOI** (text, URL pattern validation)
+6. **Category** (dropdown, required; values from ERD lookup/table)  
+   - Options example: Impact Study / Outcome Study / Impact Outcome Story / Other.
+7. **Period** (two date inputs: Start, End; validate Start ≤ End; both required)  
+   - Hint: “Use the study analysis window.”
+
+**UX/Validation**
+- Required fields marked with *.
+- Error state: red border + inline message in `#B00020`.
+- On focus: border `#FFC84F`.
+- Section help icon (ⓘ) opens right‑side tooltip explaining how data appears on the Dashboard.
+
+---
+
+### Tab B — Intervention
+**Card container** with 24px padding.
+
+**Fields (ERD‑aligned)**
+1. **Intervention Type** (dropdown → FK to `study_intervention_types`, required)  
+   - Example values pulled from ERD.
+2. **Intervention Details** (multiline textarea, required)  
+   - Prompt examples below field (gray `#777777`): “Describe target population, methods, timing.”
+3. **Methodology (optional)** (dropdown + short text)  
+   - Dropdown: RCT, quasi‑experimental, observational, meta‑analysis, other.
+4. **Keywords (optional)** (tokenized multi‑select; free text chips)
+
+**Microcopy & A11y**
+- Every control has a label, helper text, and clear error messaging.
+- Minimum 44px touch targets; keyboard focus visible in Mustard `#DC9700`.
+
+---
+
+### Wizard Controls (Sticky Footer)
+- **Back** (secondary outline, disabled on Step 1)  
+- **Next →** (primary button, `#FFC84F`, black text, rounded 10px)  
+  - Hover: `#DC9700`, Active: slight inset shadow.
+- Save Draft (ghost button) at left of footer.
+
+---
+
+### Interactions
+- Switching tabs **does not** lose input; autosave drafts every 10s on change.
+- If user clicks Next with errors, auto‑focus first invalid field and display a summary toast at top: “Please complete the required fields.”
+
+---
+
+### Responsiveness
+- ≥1280px: two‑column grid inside each tab where appropriate (Title full‑width; Year/Category half‑width).
+- ≤1024px: single column; sticky footer remains visible; tabs convert to segmented control.
+
+---
+
+### Deliverables (Figma AI expectations)
+- Create a single Frame named **Form – Step 1** with nested components:
+  - `Header/Stepper`, `Tabs/Primary`, `Card/GeneralInfo`, `Card/Intervention`, `Footer/WizardControls`, `Toast/Validation`.
+- Include interaction nodes: Next → link to **Form – Step 2**; Save Draft → toast confirmation.
+- Use component properties for error/valid states on inputs.
+
+-------------------------------------------------------------------------------------------
+-------------------------------------------------------------------------------------------
+
+**Prompt 4: Form – Step 2 (Context & Relationships)**
+
+**Role:** Senior Product Designer  
+**Objective:** Create Step 2 of the study creation wizard for the Impact Compendium Database. This step connects each study to impact areas, contributors, crops/products, regions, and other contextual entities from the ERD. Focus on clarity, hierarchy, and reusability of multi-select components.
+
+---
+
+### Branding & Design System
+- Continue from Step 1: same palette, typography, spacing, and header/footer pattern.
+- Header: “Create New Study” with progress indicator (Step 2 active, colored `#B96A28`).
+- Layout base: 1440px width, white cards over `#FAFAFA` background.
+
+---
+
+### Structure
+Use a **two-column layout** within a scrollable body. Each column contains grouped cards. Sections can collapse/expand to simplify navigation.
+
+---
+
+### Left Column
+#### **Section 1: Crop / Product Type**
+- Field: Multi-select dropdown (chips) → linked to `clarisa_crops` table.  
+- Helper: “Select all relevant crops or products studied.”
+- Empty state: gray text *“No crops selected yet.”*
+
+#### **Section 2: Impact Areas**
+- Two sets of dropdowns from ERD (`primary_impact_area_id`, `secondary_impact_area_id`).
+- Each field labeled clearly:
+  - *Primary Impact Area* (single-select, required)
+  - *Secondary Impact Areas* (multi-select, optional)
+- Tags displayed as colored chips corresponding to CGIAR themes:
+  - Nutrition → Orange `#F07E28`
+  - Poverty Reduction → Green `#56C596`
+  - Environment → Blue `#4A6CF7`
+  - Gender / Inclusion → Purple `#A97FE8`
+
+---
+
+### Right Column
+#### **Section 3: Contributors**
+- Sub-title: *Initiatives and Centers contributing to the study*.
+- Two multi-select dropdowns:
+  - *Contributing Initiatives* → source: `clarisa_initiatives` (many-to-many via junction table).
+  - *Contributing Centers* → source: `clarisa_centers`.
+- Selected items appear as labeled chips below each dropdown.
+- Tooltip (ⓘ) near label: “Used for reporting institutional collaboration in PRMS.”
+
+#### **Section 4: Geographic Scope**
+- **Country** → Multi-select from `clarisa_countries`.  
+- **Region** → Auto-populated based on country selection (read-only chips or tags).  
+- Helper: “Select all countries where data was collected.”
+- Optional map icon button to preview selection visually (future enhancement placeholder).
+
+---
+
+### Global Features
+- Validation summary banner if required fields missing (primary impact area).
+- Each card has title (bold `#B96A28`), subtle divider, and vertical padding (16–24px).
+- Scroll progress indicator appears when user scrolls beyond 60% of form height.
+
+---
+
+### Wizard Controls (Sticky Footer)
+- **Back ←** (secondary outline button, returns to Step 1)
+- **Next →** (primary button `#FFC84F`, black text, rounded corners)
+- Hover state darkens yellow (`#DC9700`).
+- Left side: Save Draft link (ghost button).
+
+---
+
+### Interactions
+- When user selects a Country, Region field updates automatically.
+- On Next, data auto-validated before moving to Step 3.
+- Autosave trigger every 10 seconds on value change.
+
+---
+
+### Responsiveness
+- On tablet (1024px), collapse into single column.
+- On mobile (≤768px), sections collapse into accordions.
+
+---
+
+### Figma AI Deliverable
+Create a Frame named **Form – Step 2 (Context & Relationships)** containing:
+- Components: `Card/Crops`, `Card/ImpactAreas`, `Card/Contributors`, `Card/Geography`, `Footer/WizardControls`, `Toast/Validation`.
+- Variants for empty vs. filled multi-select chips.
+- Prototype link: Next → **Form Step 3**, Back → **Form Step 1**.
+
+-------------------------------------------------------------------------------------------
+-------------------------------------------------------------------------------------------
+
+**Prompt 5: Form – Step 3 (Indicators & Outputs)**
+
+**Role:** Senior Product Designer  
+**Objective:** Design the final step of the study creation wizard for the Impact Compendium Database. Focus on adding, reviewing, and managing multiple study indicators (aligned with ERD `studies_indicators`, `clarisa_indicators`). Prioritize clarity, repeatable components, and data validation.
+
+---
+
+### Branding & Design System
+- Continue consistent style from Steps 1–2: yellow/gold palette, rounded components, white cards on neutral background.
+- Header: “Create New Study” with progress indicator → Step 3 highlighted (filled `#B96A28`).
+- Frame width: 1440px, responsive to tablet/mobile.
+
+---
+
+### Layout Overview
+- Main container: white card with 32px padding.
+- Section title: **Indicators & Outputs** (font size 20px, bold, color `#B96A28`).
+- Subtitle text: “Define the quantitative and qualitative indicators measured in this study.”
+
+---
+
+### Section: Indicators List (Dynamic)
+Each indicator appears in a **card component** (repeating, expandable).  
+- Default: show Indicator #1; user can add more via “+ Add Indicator” button.
+- Each card has a collapsible header (Indicator #1, Indicator #2, etc.) with expand/collapse icon.
+
+**Fields per Indicator (from ERD relationships):**
+1. **Indicator Name** (dropdown – source: `clarisa_indicators`, required)
+2. **Custom Indicator Label** (text input – optional)
+3. **Unit of Measure** (text input, required)
+4. **Result Reported** (numeric or text field, required)
+5. **Baseline (optional)** (numeric, optional)
+6. **Target (optional)** (numeric, optional)
+7. **Disaggregation (optional)** (multi-select chips, e.g., gender, region, age group)
+8. **Data Source / Reference** (text area)
+
+**UX details:**
+- Each field aligned in a two-column grid (label left, input right).
+- Required fields marked with red asterisk (*).
+- Validation on numeric fields (only numbers allowed).
+- Error text `#B00020` inline.
+
+---
+
+### Actions within Each Card
+- Top-right: delete icon (trash) → confirmation modal (“Delete this indicator?”).
+- Bottom: **Duplicate Indicator** button (secondary outline).
+- On hover: card shadow intensifies subtly.
+
+---
+
+### Global Actions
+- **Add Indicator +** → creates new blank card below the existing ones.  
+  - Button: yellow (`#FFC84F`), black bold text, rounded corners, icon (+).
+- If no indicators exist, display empty state with illustration placeholder and text:  
+  “No indicators added yet. Click below to create one.”
+
+---
+
+### Wizard Controls (Sticky Footer)
+- **Back ←** (secondary outline, returns to Step 2)
+- **Finish & Save ✅** (primary, `#FFC84F`, bold black text, rounded corners)
+- Hover: darken yellow (`#DC9700`).
+- Left: *Save Draft* link (ghost button).
+
+On submit, show modal confirmation:
+> ✅ Study successfully added!  
+> Button: “Return to Dashboard”.
+
+---
+
+### Interactions
+- Cards expand/collapse smoothly with 200ms animation.
+- Autosave every 10 seconds.
+- If form incomplete, banner at top: “Please fill in all required fields before submitting.”
+- After submission, transition to Dashboard (success state).
+
+---
+
+### Responsiveness
+- On tablet (1024px): indicators stack vertically with full-width inputs.
+- On mobile (≤768px): cards become accordion-style.
+
+---
+
+### Figma AI Deliverable
+Create a Frame named **Form – Step 3 (Indicators & Outputs)** containing:
+- Components: `Card/Indicator`, `Modal/DeleteConfirm`, `Footer/WizardControls`, `Banner/Validation`, `Toast/Success`.
+- Variants for empty, single, and multiple indicators.
+- Prototype connections:
+  - Back → **Form Step 2**
+  - Finish → Success Modal → **Dashboard Frame**.
+
+
+--------------------------------------------------------------------------------------------------
+
+**Prompt 6: Enhanced Studies Table – Impact Compendium Database**
+
+**Role:** Senior Product Designer  
+**Objective:** Redesign the Studies table for improved readability, scalability, and interaction. Include title truncation with expand/collapse, separate year column, and integrated search bar.
+
+---
+
+### Style & Branding
+- Color palette:
+  - Primary: `#FFC84F`
+  - Accent: `#F07E28`
+  - Gold: `#D19F2A`
+  - Deep Amber: `#B96A28`
+  - Neutral: `#777777`
+- Typography: **Inter** or **Nunito Sans** (14–16px text).
+- Background: neutral light `#FAFAFA`.
+- Table header: sticky with white background and bottom shadow.
+
+---
+
+### Header Area (Above Table)
+- Title: **All Studies** (bold, 20px, color `#B96A28`).
+- Right-aligned controls:
+  - **Search Bar**  
+    - Placeholder: “Search studies by title, category, or contributor…”  
+    - Icon: 🔍 (gray `#777777`)  
+    - Rounded corners (8px), light border (`#E0E0E0`), focus border `#FFC84F`.  
+  - **Filter Dropdown:** label “All Categories” with icon ▼  
+  - **Sort Dropdown:** label “Year (desc)” with icon ▲▼  
+  - **Count Label:** “15 total studies” small, color `#777777`.
+
+---
+
+### Table Columns
+| Column | Description |
+|--------|-------------|
+| **ID** | Fixed width (90px), bold text. |
+| **TITLE** | Long titles truncated with ellipsis. Hover tooltip shows full title. Clicking expands inline row (summary + year shown). |
+| **YEAR** | Center aligned, separated visually from Period. Fixed width (90px). |
+| **PERIOD** | Start–End format (e.g., 2020–2023), small gray text. |
+| **CATEGORY** | Colored pill badges: Impact Study (Red), Outcome Study (Green), Impact Outcome Story (Blue), Other (Purple). |
+| **CONTRIBUTORS** | Chips (initiative/center acronym) in muted yellow, hover tooltip for full list. |
+| **REGIONS** | Text list + “+1” for extra regions, hover shows full names. |
+| **IMPACT AREAS** | Tag-style text with comma separators, tooltip for overflow. |
+
+---
+
+### Table Interactions
+- Hover row background: `#FFF3D6`.
+- Click Title → expand inline details (summary + year inline).
+- Expanded row animates open (200ms ease).  
+- Collapse hides summary smoothly.
+- Column headers: sortable icons beside Year, Category.
+- Row click → slide-over panel (details view).
+
+---
+
+### Pagination & Footer
+- Center bottom: “1–10 of 15 results” with arrows ◀ ▶.
+- Keep consistent spacing with header filters.
+
+---
+
+### Responsiveness
+- **Tablet (1024px):** category, regions, and impact areas stack below title in two-line layout.
+- **Mobile (≤768px):** switch to card view → title, category, and contributors stacked; filter bar collapses into top menu.
+
+---
+
+### Figma AI Deliverable
+Create a frame named **Dashboard – Studies Table (Enhanced)** with components:
+- `Table/Header`, `Table/Row`, `Table/ExpandedRow`, `Input/SearchBar`, `Dropdown/Filter`, `Dropdown/Sort`, `Badge/Category`, `Chip/Contributor`, `Tooltip/Overflow`, `Pagination/Footer`.
+
+**Prototype connections:**
+- Hover → Tooltip.
+- Click Title → Expand Row.
+- Search → Filter animation (fade in/out results).
+- View Details → Slide-over Details Panel frame.
+
+---
+
+### Notes
+Maintain same visual tone as dashboard: friendly, structured, and CGIAR-branded. Prioritize readability of long titles and quick access to metadata without overwhelming the table view.
+
+-------------------------------------------------------------------------------------------------------------------------
+**Prompt 7: Slide-Over Study Details Panel + Global Logo Style Guidelines – Impact Compendium Database**
+
+**Role:** Senior Product Designer  
+**Objective:** Design a right-side slide-over panel that appears when a user clicks a row in the Studies Table, and define global rules for logo placement and sizing to ensure consistent branding across all pages.
+
+---
+
+## 1. Slide-Over Study Details Panel
+
+### Purpose
+Display complete information of a selected study (linked to the ERD: `studies`, `studies_indicators`, `clarisa_initiatives`, `clarisa_centers`, `clarisa_countries`, `clarisa_impacts_areas`). Enable quick review without leaving the dashboard.
+
+### Panel Behavior
+- **Trigger:** clicking a study row in the table.
+- **Position:** slides in from the **right**, overlaying up to 40% of the viewport width (max 540px on desktop).
+- **Animation:** smooth 250 ms ease-in from right; shadow overlay behind.
+- **Close:** top-right close icon (×) or click outside panel.
+
+### Layout
+- **Header Section:**
+  - Study title (20 px bold, color `#B96A28`).
+  - Category badge (Impact Study / Outcome Study / Impact Outcome Story / Other) color-coded.
+  - Year and Period below title (smaller gray `#777777`).
+  - Divider line (1 px solid `#E0E0E0`).
+
+- **Content Body (scrollable):**
+  - **Summary:** paragraph text.
+  - **Indicators:** list of key indicators measured (from `studies_indicators`). Each indicator displayed as a small card:
+    - Indicator name (bold)  
+    - Unit / Result Reported / Baseline / Target
+  - **Contributors:** chips for Initiatives and Centers.
+  - **Geography:** Countries and Regions listed with map-pin icon.
+  - **Impact Areas:** pill tags (Nutrition, Climate, Gender, etc.) color-coded.
+  - **DOI / Link:** clickable hyperlink with external-link icon.
+
+- **Footer Section:**
+  - Button bar with **Edit Study**, **View Full Record**, and **Close Panel**.
+  - Primary button `#FFC84F` (black text), hover `#DC9700`.
+
+### UX Enhancements
+- When opened, highlight selected row in the table.
+- Panel retains scroll position until closed.
+- On mobile, converts to full-screen modal.
+
+### Figma AI Components
+Create frame named **Slide-Over Study Details Panel** containing:
+- Components: `Panel/Header`, `Panel/Body`, `Panel/Footer`, `Card/Indicator`, `Badge/Category`, `Chip/Contributor`, `Tag/ImpactArea`.
+- Prototype links: Close → collapse animation; Edit → open Form Step 1.
+
+---
+
+## 2. Global Logo Style Guidelines
+
+### Brand Asset
+Use `logo.png` as the official brand mark. The logo includes both icon and text.
+
+### Placement Rules
+| Context | Placement | Behavior |
+|----------|------------|-----------|
+| **Login Page** | Centered above the login card | Center alignment creates balance and strong first impression. Positioned 80 px from top of viewport. |
+| **Dashboard & Sidebar** | Top-left in persistent header/sidebar | 24 px padding from top/left edges. Logo icon followed by text label “Impact Compendium Database”. Both horizontally aligned. |
+| **Forms (Steps 1-3)** | Top-left of header bar | Smaller version (120–140 px width) to maintain focus on form content. |
+
+### Sizing & Spacing
+- Login: 160–180 px width.
+- Header/sidebar: 140 px width.
+- Maintain aspect ratio; no cropping.
+- Minimum clear space around logo = height of the icon.
+
+### Typography Adjacent to Logo
+- System name “Impact Compendium Database” displayed in **Inter SemiBold 18 px**, color `#B96A28`.
+- Text baseline aligned with horizontal center of logo icon.
+
+### Color & Background
+- Always on white or very light background (`#FFFFFF` – `#FAFAFA`).
+- Never apply shadows or backgrounds directly behind logo.
+- Hover state (if clickable): opacity 0.9 → 1 transition.
+
+### Figma Implementation
+Create component **Brand/Logo-Lockup** with two variants:
+1. **Horizontal (icon + text)** – for dashboard, forms.
+2. **Centered (stacked)** – for login screen.
+
+Use this component consistently across all frames: Login, Dashboard, Forms, Slide-Over Panel.
+
+---
+
+### Notes
+This prompt unifies branding and improves data exploration UX. The slide-over panel ensures users can view detailed study data seamlessly while maintaining the context of the studies list. The logo lockup guarantees visual consistency across every screen in the Impact Compendium Database application.

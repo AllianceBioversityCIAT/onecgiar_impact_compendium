@@ -1,0 +1,364 @@
+ROLE: IT Architect  
+TARGET FILE: specs/architecture/impact_compendium_technical_spec.md  
+
+TASK:  
+Generate a complete **technical specification document** for the **Impact Compendium Database**, a web application designed to register, manage, and visualize research studies, indicators, and related contextual data for the CGIAR/Alliance Bioversity & CIAT.
+
+The document must follow a professional architecture documentation structure and be formatted in Markdown.
+
+---
+
+## 1. Project Overview
+Provide a concise description of the Impact Compendium — its purpose, stakeholders, and goals.  
+Highlight that it allows authenticated users to create, search, and manage studies (Impact, Outcome, and Impact Outcome Stories), with metadata like contributors, impact areas, indicators, and regions.
+
+---
+
+## 2. Architectural Overview
+Create a **system architecture diagram (ASCII or Markdown diagram block)** describing the main layers:
+
+**Frontend:** React (SPA)  
+**Backend:** Python REST API (FastAPI or Flask)  
+**Database:** MySQL (AWS RDS)  
+**Deployment:** AWS SAM + CloudFormation (serverless configuration)
+
+Each layer should include:  
+- Core components  
+- Responsibilities  
+- Interactions between layers  
+
+---
+
+## 3. Functional Modules
+List and describe the functional modules:
+- Authentication (AWS Cognito or custom JWT-based)  
+- Study Management (CRUD for studies, indicators, and relationships)  
+- Search and Filter Module (full-text and category filters)  
+- Dashboard and Reporting (aggregations and export endpoints)  
+- Admin Console (manage categories, initiatives, centers, etc.)
+
+---
+
+## 4. Backend Architecture (Python REST API)
+Describe:
+- Recommended structure (e.g., `app/main.py`, `routers/`, `models/`, `schemas/`, `services/`).  
+- Key endpoints with short descriptions.  
+- Data validation (Pydantic schemas).  
+- ORM: SQLAlchemy or equivalent.  
+- API documentation via OpenAPI (Swagger UI).  
+- Logging and monitoring setup (CloudWatch integration).
+
+---
+
+## 5. Frontend Architecture (React)
+Outline:
+- Folder structure (`src/components`, `src/pages`, `src/hooks`, `src/context`, etc.)  
+- Routing (React Router).  
+- State management (Context API or Redux Toolkit).  
+- API integration (Axios service layer).  
+- Authentication flow (login, logout, token refresh).  
+- UI framework (Material UI or Tailwind).  
+- Environment configuration via `.env`.
+
+---
+
+## 6. Database Design (MySQL – RDS)
+Include an ERD overview (derived from the Impact Compendium schema):
+- Core tables: `studies`, `studies_indicators`, `clarisa_initiatives`, `clarisa_centers`, `clarisa_countries`, etc.  
+- Mention primary keys, foreign keys, and relationship mapping (1:N, N:M).  
+- Example SQL migration snippet for table creation.  
+- Discuss indexing strategy for search and performance optimization.
+
+---
+
+## 7. Infrastructure and Deployment (AWS SAM + CloudFormation)
+Define:
+- Infrastructure as Code (IaC) template overview.  
+- SAM configuration:
+  - `template.yaml`
+  - `samconfig.toml`
+- Functions (Lambdas for API + CRUD operations).  
+- VPC configuration (for RDS access).  
+- Environment variables.  
+- CI/CD pipeline integration (CodePipeline or Jenkins).
+
+Include example YAML snippet for CloudFormation.
+
+---
+
+## 8. Security & Compliance
+Describe:
+- Authentication via AWS Cognito or JWT.  
+- Authorization by user roles (Admin / Researcher).  
+- HTTPS via AWS Certificate Manager.  
+- Secrets management using AWS Secrets Manager.  
+- Secure parameter storage (SSM).  
+- Database encryption (RDS encryption at rest).  
+
+---
+
+## 9. Scalability & Performance
+Detail:
+- Auto-scaling policies (Lambda concurrency, RDS instance class).  
+- Caching layer (optional: ElastiCache/Redis).  
+- Load testing and expected throughput.  
+- Stateless backend design for horizontal scaling.
+
+---
+
+## 10. Monitoring & Observability
+Explain:
+- Centralized logging with CloudWatch Logs.  
+- Metrics and alarms.  
+- Error tracking with Sentry or AWS X-Ray.  
+- Health checks (API endpoint `/health`).
+
+---
+
+## 11. CI/CD Workflow
+Describe:
+- Code pipeline setup: GitHub → Jenkins → AWS SAM deploy.  
+- Linting, testing, build, packaging, and deployment stages.  
+- Rollback strategy with CloudFormation stacks.
+
+---
+
+## 12. Cost & Resource Optimization
+List:
+- Pay-per-use model (Lambdas + RDS on-demand).  
+- Cost-saving configurations (idle DB stop, reserved instances).  
+- Storage tier management (S3 backups, snapshots).
+
+---
+
+## 13. Future Extensions
+Add notes for possible extensions:
+- Integration with PRMS/ROAR.  
+- PowerBI dashboard integration.  
+- AI Text Mining module (future roadmap).
+
+---
+
+## 14. Appendix
+Include:
+- Acronyms (Cognito, SAM, RDS, etc.)  
+- References (AWS SAM docs, React docs, FastAPI docs)
+
+---
+
+OUTPUT FORMAT:  
+Markdown file with clear headings, code blocks, and architecture diagrams.  
+Target path: `specs/architecture/impact_compendium_technical_spec.md`
+
+------------------------------------------------------------------------------------------------------
+------------------------------------------------------------------------------------------------------
+
+ROLE: IT Architect
+INTENT: Generate a cohesive set of AWS and system diagrams for the Impact Compendium application by reading:
+- specs/architecture/impact_compendium_technical_spec.md
+USE:awslabs.aws-diagram-mcp-server
+
+OUTPUT FORMAT:
+- Export each diagram as high-resolution PNG (min 3000px width, transparent background off, white canvas).
+- Save all images into: specs/architecture/
+- Use the exact filenames listed below.
+
+STYLE GUIDELINES:
+- Use official AWS icons for services.
+- Color palette (brand-inspired):
+  - Primary: #FFC84F
+  - Accent: #F07E28
+  - Gold: #D19F2A
+  - Deep Amber: #B96A28
+  - Neutral: #777777
+- Title text: Neutral (#777777) bold; node labels black; link labels dark gray.
+- Group boxes with light gold headers (#FFE6A6) and neutral borders.
+- Left→right data flow where possible; avoid crossing lines; use orthogonal connectors.
+- Include a small legend where helpful (auth, data, monitoring).
+
+DIAGRAM SET TO PRODUCE
+(Extract concrete service names, functions, and relations from the spec; if a detail is missing, apply standard best practice defaults for a SAM + Python REST + RDS architecture.)
+
+1) System Context Diagram
+- Filename: specs/architecture/impact_compendium_context.png
+- Show: End Users, Alliance/CGIAR Stakeholders → (Front-End SPA) → (Backend API) → (MySQL RDS)
+- External systems (optional): PRMS/ROAR (future), Email/IdP if Cognito is used.
+- Emphasize major boundaries: Client, Application, Data.
+- Include authentication boundary (Cognito) between SPA and API if present in spec.
+
+2) Logical Architecture (Layered)
+- Filename: specs/architecture/impact_compendium_logical.png
+- Layers: Presentation (React), API (Python controllers/routers/services), Domain (business services), Data Access (ORM/SQL), Persistence (RDS MySQL).
+- Cross-cutting: AuthN/AuthZ, Validation, Observability (CloudWatch/X-Ray), Config & Secrets (SSM/Secrets Manager).
+- Show main modules: Studies, Indicators, Contributors, Impact Areas, Geography, Admin.
+
+3) AWS Deployment (SAM + CloudFormation)
+- Filename: specs/architecture/impact_compendium_aws_deployment.png
+- Include typical SAM stack components from the spec:
+  - Route 53 (DNS) → CloudFront (CDN) → S3 (Static Hosting for React) [if applicable from spec].
+  - API Gateway (REST) → Lambda Functions (Python/FastAPI/Flask) in private or public subnets as designed.
+  - VPC with public/private subnets, NAT GW (if outbound internet required).
+  - RDS MySQL (Multi-AZ if specified), Security Groups, Subnet Groups.
+  - Secrets Manager (DB creds), SSM Parameter Store (config), IAM Roles/Policies.
+  - CloudWatch Logs/Metrics/Alarms, X-Ray (optional).
+  - Cognito User Pool & App Client (if spec states).
+- Place services in grouped boxes: Edge, Web/App, Data, Observability.
+- Annotate key flows (numbers 1–5) from user to data store.
+
+4) Data Flow Diagram (Request Lifecycle)
+- Filename: specs/architecture/impact_compendium_data_flow.png
+- Show sequence of a typical request:
+  (Browser) → CloudFront/S3 (static) + API call → API Gateway → Lambda → SQLAlchemy/DB Driver → RDS MySQL → response back.
+- Add auth token path via Cognito (if defined): Browser ↔ Cognito; token attached to API calls.
+- Label latency-sensitive and cached hops (if any).
+
+5) Simplified ERD (High-Level)
+- Filename: specs/architecture/impact_compendium_erd.png
+- Entities (from spec/ERD summary): studies, studies_indicators, clarisa_initiatives, clarisa_centers, clarisa_countries, clarisa_regions, clarisa_impacts_areas, studies_keywords, study_intervention_types, categories, crop_types (adapt names to spec).
+- Show PK/FK and cardinalities (1–N, N–M junctions).
+- Keep to essential attributes (id, name/title, is_active, created_at).
+- Group reference/lookup tables separately from core transactional tables.
+
+6) Sequence Diagram – “Create Study”
+- Filename: specs/architecture/impact_compendium_sequence_create_study.png
+- Lifelines: User → React SPA → API Gateway → Lambda (StudiesService) → RDS (via ORM) → CloudWatch.
+- Steps:
+  1. User submits form (Step1–Step3 compiled).
+  2. SPA validates, sends POST /studies with related arrays (indicators, contributors, regions).
+  3. API validates (Pydantic), creates Study, then child records transactionally.
+  4. Return 201 with study_id; SPA navigates to details.
+- Note transaction boundaries and rollback behavior on partial failures.
+
+7) CI/CD Pipeline (Code to Cloud)
+- Filename: specs/architecture/impact_compendium_cicd.png
+- Stages:
+  - Source (GitHub) → CI (lint/test/build) → Package (SAM build) → Deploy (SAM deploy via CloudFormation).
+  - Environments: dev → test → prod (promotions/manual approval if in spec).
+  - Artifacts: packaged template, Lambda bundles, static SPA build.
+  - Observability hooks (post-deploy smoke tests, alarms).
+
+8) Security Posture Overview
+- Filename: specs/architecture/impact_compendium_security.png
+- Summarize:
+  - Cognito/JWT → API auth; IAM role-based Lambda permissions.
+  - SG rules: API/Lambda ↔ RDS (port 3306).
+  - Secrets Manager for DB credentials; KMS for encryption.
+  - TLS via ACM; CloudFront + WAF (if defined).
+- Use badges/icons to tag “encryption at rest,” “in transit,” and “least privilege.”
+
+GENERAL RENDERING RULES:
+- Use Auto-layout grids; align nodes to avoid overlaps.
+- Prefer grouped containers with headers in brand gold tones.
+- Connector labels: small, dark gray.
+- If the spec lacks a service explicitly, infer the minimal standard component for SAM-based serverless REST with RDS.
+
+VALIDATION:
+- Cross-check objects and flows against the contents of specs/architecture/impact_compendium_technical_spec.md.
+- Keep names consistent with the spec’s chosen services and terminology.
+
+EXPORT:
+- After rendering each diagram, export to PNG at high resolution and save to the provided filenames in specs/architecture/.
+
+------------------------------------------------------------------------------------------------------
+------------------------------------------------------------------------------------------------------
+
+ROLE: AWS Cloud Economist & Cost Optimization Specialist  
+INTENT: Calculate a **low-cost AWS architecture estimate** for the **Impact Compendium Database** project and propose optimization strategies.  
+USE:awslabs.cost-explorer-mcp-server
+
+OUTPUT FILE: specs/cost/impact_compendium_cost_estimation.md  
+OUTPUT FORMAT: Markdown table and explanations.  
+
+---
+
+## 1. Context
+The **Impact Compendium Database** is a lightweight data-driven web platform for research study management.  
+Technology stack (from specs/architecture/impact_compendium_technical_spec.md):
+- **Frontend:** React SPA hosted on S3 + CloudFront  
+- **Backend:** Python REST API (FastAPI or Flask) deployed via AWS SAM (Lambda + API Gateway)  
+- **Database:** MySQL (AWS RDS)  
+- **Authentication:** AWS Cognito  
+- **Infrastructure Management:** CloudFormation via SAM  
+- **Logging/Monitoring:** CloudWatch  
+- **Secrets:** AWS Secrets Manager or SSM Parameter Store  
+- **Storage:** S3 (for static assets + PDF attachments)  
+- **Environments:** dev / prod (two total)  
+- **Target user volume:** 50–200 monthly users  
+- **Traffic pattern:** low to moderate (hundreds of requests/day)  
+
+Goal: **Build a cost-effective production setup under 100 USD/month if possible**.  
+
+---
+
+## 2. Components for Cost Estimation
+Create a cost table with these primary AWS services:
+
+| Service | Resource Type | Assumptions | Estimated Monthly Cost (USD) |
+|----------|----------------|-------------|-------------------------------|
+| **Lambda** | 10 functions, 256MB memory, 1M requests/month |  |  |
+| **API Gateway (REST)** | 1 API with 1M requests/month |  |  |
+| **RDS MySQL (db.t3.micro)** | Single-AZ, 20GB storage, 100% uptime |  |  |
+| **S3 (Frontend)** | Static hosting + 10GB storage + 5GB egress |  |  |
+| **CloudFront** | CDN for S3 content, 10GB data transfer |  |  |
+| **Cognito** | <1K MAU (free tier mostly) |  |  |
+| **CloudWatch** | Logs + metrics for Lambdas & RDS |  |  |
+| **Secrets Manager / SSM** | Store 10–15 parameters |  |  |
+| **Route 53** | 1 hosted zone + 2 DNS queries/day |  |  |
+| **Backups / Snapshots** | Daily RDS snapshot (20GB x 30 days) |  |  |
+
+Provide realistic numbers for a **low-traffic research platform** (Alliance internal system).  
+Use **on-demand pricing** (no reserved instances), **us-east-1 region** as base.  
+
+---
+
+## 3. Cost Breakdown & Total
+- Produce a **Markdown table** listing each component’s **monthly and annual costs**, totals, and percentage contribution.
+- Highlight which services dominate the monthly cost (likely RDS + API Gateway).
+- Include a second table showing a **cost distribution pie** (approximate %).
+
+---
+
+## 4. Cost Optimization Recommendations
+For each service, propose 1–2 optimization actions. Examples:
+
+| Area | Optimization | Description | Potential Saving |
+|-------|---------------|--------------|------------------|
+| **API Gateway** | Use HTTP API instead of REST API | 60% cheaper at low request volume | ~3–5 USD/month |
+| **RDS** | Use `db.t3.micro` with auto-stop enabled | Suspends billing during inactivity | ~50% savings |
+| **Lambda** | Combine small functions or increase memory efficiency | Reduces invocation overhead | minor |
+| **S3 + CloudFront** | Leverage caching and compression | Reduces data transfer | ~1–2 USD/month |
+| **Cognito** | Stays in free tier for <50K MAU | negligible | |
+| **CloudWatch** | Reduce retention to 14 days | Avoid unnecessary log storage | ~5 USD/month |
+
+---
+
+## 5. Scenario Comparison
+Provide **3 cost scenarios**:
+
+| Scenario | Description | Monthly Total | Annual Total |
+|-----------|--------------|----------------|---------------|
+| **Dev/Test (Minimal)** | 1 environment, lower RDS uptime |  |  |
+| **Prod (Low-Traffic)** | 2 environments, moderate usage |  |  |
+| **Future Scale-Up** | 5x users, reserved DB instance |  |  |
+
+---
+
+## 6. Conclusion
+Summarize:
+- Which configuration achieves the best cost/performance ratio.  
+- Expected cost range per month and per year.  
+- Notes on scalability: future cost growth patterns (Lambda vs RDS linearity).  
+- Final recommendation: *Target under $80/month steady-state cost.*
+
+---
+
+VALIDATION:
+- Ensure numbers match latest AWS public pricing (as of current month).  
+- Use conservative estimates for compute time and network transfer.  
+- All currency in USD.  
+
+OUTPUT:
+Markdown file at: `specs/cost/impact_compendium_cost_estimation.md`
+Include two sections:
+1. **Cost Tables**
+2. **Optimization Plan**

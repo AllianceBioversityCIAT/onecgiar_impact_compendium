@@ -1,0 +1,11 @@
+dist/
+node_modules/
+.vite/
+test-results/
+playwright-report/
+coverage/
+*.config.js
+*.config.ts
+vite.config.ts
+tailwind.config.js
+postcss.config.js

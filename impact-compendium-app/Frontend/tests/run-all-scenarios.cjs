@@ -129,7 +129,9 @@ class MasterTestRunner {
 
   async runScenario(scenario) {
     return new Promise((resolve) => {
-      const child = spawn('npm', ['run', scenario.script], {
+      // Resolve npm next to the running node binary instead of relying on PATH lookup
+      const npmCli = path.join(path.dirname(process.execPath), 'npm');
+      const child = spawn(npmCli, ['run', scenario.script], {
         stdio: 'inherit',
         shell: true
       });

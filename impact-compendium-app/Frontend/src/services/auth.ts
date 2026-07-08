@@ -146,7 +146,8 @@ class AuthService {
         groups,
       };
     } catch (error) {
-      // Fallback to localStorage
+      // Fallback to localStorage when Amplify cannot resolve the session
+      console.warn('Falling back to cached user after auth error:', error);
       return this.getUser();
     }
   }

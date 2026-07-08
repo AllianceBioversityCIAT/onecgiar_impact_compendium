@@ -18,6 +18,7 @@ from app.db.connection import get_db
 logger = logging.getLogger(__name__)
 router = APIRouter()
 XLSX_MIME_TYPE = "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+CREATED_BY_COLUMN = "Created By"
 FULL_REPORT_COLUMNS = [
     "Study ID",
     "Title",
@@ -41,7 +42,7 @@ FULL_REPORT_COLUMNS = [
     "Active",
     "Created At",
     "Last Updated",
-    "Created By",
+    CREATED_BY_COLUMN,
 ]
 FULL_REPORT_SQL = """
 -- Correlated subqueries keep one SQL round-trip without the JOIN explosion of a giant GROUP BY.
@@ -234,7 +235,7 @@ def _row_to_dict(row) -> Dict[str, Any]:
         "Active": "Yes" if row.is_active else "No",
         "Created At": row.created_at,
         "Last Updated": row.last_updated_date,
-        "Created By": _safe_value(row.created_by),
+        CREATED_BY_COLUMN: _safe_value(row.created_by),
     }
 
 
@@ -370,7 +371,7 @@ async def export_studies_excel(
                     "Category": row[10],
                     "Created At": row[11],
                     "Last Updated": row[12],
-                    "Created By": row[13],
+                    CREATED_BY_COLUMN: row[13],
                 }
                 for row in studies
             ]

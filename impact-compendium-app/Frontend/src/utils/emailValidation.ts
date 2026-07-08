@@ -63,7 +63,7 @@ export class EmailValidator {
 
     // Check for common domain issues
     const domain = normalizedEmail.split('@')[1];
-    if (domain && domain.includes('..')) {
+    if (domain?.includes('..')) {
       result.isValid = false;
       result.errors.push('Invalid domain format (consecutive dots)');
     }

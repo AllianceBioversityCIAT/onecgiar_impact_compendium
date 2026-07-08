@@ -324,5 +324,12 @@ handler = Mangum(app, lifespan="off")
 if __name__ == "__main__":
     import uvicorn
 
-    # Run development server with hot reload
-    uvicorn.run("main:app", host="0.0.0.0", port=8000, reload=True, log_level="info")
+    # Run development server with hot reload.
+    # Binds to localhost by default; set DEV_BIND_HOST=0.0.0.0 explicitly for LAN access.
+    uvicorn.run(
+        "main:app",
+        host=os.getenv("DEV_BIND_HOST", "127.0.0.1"),
+        port=8000,
+        reload=True,
+        log_level="info",
+    )

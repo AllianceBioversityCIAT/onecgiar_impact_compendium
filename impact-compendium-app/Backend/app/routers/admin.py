@@ -3,7 +3,7 @@ Admin router with simplified responses
 """
 
 import logging
-from typing import Any, Dict
+from typing import Annotated, Any, Dict
 
 from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy import text
@@ -18,7 +18,8 @@ router = APIRouter()
 
 @router.get("/stats", response_model=Dict[str, Any])
 async def get_admin_stats(
-    current_user: Dict[str, Any] = Depends(require_admin), db: Session = Depends(get_db)
+    current_user: Annotated[Dict[str, Any], Depends(require_admin)],
+    db: Annotated[Session, Depends(get_db)],
 ):
     """
     Get admin statistics

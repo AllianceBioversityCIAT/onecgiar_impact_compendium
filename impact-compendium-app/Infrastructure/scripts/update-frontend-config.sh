@@ -22,7 +22,7 @@ API_URL=$(aws cloudformation describe-stacks \
     --query 'Stacks[0].Outputs[?OutputKey==`ImpactCompendiumApiUrl`].OutputValue' \
     --output text 2>/dev/null)
 
-if [ -z "$API_URL" ]; then
+if [[ -z "$API_URL" ]]; then
     echo "❌ Could not get API URL from backend stack: $BACKEND_STACK_NAME"
     echo "   Make sure the backend is deployed"
     exit 1

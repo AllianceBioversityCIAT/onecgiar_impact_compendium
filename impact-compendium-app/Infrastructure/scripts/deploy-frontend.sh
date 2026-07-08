@@ -40,7 +40,7 @@ if [ ! -d "dist" ]; then
     echo "⚠️  Frontend not built. Building now..."
     npm run build
     
-    if [ $? -ne 0 ]; then
+    if [[ $? -ne 0 ]]; then
         echo "❌ Frontend build failed!"
         exit 1
     fi
@@ -53,7 +53,7 @@ aws s3 sync dist/ s3://$S3_BUCKET/ \
     --region us-east-1 \
     --delete
 
-if [ $? -ne 0 ]; then
+if [[ $? -ne 0 ]]; then
     echo "❌ Frontend deployment failed!"
     exit 1
 fi

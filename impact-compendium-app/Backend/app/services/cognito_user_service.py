@@ -492,9 +492,9 @@ class CognitoUserService:
             self.client.admin_delete_user(
                 UserPoolId=self.user_pool_id, Username=username
             )
-        except ClientError as e:
-            logger.error(f"Error deleting user: {e}")
-            raise e
+        except ClientError:
+            logger.exception("Error deleting user")
+            raise
 
     def _mock_delete_user(self, username: str) -> None:
         pass
@@ -508,13 +508,15 @@ class CognitoUserService:
     def _mock_create_user(
         self, email: str, temporary_password: str, send_email: bool
     ) -> Dict[str, Any]:
-        import random
+        import secrets
         import string
 
         username = (
             email.split("@")[0]
             + "_"
-            + "".join(random.choices(string.ascii_lowercase + string.digits, k=8))
+            + "".join(
+                secrets.choice(string.ascii_lowercase + string.digits) for _ in range(8)
+            )
         )
         return {
             "username": username,

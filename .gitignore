@@ -11,6 +11,7 @@ aws-credentials.json
 
 # Internal Planning and Development Documentation (root-level only — docs/specs/ IS tracked)
 /planning/
+/prompts/
 /specs/
 
 # Temporary and Debug Files

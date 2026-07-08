@@ -9,9 +9,9 @@ aws-credentials.json
 # Amazon Q Rules and Configuration
 .amazonq/
 
-# Internal Planning and Development Documentation
-planning/
-specs/
+# Internal Planning and Development Documentation (root-level only — docs/specs/ IS tracked)
+/planning/
+/specs/
 
 # Temporary and Debug Files
 test_*.js
@@ -211,3 +211,7 @@ npm-debug.log*
 yarn-debug.log*
 yarn-error.log*
 .pnpm-debug.log*
+
+# CodeGraph (generated index)
+.codegraph/*
+!.codegraph/config.json

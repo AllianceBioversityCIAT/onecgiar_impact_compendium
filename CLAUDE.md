@@ -4,19 +4,41 @@ CGIAR research impact study management platform. Three-tier app deployed on AWS.
 
 > **Application detail** lives in [`impact-compendium-app/CLAUDE.md`](impact-compendium-app/CLAUDE.md) — Backend, Frontend, and Infrastructure conventions, commands, and gotchas. Read it before working inside that directory.
 
+## SDD Constitution (read before any feature/bug work)
+
+The project's constitutional baseline lives under `docs/`. These documents are the source of truth for all SDD work (`/sdd-propose`, `/sdd-specify`, `/sdd-execute`, `/sdd-validate`, `/sdd-test`):
+
+| Document | What it is | Consult when |
+|---|---|---|
+| [`docs/prd.md`](docs/prd.md) | Product requirements: problem, personas (Researcher/Admin via Cognito groups), scope, open questions | Scoping any feature; deciding what's in/out |
+| [`docs/system-design/design.md`](docs/system-design/design.md) | UI/UX system: `--ic-*` design tokens, component inventory, nav model (top header, **no sidebar**), a11y rules, no dark mode | Any frontend/UI change |
+| [`docs/detailed-design/detailed-design.md`](docs/detailed-design/detailed-design.md) | Technical blueprint **as it actually runs**: raw-SQL data model (the ORM is dead code), API surface, auth model, Lambda constraints, drift register (§12) | Any backend/API/data change |
+| [`docs/specs/general-setup/`](docs/specs/general-setup/) | Mandatory formats for `requirements.md` / `design.md` / `tasks.md` + `execution.md` | Writing or executing any spec |
+
+- **New module specs** go under `docs/specs/{features,bugs,enhancements}/<kebab-slug>/` with a 3-letter uppercase PREFIX threading all IDs. Root `specs/` is the **legacy archive** (read-only reference; its `data/` SQL dump remains the authoritative schema source).
+- **Multi-agent execution**: `.agents/{leader,implementer,reviewer}.md` define the Leader → Implementer → Reviewer loop used by `/sdd-execute` (3-attempt rework ceiling, `[SPEC:<type>/<slug>]` commit standard).
+- **CodeGraph is initialized** (`.codegraph/`, database gitignored). Prefer `codegraph_search`/`codegraph_callers`/`codegraph_impact` over grep for symbol lookup and impact analysis; re-index with `codegraph index` after large changes.
+- **Common skills for this repo**: `api-design-principles`, `error-handling-patterns`, `aws-serverless` (backend); `tailwind-design-system`, `vercel-react-best-practices` (frontend); `product-manager-toolkit` (PRD work).
+
 ## Repository Layout
 
 ```
 onecgiar_impact_compendium/
+├── docs/                # ★ SDD constitutional baseline
+│   ├── prd.md
+│   ├── system-design/design.md
+│   ├── detailed-design/detailed-design.md
+│   └── specs/           # New specs: general-setup/ (formats) + features/ bugs/ enhancements/
+├── .agents/             # Leader / Implementer / Reviewer personas for /sdd-execute
 ├── impact-compendium-app/
 │   ├── Backend/         # FastAPI (Python 3.9) → AWS Lambda via Mangum
 │   ├── Frontend/        # React 18 + TypeScript + Vite, AWS Amplify (Cognito)
 │   ├── Infrastructure/  # AWS SAM (backend-sam/template.yaml) + CloudFormation
 │   └── scripts/         # start_local.sh — runs both servers locally
-├── specs/               # Architecture, bugs, infrastructure, and data specs
-│   ├── architecture/    # impact_compendium_technical_spec.md
-│   ├── bugs/            # Active bug-fix specs (e.g. excel-report)
-│   ├── data/            # SQL dumps, ERD (impact.erd / impact.png)
+├── specs/               # LEGACY archive: architecture, bugs, infrastructure, data
+│   ├── architecture/    # impact_compendium_technical_spec.md (partly aspirational)
+│   ├── bugs/            # Archived bug-fix specs (e.g. excel-report)
+│   ├── data/            # SQL dumps (authoritative schema), ERD (impact.erd / impact.png)
 │   └── infrastructure/  # SAM architecture proposals + diagrams
 ├── infrastructure-no-nat.yaml      # CloudFormation: Lambda outside VPC
 └── infrastructure-restore.yaml     # CloudFormation: full infra reference
@@ -44,7 +66,7 @@ onecgiar_impact_compendium/
 
 - Entry: `Backend/main.py` exports `handler = Mangum(app)` for Lambda. App lives at `Backend/app/main.py`.
 - Routers under `app/routers/` mounted with `/api/<domain>` prefix: `auth, studies, indicators, admin, reports, users, clarisa, reference, study_relations, debug`.
-- Layers: `routers/` (HTTP) → `services/` (business logic) → `models/` (SQLAlchemy) / `schemas/` (Pydantic) / `db/` (connection).
+- Layers **in practice**: `routers/` (HTTP + business logic + **raw SQL via `text()`**) → `db/` (connection). `services/` is Cognito-only (`cognito_auth.py`, `cognito_user_service.py`); `models/` (SQLAlchemy) and most `schemas/` are **dead code whose column names disagree with the real DB** — never derive data contracts from them (see `docs/detailed-design/detailed-design.md` §1.1 and §12).
 - AWS region/profile is set at module-load time in `app/main.py` (Lambda detects via `AWS_LAMBDA_FUNCTION_NAME`).
 - CORS is wide-open (`allow_origins=["*"]`, no credentials) — enforced both in FastAPI middleware and SAM `GatewayResponses`. The `OPTIONS` handler short-circuits in `log_requests` middleware.
 - Lint/format: `make lint | format | type-check | check-all` (black 88-col, isort, flake8, mypy). See `Backend/LINTING.md`.

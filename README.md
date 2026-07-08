@@ -6,12 +6,18 @@ CGIAR research impact study management platform. A FastAPI backend and React fro
 
 ```
 onecgiar_impact_compendium/
+├── docs/                         # SDD constitutional baseline (PRD, designs, spec formats)
+│   ├── prd.md                    # Product requirements
+│   ├── system-design/design.md   # UI/UX system blueprint (tokens, components, a11y)
+│   ├── detailed-design/detailed-design.md  # Technical blueprint (as-it-runs)
+│   └── specs/                    # New feature/bug specs + general-setup/ formats
+├── .agents/                      # Leader / Implementer / Reviewer personas (SDD execution)
 ├── impact-compendium-app/        # The application
 │   ├── Backend/                  # FastAPI (Python 3.9) → AWS Lambda via Mangum
 │   ├── Frontend/                 # React 18 + TypeScript + Vite, AWS Amplify (Cognito)
 │   ├── Infrastructure/           # AWS SAM + CloudFormation, deploy scripts
 │   └── scripts/start_local.sh    # Boots both servers locally
-├── specs/                        # Architecture, bugs, infrastructure, data specs
+├── specs/                        # Legacy archive: architecture, bugs, infrastructure, data
 ├── infrastructure-no-nat.yaml    # CloudFormation: Lambda outside VPC
 ├── infrastructure-restore.yaml   # CloudFormation: full infra reference
 └── SECURITY.md                   # Security guidelines
@@ -71,7 +77,17 @@ npm run build      # tsc + vite build
 
 ## Documentation
 
+**SDD constitutional baseline** (source of truth for new feature/bug specs):
+
+- [`docs/prd.md`](docs/prd.md) — product requirements: problem, personas, scope, acceptance criteria, open questions.
+- [`docs/system-design/design.md`](docs/system-design/design.md) — UI/UX system: design tokens, component inventory, navigation, accessibility rules.
+- [`docs/detailed-design/detailed-design.md`](docs/detailed-design/detailed-design.md) — technical blueprint as the system actually runs (data model, API surface, auth, Lambda constraints).
+- [`docs/specs/general-setup/`](docs/specs/general-setup/) — mandatory formats for spec `requirements.md` / `design.md` / `tasks.md` + execution logs. New specs live under `docs/specs/{features,bugs,enhancements}/<slug>/`.
+
+**Project guides & reference:**
+
 - [`CLAUDE.md`](CLAUDE.md) — root context for AI/automation collaborators (architecture, conventions, gotchas).
+- [`AGENTS.md`](AGENTS.md) — tool-agnostic guide for AI coding agents (ground truths, verification commands).
 - [`impact-compendium-app/CLAUDE.md`](impact-compendium-app/CLAUDE.md) — per-tier (Backend / Frontend / Infrastructure) layout, commands, and conventions.
 - [`impact-compendium-app/Infrastructure/CLAUDE.md`](impact-compendium-app/Infrastructure/CLAUDE.md) — deploy scripts reference, stack topology, SAM/CloudFormation gotchas.
 - [`impact-compendium-app/Backend/architecture/`](impact-compendium-app/Backend/architecture/) — backend architecture notes.

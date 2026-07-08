@@ -12,12 +12,16 @@ from app.config.settings import get_settings
 settings = get_settings()
 
 
+class CognitoServiceError(Exception):
+    """Raised when a Cognito user-management operation fails."""
+
+
 class CognitoUserService:
     def __init__(self):
         self.client = boto3.client("cognito-idp", region_name=settings.cognito_region)
         self.user_pool_id = settings.cognito_user_pool_id
 
-    async def list_users(self, limit: int = 60) -> List[Dict[str, Any]]:
+    def list_users(self, limit: int = 60) -> List[Dict[str, Any]]:
         """List all users in the Cognito User Pool"""
         try:
             response = self.client.list_users(UserPoolId=self.user_pool_id, Limit=limit)
@@ -43,9 +47,9 @@ class CognitoUserService:
 
             return users
         except ClientError as e:
-            raise Exception(f"Failed to list users: {e}")
+            raise CognitoServiceError(f"Failed to list users: {e}") from e
 
-    async def get_user(self, username: str) -> Dict[str, Any]:
+    def get_user(self, username: str) -> Dict[str, Any]:
         """Get a specific user by username"""
         try:
             response = self.client.admin_get_user(
@@ -68,9 +72,9 @@ class CognitoUserService:
                 "mfa_enabled": response.get("MFAOptions", []) != [],
             }
         except ClientError as e:
-            raise Exception(f"Failed to get user: {e}")
+            raise CognitoServiceError(f"Failed to get user: {e}") from e
 
-    async def create_user(
+    def create_user(
         self, email: str, temporary_password: str, send_email: bool = True
     ) -> Dict[str, Any]:
         """Create a new user"""
@@ -98,15 +102,17 @@ class CognitoUserService:
         except ClientError as e:
             error_code = e.response["Error"]["Code"]
             if error_code == "UserNotFoundException":
-                raise Exception(
+                raise CognitoServiceError(
                     f"Unable to create user with email {email}. The email may have been recently deleted and is temporarily unavailable. Please try again in a few minutes or use a different email."
-                )
+                ) from e
             elif error_code == "UsernameExistsException":
-                raise Exception(f"A user with email {email} already exists")
+                raise CognitoServiceError(
+                    f"A user with email {email} already exists"
+                ) from e
             else:
-                raise Exception(f"Failed to create user: {e}")
+                raise CognitoServiceError(f"Failed to create user: {e}") from e
 
-    async def update_user_status(self, username: str, enabled: bool) -> bool:
+    def update_user_status(self, username: str, enabled: bool) -> bool:
         """Enable or disable a user"""
         try:
             if enabled:
@@ -119,9 +125,9 @@ class CognitoUserService:
                 )
             return True
         except ClientError as e:
-            raise Exception(f"Failed to update user status: {e}")
+            raise CognitoServiceError(f"Failed to update user status: {e}") from e
 
-    async def delete_user(self, username: str) -> bool:
+    def delete_user(self, username: str) -> bool:
         """Delete a user"""
         try:
             self.client.admin_delete_user(
@@ -129,9 +135,9 @@ class CognitoUserService:
             )
             return True
         except ClientError as e:
-            raise Exception(f"Failed to delete user: {e}")
+            raise CognitoServiceError(f"Failed to delete user: {e}") from e
 
-    async def reset_user_password(self, username: str) -> bool:
+    def reset_user_password(self, username: str) -> bool:
         """Reset user password"""
         try:
             self.client.admin_reset_user_password(
@@ -139,7 +145,7 @@ class CognitoUserService:
             )
             return True
         except ClientError as e:
-            raise Exception(f"Failed to reset password: {e}")
+            raise CognitoServiceError(f"Failed to reset password: {e}") from e
 
     def _get_attribute_value(self, attributes: List[Dict], name: str) -> Optional[str]:
         """Helper to get attribute value from Cognito attributes list"""

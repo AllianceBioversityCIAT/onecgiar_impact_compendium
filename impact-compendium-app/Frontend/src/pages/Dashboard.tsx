@@ -309,8 +309,8 @@ export const Dashboard: React.FC = () => {
     setExpandedRows(newExpanded);
   };
 
-  const handleTitleClick = (row: Study) => {
-    setSelectedStudyId(row.id);
+  const handleTitleClick = (row: { id: string | number }) => {
+    setSelectedStudyId(String(row.id));
     setIsDetailsPanelOpen(true);
   };
 
@@ -589,12 +589,12 @@ export const Dashboard: React.FC = () => {
                   <div className="space-y-2">
                     <h4 className="font-medium text-gray-900">Summary</h4>
                     <p className="text-gray-700 text-sm leading-relaxed">
-                      {(row as any).summary || 'No summary available'}
+                      {row.summary || 'No summary available'}
                     </p>
                   </div>
                 </div>
               )}
-              onTitleClick={row => handleTitleClick(row as any)}
+              onTitleClick={handleTitleClick}
               sort={
                 searchParams.sort
                   ? {

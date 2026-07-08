@@ -361,6 +361,6 @@ async def remove_user_from_group(
             "success": True,
             "message": f"User {username} removed from group {group_name}",
         }
-    except Exception as e:
-        logger.error(f"Failed to remove user from group: {e}")
+    except Exception:
+        logger.exception("Failed to remove user from group")
         raise HTTPException(status_code=500, detail="Failed to remove user from group")

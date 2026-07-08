@@ -3,7 +3,7 @@ CLARISA reference data router with full CRUD operations
 """
 
 import logging
-from typing import Any, Dict
+from typing import Annotated, Any, Dict, Optional
 
 from fastapi import APIRouter, Depends, HTTPException, Query, status
 from pydantic import BaseModel
@@ -19,22 +19,22 @@ router = APIRouter()
 # Pydantic models for request/response
 class CenterCreate(BaseModel):
     name: str
-    code: str = None
-    acronym: str = None
+    code: Optional[str] = None
+    acronym: Optional[str] = None
 
 
 class InitiativeCreate(BaseModel):
     name: str
-    code: str = None
-    acronym: str = None
+    code: Optional[str] = None
+    acronym: Optional[str] = None
 
 
 # CLARISA Centers endpoints
 @router.get("/centers/", response_model=Dict[str, Any])
 async def list_centers(
-    skip: int = Query(0, ge=0),
-    limit: int = Query(100, ge=1, le=1000),
-    db: Session = Depends(get_db),
+    db: Annotated[Session, Depends(get_db)],
+    skip: Annotated[int, Query(ge=0)] = 0,
+    limit: Annotated[int, Query(ge=1, le=1000)] = 100,
 ):
     """List all CLARISA centers"""
     try:
@@ -71,7 +71,11 @@ async def list_centers(
         raise HTTPException(status_code=500, detail=str(e))
 
 
-@router.get("/centers/{center_id}", response_model=Dict[str, Any])
+@router.get(
+    "/centers/{center_id}",
+    response_model=Dict[str, Any],
+    responses={404: {"description": "Center not found"}},
+)
 async def get_center(center_id: int, db: Session = Depends(get_db)):
     """Get specific CLARISA center"""
     try:
@@ -150,8 +154,12 @@ async def list_initiatives(
 
 
 # CLARISA Regions endpoints
-@router.get("/regions/", response_model=Dict[str, Any])
-async def list_regions(db: Session = Depends(get_db)):
+@router.get(
+    "/regions/",
+    response_model=Dict[str, Any],
+    responses={500: {"description": "Internal server error"}},
+)
+async def list_regions(db: Annotated[Session, Depends(get_db)]):
     """List all CLARISA CGIAR regions"""
     try:
         query = text(

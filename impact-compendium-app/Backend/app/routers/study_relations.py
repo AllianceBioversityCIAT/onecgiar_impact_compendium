@@ -3,7 +3,7 @@ Study relations router for junction tables (contributors, keywords, regions, etc
 """
 
 import logging
-from typing import Any, Dict, List
+from typing import Annotated, Any, Dict, List, Optional
 
 from fastapi import APIRouter, Depends, HTTPException, status
 from pydantic import BaseModel
@@ -135,7 +135,9 @@ async def create_study_contributor(
 
 # Study Keywords endpoints
 @router.get("/keywords/", response_model=Dict[str, Any])
-async def list_study_keywords(study_id: int = None, db: Session = Depends(get_db)):
+async def list_study_keywords(
+    db: Annotated[Session, Depends(get_db)], study_id: Optional[int] = None
+):
     """List study keywords"""
     try:
         where_clause = "WHERE sk.is_active = 1"

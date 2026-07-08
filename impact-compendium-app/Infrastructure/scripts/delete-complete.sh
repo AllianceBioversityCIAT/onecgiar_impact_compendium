@@ -43,7 +43,7 @@ echo "Infrastructure Stack Status: ${INFRA_EXISTS:-"NOT FOUND"}"
 echo ""
 
 # Production environment extra confirmation
-if [ "$ENVIRONMENT" = "production" ] || [ "$ENVIRONMENT" = "prod" ]; then
+if [[ "$ENVIRONMENT" == "production" || "$ENVIRONMENT" == "prod" ]]; then
     echo "🚨 WARNING: You are about to delete PRODUCTION environment!"
     read -p "Type 'DELETE PRODUCTION' to confirm: " prod_confirm
     if [ "$prod_confirm" != "DELETE PRODUCTION" ]; then

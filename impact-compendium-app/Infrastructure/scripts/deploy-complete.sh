@@ -57,7 +57,7 @@ else
         --profile IBD-DEV \
         --region us-east-1
 
-    if [ $? -ne 0 ]; then
+    if [[ $? -ne 0 ]]; then
         echo "❌ Infrastructure deployment failed!"
         exit 1
     fi
@@ -112,7 +112,7 @@ else
     echo "Building SAM application..."
     sam build --use-container --profile IBD-DEV
 
-    if [ $? -ne 0 ]; then
+    if [[ $? -ne 0 ]]; then
         echo "❌ SAM build failed!"
         exit 1
     fi
@@ -129,7 +129,7 @@ else
         --region us-east-1 \
         --no-confirm-changeset
 
-    if [ $? -ne 0 ]; then
+    if [[ $? -ne 0 ]]; then
         echo "❌ Backend deployment failed!"
         exit 1
     fi
@@ -148,7 +148,7 @@ echo "🌐 Step 3: Updating Frontend Configuration..."
 echo "🔧 Updating frontend environment variables..."
 bash "$(pwd)/scripts/update-frontend-config.sh" $ENVIRONMENT
 
-if [ $? -ne 0 ]; then
+if [[ $? -ne 0 ]]; then
     echo "❌ Failed to update frontend configuration"
     exit 1
 fi
@@ -162,7 +162,7 @@ cd ../Frontend
 echo "🔨 Building frontend with updated configuration..."
 npm run build
 
-if [ $? -ne 0 ]; then
+if [[ $? -ne 0 ]]; then
     echo "❌ Frontend build failed!"
     exit 1
 fi
@@ -193,7 +193,7 @@ aws s3 sync dist/ s3://$S3_BUCKET/ \
     --region us-east-1 \
     --delete
 
-if [ $? -ne 0 ]; then
+if [[ $? -ne 0 ]]; then
     echo "❌ Frontend deployment failed!"
     exit 1
 fi

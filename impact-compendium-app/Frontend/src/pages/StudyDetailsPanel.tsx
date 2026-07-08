@@ -376,9 +376,9 @@ export const StudyDetailsPanel: React.FC<StudyDetailsPanelProps> = ({
               </div>
               <div className="flex flex-wrap gap-2">
                 {study.regions && study.regions.length > 0 ? (
-                  study.regions.map((region: any, index: number) => (
+                  study.regions.map((region: any) => (
                     <span
-                      key={index}
+                      key={region.name || region}
                       className="inline-flex items-center px-3 py-2 rounded-lg text-sm font-medium bg-purple-50 text-purple-800 border border-purple-200 hover:bg-purple-100 transition-colors"
                     >
                       {region.name || region}

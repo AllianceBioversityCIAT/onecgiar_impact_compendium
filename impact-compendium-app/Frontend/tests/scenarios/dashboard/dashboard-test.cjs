@@ -201,7 +201,7 @@ class DashboardTester {
 }
 
 // Create results directory
-const fs = require('fs');
+const fs = require('node:fs');
 if (!fs.existsSync('test-results/screenshots')) {
   fs.mkdirSync('test-results/screenshots', { recursive: true });
 }

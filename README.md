@@ -60,6 +60,15 @@ Full deployment manual: [`impact-compendium-app/Infrastructure/CLAUDE.md`](impac
 
 ## Code Quality
 
+**Secret scanning (all contributors — one-time setup per clone):**
+
+```bash
+brew install gitleaks pre-commit   # or: pip install pre-commit / see gitleaks releases
+pre-commit install                 # from the repo root
+```
+
+Every commit is then scanned by [gitleaks](https://github.com/gitleaks/gitleaks) (`.pre-commit-config.yaml`) and blocked if it contains credentials — the same class of findings GitGuardian enforces on pull requests. Never commit real values; `.env` files stay gitignored (see `SECURITY.md`).
+
 **Backend** (from `impact-compendium-app/Backend/`):
 ```bash
 make check-all     # black + isort + flake8 + mypy
